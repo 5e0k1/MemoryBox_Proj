@@ -1,0 +1,129 @@
+/.metadata/
+### =========================
+### OS / Common
+### =========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+### =========================
+### IDE / Editor
+### =========================
+
+# STS / Eclipse
+.apt_generated/
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+# IntelliJ
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# VS Code
+.vscode/
+
+### =========================
+### Java / Build
+### =========================
+target/
+build/
+bin/
+dist/
+
+*.class
+*.jar
+*.war
+*.ear
+
+### =========================
+### Logs
+### =========================
+logs/
+*.log
+hs_err_pid*
+replay_pid*
+
+### =========================
+### Maven
+### =========================
+.mvn/wrapper/maven-wrapper.jar
+
+# 보통은 wrapper 파일을 커밋하는 편이라 아래는 무시하지 않음
+# 필요 시에만 사용
+# .mvn/
+# mvnw
+# mvnw.cmd
+
+### =========================
+### Spring Boot / Runtime
+### =========================
+application-local.properties
+application-local.yml
+application-local.yaml
+
+application-dev.properties
+application-dev.yml
+application-dev.yaml
+
+application-prod.properties
+application-prod.yml
+application-prod.yaml
+
+### =========================
+### Environment / Secrets
+### =========================
+.env
+.env.*
+!.env.example
+
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+
+### =========================
+### Upload / Generated Files
+### =========================
+uploads/
+temp/
+tmp/
+generated/
+preview/
+thumbnails/
+
+### =========================
+### Node / Front build artifacts
+### =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+### =========================
+### Coverage / Test Reports
+### =========================
+coverage/
+test-output/
+surefire-reports/
+
+### =========================
+### Package managers / caches
+### =========================
+.cache/
+tmp/
+
+### =========================
+### Optional DB local files
+### =========================
+*.db
+*.sqlite
+*.sqlite3
