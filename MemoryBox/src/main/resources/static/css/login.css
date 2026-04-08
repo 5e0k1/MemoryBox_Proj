@@ -1,0 +1,58 @@
+.page-login {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 0;
+}
+
+.login-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+}
+
+.login-header h1 {
+    margin: 0 0 6px;
+}
+
+.login-header p {
+    margin: 0 0 20px;
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+
+.login-form {
+    display: grid;
+    gap: 10px;
+}
+
+.login-form label {
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.login-form input {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 0.96rem;
+}
+
+.account-actions {
+    border-top: 1px solid var(--line);
+    margin-top: 16px;
+    padding-top: 16px;
+}
+
+.hint {
+    margin: 0 0 10px;
+    color: var(--muted);
+    font-size: 0.86rem;
+}
+
+.action-row {
+    display: grid;
+    gap: 8px;
+}
