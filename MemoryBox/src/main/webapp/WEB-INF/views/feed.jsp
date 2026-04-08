@@ -23,25 +23,6 @@
             <button class="tab-btn" data-filter-type="video">영상</button>
         </div>
 
-        <div class="sticky-filter-row">
-            <div class="column-controls" aria-label="피드 열 개수 선택">
-                <span>열 수</span>
-                <button class="col-btn is-active" data-columns="1">1</button>
-                <button class="col-btn" data-columns="3">3</button>
-                <button class="col-btn" data-columns="5">5</button>
-            </div>
-
-            <label class="inline-filter">정렬
-                <select id="sortOption">
-                    <option>업로드 최신순</option>
-                    <option>업로드 과거순</option>
-                    <option>촬영연도 최신순</option>
-                    <option>촬영연도 과거순</option>
-                    <option>좋아요 많은 순</option>
-                </select>
-            </label>
-        </div>
-
         <div class="inline-filters-row">
             <label class="inline-filter">작성자
                 <select id="authorFilter">
@@ -76,11 +57,32 @@
         </div>
     </section>
 
-    <div class="mobile-selection-bar" id="mobileSelectionBar" aria-live="polite" hidden>
-        <span><strong id="selectedCount">0</strong>개 선택됨</span>
-        <div class="selection-actions">
-            <button type="button" class="btn btn-secondary" id="cancelSelectionBtn">취소</button>
-            <button type="button" class="btn" id="downloadSelectedBtn">다운로드</button>
+    <div class="floating-head">
+        <div class="view-sort-bar">
+            <div class="column-controls" aria-label="피드 보기 방식 선택">
+                <span>보기</span>
+                <button class="col-btn is-active" data-columns="1">1</button>
+                <button class="col-btn" data-columns="3">3</button>
+                <button class="col-btn" data-columns="5">5</button>
+            </div>
+
+            <label class="sort-inline">정렬
+                <select id="sortOption">
+                    <option>업로드 최신순</option>
+                    <option>업로드 과거순</option>
+                    <option>촬영연도 최신순</option>
+                    <option>촬영연도 과거순</option>
+                    <option>좋아요 많은 순</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="mobile-selection-bar" id="mobileSelectionBar" aria-live="polite" hidden>
+            <span><strong id="selectedCount">0</strong>개 선택됨</span>
+            <div class="selection-actions">
+                <button type="button" class="btn btn-secondary" id="cancelSelectionBtn">취소</button>
+                <button type="button" class="btn" id="downloadSelectedBtn">다운로드</button>
+            </div>
         </div>
     </div>
 

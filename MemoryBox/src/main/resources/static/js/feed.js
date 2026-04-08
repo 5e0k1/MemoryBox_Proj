@@ -90,10 +90,16 @@ document.addEventListener('DOMContentLoaded', () => {
     cards.forEach((card) => {
         let longPressTimer;
         let longPressTriggered = false;
+        let ignoreContextMenuUntil = 0;
         const thumbLink = card.querySelector('.thumb-link');
 
         card.addEventListener('contextmenu', (event) => {
             event.preventDefault();
+
+            if (Date.now() < ignoreContextMenuUntil) {
+                return;
+            }
+
             if (!selectionMode) {
                 enterSelectionMode();
             }
@@ -104,10 +110,13 @@ document.addEventListener('DOMContentLoaded', () => {
             longPressTriggered = false;
             longPressTimer = setTimeout(() => {
                 longPressTriggered = true;
+                ignoreContextMenuUntil = Date.now() + 800;
                 if (!selectionMode) {
                     enterSelectionMode();
                 }
-                toggleCardSelection(card);
+                if (!card.classList.contains('is-selected')) {
+                    toggleCardSelection(card);
+                }
             }, 500);
         }, { passive: true });
 
