@@ -23,8 +23,50 @@
             <button class="tab-btn" data-filter-type="video">영상</button>
         </div>
 
-        <div class="controls-grid">
-            <label>정렬
+        <div class="inline-filters-row">
+            <label class="inline-filter">작성자
+                <select id="authorFilter">
+                    <c:forEach var="author" items="${authors}">
+                        <option value="${author}">${author}</option>
+                    </c:forEach>
+                </select>
+            </label>
+
+            <label class="inline-filter">앨범
+                <select id="albumFilter">
+                    <c:forEach var="year" items="${years}">
+                        <option value="${year}">${year}</option>
+                    </c:forEach>
+                </select>
+            </label>
+        </div>
+
+        <div class="tag-filter-wrap" aria-label="태그 다중 선택">
+            <span class="filter-label">태그</span>
+            <details class="tag-filter-box" id="tagFilterBox">
+                <summary><span id="selectedTagText">전체 태그</span></summary>
+                <div class="tag-options">
+                    <c:forEach var="tag" items="${tags}" varStatus="status">
+                        <label class="tag-option">
+                            <input type="checkbox" class="tag-check" value="${tag}" <c:if test="${status.index lt 2}">checked</c:if>>
+                            <span>#${tag}</span>
+                        </label>
+                    </c:forEach>
+                </div>
+            </details>
+        </div>
+    </section>
+
+    <div class="floating-head">
+        <div class="view-sort-bar">
+            <div class="column-controls" aria-label="피드 보기 방식 선택">
+                <span>보기</span>
+                <button class="col-btn is-active" data-columns="1">1</button>
+                <button class="col-btn" data-columns="3">3</button>
+                <button class="col-btn" data-columns="5">5</button>
+            </div>
+
+            <label class="sort-inline">정렬
                 <select id="sortOption">
                     <option>업로드 최신순</option>
                     <option>업로드 과거순</option>
@@ -33,54 +75,32 @@
                     <option>좋아요 많은 순</option>
                 </select>
             </label>
-
-            <label>작성자
-                <select id="authorFilter">
-                    <c:forEach var="author" items="${authors}">
-                        <option value="${author}">${author}</option>
-                    </c:forEach>
-                </select>
-            </label>
-
-            <label>태그
-                <select id="tagFilter">
-                    <c:forEach var="tag" items="${tags}">
-                        <option value="${tag}">${tag}</option>
-                    </c:forEach>
-                </select>
-            </label>
-
-            <label>연도
-                <select id="yearFilter">
-                    <c:forEach var="year" items="${years}">
-                        <option value="${year}">${year}</option>
-                    </c:forEach>
-                </select>
-            </label>
         </div>
 
-        <div class="toolbar-row">
-            <div class="column-controls" aria-label="피드 열 개수 선택">
-                <span>열 수</span>
-                <button class="col-btn is-active" data-columns="1">1</button>
-                <button class="col-btn" data-columns="3">3</button>
-                <button class="col-btn" data-columns="5">5</button>
-            </div>
-
-            <div class="bulk-actions">
-                <button class="btn btn-secondary" type="button">다중 선택 모드</button>
-                <button class="btn btn-secondary" type="button">일괄 다운로드</button>
+        <div class="mobile-selection-bar" id="mobileSelectionBar" aria-live="polite" hidden>
+            <span><strong id="selectedCount">0</strong>개 선택됨</span>
+            <div class="selection-actions">
+                <button type="button" class="btn btn-secondary" id="cancelSelectionBtn">취소</button>
+                <button type="button" class="btn" id="downloadSelectedBtn">다운로드</button>
             </div>
         </div>
-    </section>
+    </div>
 
-    <%-- 카드 클릭(짧은 터치) 시 상세로, 길게 누르기/우클릭은 JS에서 후속 확장 훅 제공 --%>
     <section id="feedGrid" class="feed-grid columns-1" aria-live="polite">
         <c:forEach var="item" items="${feedItems}">
             <article class="feed-card" data-media-type="${item.mediaType}" data-item-id="${item.id}">
                 <a class="thumb-link" href="/feed/${item.id}" aria-label="${item.title} 상세보기">
                     <img src="${item.thumbnailUrl}" alt="${item.title} 썸네일" loading="lazy">
-                    <span class="media-badge ${item.mediaType}">${item.mediaType eq 'video' ? 'VIDEO' : 'PHOTO'}</span>
+                    <span class="media-badge ${item.mediaType}" data-full-text="${item.mediaType eq 'video' ? 'Video' : 'Photo'}" data-short-text="${item.mediaType eq 'video' ? 'V' : 'P'}">${item.mediaType eq 'video' ? 'Video' : 'Photo'}</span>
+
+                    <div class="overlay-meta overlay-top">
+                        <p class="overlay-desc">${item.title}</p>
+                        <p class="overlay-album">앨범 ${item.shotYear}</p>
+                    </div>
+                    <div class="overlay-meta overlay-bottom">
+                        <p>💬 ${item.commentCount} · ❤ ${item.likeCount}</p>
+                        <p>${item.author}</p>
+                    </div>
                 </a>
 
                 <div class="feed-meta">
