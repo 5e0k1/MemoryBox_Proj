@@ -42,16 +42,23 @@
                 </select>
             </label>
 
-            <label>태그
-                <select id="tagFilter">
-                    <c:forEach var="tag" items="${tags}">
-                        <option value="${tag}">${tag}</option>
-                    </c:forEach>
-                </select>
-            </label>
+            <div class="tag-filter-wrap" aria-label="태그 다중 선택">
+                <span class="filter-label">태그</span>
+                <details class="tag-filter-box" open>
+                    <summary><span id="selectedTagText">전체 태그</span></summary>
+                    <div class="tag-options">
+                        <c:forEach var="tag" items="${tags}" varStatus="status">
+                            <label class="tag-option">
+                                <input type="checkbox" class="tag-check" value="${tag}" <c:if test="${status.index lt 2}">checked</c:if>>
+                                <span>#${tag}</span>
+                            </label>
+                        </c:forEach>
+                    </div>
+                </details>
+            </div>
 
-            <label>연도
-                <select id="yearFilter">
+            <label>앨범
+                <select id="albumFilter">
                     <c:forEach var="year" items="${years}">
                         <option value="${year}">${year}</option>
                     </c:forEach>
@@ -66,13 +73,16 @@
                 <button class="col-btn" data-columns="3">3</button>
                 <button class="col-btn" data-columns="5">5</button>
             </div>
-
-            <div class="bulk-actions">
-                <button class="btn btn-secondary" type="button">다중 선택 모드</button>
-                <button class="btn btn-secondary" type="button">일괄 다운로드</button>
-            </div>
         </div>
     </section>
+
+    <div class="mobile-selection-bar" id="mobileSelectionBar" aria-live="polite" hidden>
+        <span><strong id="selectedCount">0</strong>개 선택됨</span>
+        <div class="selection-actions">
+            <button type="button" class="btn btn-secondary" id="cancelSelectionBtn">취소</button>
+            <button type="button" class="btn" id="downloadSelectedBtn">다운로드</button>
+        </div>
+    </div>
 
     <%-- 카드 클릭(짧은 터치) 시 상세로, 길게 누르기/우클릭은 JS에서 후속 확장 훅 제공 --%>
     <section id="feedGrid" class="feed-grid columns-1" aria-live="polite">
@@ -80,7 +90,16 @@
             <article class="feed-card" data-media-type="${item.mediaType}" data-item-id="${item.id}">
                 <a class="thumb-link" href="/feed/${item.id}" aria-label="${item.title} 상세보기">
                     <img src="${item.thumbnailUrl}" alt="${item.title} 썸네일" loading="lazy">
-                    <span class="media-badge ${item.mediaType}">${item.mediaType eq 'video' ? 'VIDEO' : 'PHOTO'}</span>
+                    <span class="media-badge ${item.mediaType}">${item.mediaType eq 'video' ? 'V' : 'P'}</span>
+
+                    <div class="overlay-meta overlay-top">
+                        <p class="overlay-desc">${item.title}</p>
+                        <p class="overlay-album">앨범 ${item.shotYear}</p>
+                    </div>
+                    <div class="overlay-meta overlay-bottom">
+                        <p>💬 ${item.commentCount} · ❤ ${item.likeCount}</p>
+                        <p>${item.author}</p>
+                    </div>
                 </a>
 
                 <div class="feed-meta">
