@@ -51,7 +51,7 @@ public class UploadService {
     }
 
     public List<AlbumOption> getActiveAlbums(Long userId) {
-        return albumMapper.findActiveAlbumsByUserId(userId);
+        return albumMapper.findActiveAlbums();
     }
 
     @Transactional
@@ -106,7 +106,7 @@ public class UploadService {
             savedKeys.add(thumb.getStorageKey());
             uploadMapper.insertMediaVariant(buildVariant(mediaItem.getMediaId(), "THUMB", thumb, 320, 180, null));
 
-            bindTags(mediaItem.getMediaId(), form.getTags());
+            bindTags(userId, mediaItem.getMediaId(), form.getTags());
         } catch (Exception e) {
             rollbackFiles(savedKeys);
             if (e instanceof UploadException) {
@@ -147,7 +147,7 @@ public class UploadService {
             uploadMapper.insertMediaVariant(buildVariant(mediaItem.getMediaId(), "SMALL", small, smallImageWidth(source, 720), smallImageHeight(source, 720), null));
             uploadMapper.insertMediaVariant(buildVariant(mediaItem.getMediaId(), "MEDIUM", medium, smallImageWidth(source, 1280), smallImageHeight(source, 1280), null));
 
-            bindTags(mediaItem.getMediaId(), tags);
+            bindTags(userId, mediaItem.getMediaId(), tags);
         } catch (Exception e) {
             rollbackFiles(savedKeys);
             if (e instanceof UploadException) {
@@ -190,6 +190,7 @@ public class UploadService {
         mediaItem.setTitle(blankToNull(title));
         mediaItem.setUploadedAt(LocalDateTime.now());
         mediaItem.setTakenAt(takenAt);
+        mediaItem.setMediaId(uploadMapper.selectNextMediaItemId());
         uploadMapper.insertMediaItem(mediaItem);
         return mediaItem;
     }
@@ -201,6 +202,7 @@ public class UploadService {
                                       Integer height,
                                       Integer durationSec) {
         MediaVariant variant = new MediaVariant();
+        variant.setVariantId(uploadMapper.selectNextMediaVariantId());
         variant.setMediaId(mediaId);
         variant.setVariantType(variantType);
         variant.setStorageKey(storedFile.getStorageKey());
@@ -216,18 +218,20 @@ public class UploadService {
         return variant;
     }
 
-    private void bindTags(Long mediaId, String rawTags) {
+    private void bindTags(Long userId, Long mediaId, String rawTags) {
         Set<String> tagSet = parseTags(rawTags);
         for (String tagName : tagSet) {
             String normalized = normalizeTag(tagName);
-            Tag tag = uploadMapper.findTagByNormalizedName(normalized);
+            Tag tag = uploadMapper.findTagByUserAndNormalizedName(userId, normalized);
             if (tag == null) {
                 tag = new Tag();
+                tag.setTagId(uploadMapper.selectNextTagId());
+                tag.setUserId(userId);
                 tag.setTagName(tagName);
                 tag.setNormalizedName(normalized);
                 uploadMapper.insertTag(tag);
             }
-            uploadMapper.insertMediaTag(mediaId, tag.getTagId());
+            uploadMapper.insertMediaTag(uploadMapper.selectNextMediaTagId(), mediaId, tag.getTagId());
         }
     }
 

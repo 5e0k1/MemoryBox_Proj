@@ -3,6 +3,7 @@ package com.hogudeul.memorybox.model;
 public class Tag {
 
     private Long tagId;
+    private Long userId;
     private String tagName;
     private String normalizedName;
 
@@ -12,6 +13,14 @@ public class Tag {
 
     public void setTagId(Long tagId) {
         this.tagId = tagId;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public String getTagName() {

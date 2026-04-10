@@ -4,12 +4,34 @@
 
     <resultMap id="TagMap" type="com.hogudeul.memorybox.model.Tag">
         <id column="tag_id" property="tagId"/>
+        <result column="user_id" property="userId"/>
         <result column="tag_name" property="tagName"/>
         <result column="normalized_name" property="normalizedName"/>
     </resultMap>
 
-    <insert id="insertMediaItem" parameterType="com.hogudeul.memorybox.model.MediaItem" useGeneratedKeys="true" keyProperty="mediaId">
+    <select id="selectNextMediaItemId" resultType="java.lang.Long">
+        SELECT COALESCE(MAX(media_id), 0) + 1
+        FROM MEDIA_ITEMS
+    </select>
+
+    <select id="selectNextMediaVariantId" resultType="java.lang.Long">
+        SELECT COALESCE(MAX(variant_id), 0) + 1
+        FROM MEDIA_VARIANT
+    </select>
+
+    <select id="selectNextTagId" resultType="java.lang.Long">
+        SELECT COALESCE(MAX(tag_id), 0) + 1
+        FROM TAG
+    </select>
+
+    <select id="selectNextMediaTagId" resultType="java.lang.Long">
+        SELECT COALESCE(MAX(md_id), 0) + 1
+        FROM MEDIA_TAG
+    </select>
+
+    <insert id="insertMediaItem" parameterType="com.hogudeul.memorybox.model.MediaItem">
         INSERT INTO MEDIA_ITEMS (
+            media_id,
             user_id,
             album_id,
             media_type,
@@ -18,6 +40,7 @@
             taken_at,
             del_yn
         ) VALUES (
+            #{mediaId},
             #{userId},
             #{albumId},
             #{mediaType},
@@ -28,8 +51,9 @@
         )
     </insert>
 
-    <insert id="insertMediaVariant" parameterType="com.hogudeul.memorybox.model.MediaVariant" useGeneratedKeys="true" keyProperty="variantId">
+    <insert id="insertMediaVariant" parameterType="com.hogudeul.memorybox.model.MediaVariant">
         INSERT INTO MEDIA_VARIANT (
+            variant_id,
             media_id,
             variant_type,
             storage_key,
@@ -43,6 +67,7 @@
             duration_sec,
             created_at
         ) VALUES (
+            #{variantId},
             #{mediaId},
             #{variantType},
             #{storageKey},
@@ -58,31 +83,43 @@
         )
     </insert>
 
-    <select id="findTagByNormalizedName" resultMap="TagMap">
-        SELECT tag_id, tag_name, normalized_name
+    <select id="findTagByUserAndNormalizedName" resultMap="TagMap">
+        SELECT tag_id, user_id, tag_name, normalized_name
         FROM TAG
-        WHERE normalized_name = #{normalizedName}
+        WHERE user_id = #{userId}
+          AND normalized_name = #{normalizedName}
+          AND del_yn = 'N'
         LIMIT 1
     </select>
 
-    <insert id="insertTag" parameterType="com.hogudeul.memorybox.model.Tag" useGeneratedKeys="true" keyProperty="tagId">
+    <insert id="insertTag" parameterType="com.hogudeul.memorybox.model.Tag">
         INSERT INTO TAG (
+            tag_id,
+            user_id,
             tag_name,
             normalized_name,
-            created_at
+            created_at,
+            tag_scope,
+            del_yn
         ) VALUES (
+            #{tagId},
+            #{userId},
             #{tagName},
             #{normalizedName},
-            NOW()
+            NOW(),
+            'N',
+            'N'
         )
     </insert>
 
     <insert id="insertMediaTag">
         INSERT INTO MEDIA_TAG (
+            md_id,
             media_id,
             tag_id,
             created_at
         ) VALUES (
+            #{mdId},
             #{mediaId},
             #{tagId},
             NOW()

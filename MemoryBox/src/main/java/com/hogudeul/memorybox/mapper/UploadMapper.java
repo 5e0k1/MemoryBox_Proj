@@ -9,13 +9,24 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface UploadMapper {
 
+    Long selectNextMediaItemId();
+
+    Long selectNextMediaVariantId();
+
+    Long selectNextTagId();
+
+    Long selectNextMediaTagId();
+
     int insertMediaItem(MediaItem mediaItem);
 
     int insertMediaVariant(MediaVariant mediaVariant);
 
-    Tag findTagByNormalizedName(@Param("normalizedName") String normalizedName);
+    Tag findTagByUserAndNormalizedName(@Param("userId") Long userId,
+                                       @Param("normalizedName") String normalizedName);
 
     int insertTag(Tag tag);
 
-    int insertMediaTag(@Param("mediaId") Long mediaId, @Param("tagId") Long tagId);
+    int insertMediaTag(@Param("mdId") Long mdId,
+                       @Param("mediaId") Long mediaId,
+                       @Param("tagId") Long tagId);
 }
