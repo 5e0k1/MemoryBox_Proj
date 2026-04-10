@@ -17,7 +17,7 @@
         <label>사진 파일들
             <input type="file" name="imageFiles" accept="image/*" multiple required id="multiImageInput">
         </label>
-        <label>공통 촬영일시<input type="datetime-local" name="takenAt" value="${form.takenAt}"></label>
+        <label>공통 촬영일시<input type="datetime-local" class="taken-at-input" name="takenAt" value="${form.takenAt}"></label>
         <label>앨범
             <select name="albumId" required>
                 <option value="">선택</option>
@@ -27,17 +27,27 @@
             </select>
         </label>
 
-        <label>기존 태그 선택(다중)
-            <select name="selectedTagIds" multiple size="6">
-                <c:forEach items="${tags}" var="tag">
-                    <option value="${tag.tagId}">${tag.tagName}</option>
-                </c:forEach>
-            </select>
-            <small>선택한 태그가 업로드되는 모든 사진에 공통 적용됩니다.</small>
-        </label>
-        <label>새 태그 추가(쉼표 구분)
-            <input type="text" name="newTags" value="${form.newTags}" placeholder="여행, 가족, 제주">
-        </label>
+        <section class="tag-widget" data-widget="tag-picker">
+            <div class="tag-widget-header">
+                <h2>태그 선택</h2>
+                <span class="tag-count">선택 0개</span>
+            </div>
+
+            <label>기존 태그 목록(다중 선택)
+                <select name="selectedTagIds" multiple size="6" class="tag-select">
+                    <c:forEach items="${tags}" var="tag">
+                        <option value="${tag.tagId}">${tag.tagName}</option>
+                    </c:forEach>
+                </select>
+            </label>
+
+            <div class="tag-add-row">
+                <input type="text" class="tag-add-input" placeholder="새 태그 입력">
+                <button type="button" class="tag-add-btn">추가</button>
+            </div>
+            <input type="hidden" name="newTags" class="new-tags-hidden" value="${form.newTags}">
+            <div class="tag-pill-list"></div>
+        </section>
 
         <section>
             <h2>파일 미리보기</h2>
