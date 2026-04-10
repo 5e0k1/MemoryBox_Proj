@@ -398,6 +398,10 @@ body.modal-open {
     z-index: 200;
 }
 
+.modal-backdrop[hidden] {
+    display: none !important;
+}
+
 .password-modal {
     width: min(100%, 420px);
     max-height: calc(100vh - 28px);
