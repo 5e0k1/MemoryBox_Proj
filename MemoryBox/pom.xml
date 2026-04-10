@@ -44,7 +44,7 @@
         </dependency>
 
         <dependency>
-            <groupId>com.github.sejda.imageio</groupId>
+            <groupId>org.sejda.imageio</groupId>
             <artifactId>webp-imageio</artifactId>
             <version>0.1.6</version>
         </dependency>
