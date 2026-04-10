@@ -8,14 +8,20 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 public class PageController {
 
     @GetMapping("/feed")
-    public String feedPage(Model model, HttpSession session) {
+    public String feedPage(@RequestParam(required = false) String pwdError,
+                           @RequestParam(required = false) String pwdChanged,
+                           Model model,
+                           HttpSession session) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         model.addAttribute("loginUser", loginUser);
+        model.addAttribute("pwdError", pwdError);
+        model.addAttribute("pwdChanged", "true".equals(pwdChanged));
         model.addAttribute("feedItems", buildMockFeedItems());
         model.addAttribute("authors", List.of("전체", "민수", "지은", "현우", "서연", "지훈", "수빈", "유나"));
         model.addAttribute("tags", List.of("전체", "여행", "일상", "생일", "캠핑", "바다", "반려동물"));

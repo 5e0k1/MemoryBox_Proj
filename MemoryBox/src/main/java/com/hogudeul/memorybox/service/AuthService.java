@@ -47,6 +47,37 @@ public class AuthService {
         return LoginResult.success(user);
     }
 
+    @Transactional
+    public String changePassword(Long userId, String currentPassword, String newPassword, String newPasswordConfirm) {
+        UserAccount user = userMapper.findByUserId(userId);
+        if (user == null) {
+            return "사용자 정보를 찾을 수 없습니다.";
+        }
+
+        if (!"N".equalsIgnoreCase(user.getDelYn())) {
+            return "비활성화된 계정은 비밀번호를 변경할 수 없습니다.";
+        }
+
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            return "현재 비밀번호가 일치하지 않습니다.";
+        }
+
+        if (newPassword == null || newPassword.length() < 8) {
+            return "새 비밀번호는 8자 이상이어야 합니다.";
+        }
+
+        if (!newPassword.equals(newPasswordConfirm)) {
+            return "새 비밀번호와 재확인이 일치하지 않습니다.";
+        }
+
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            return "현재 비밀번호와 동일한 비밀번호로는 변경할 수 없습니다.";
+        }
+
+        userMapper.updatePasswordHash(userId, passwordEncoder.encode(newPassword));
+        return null;
+    }
+
     private void saveLoginHistory(Long userId, String loginIdInput, String ipAddr, String userAgent, String successYn) {
         LoginHistory loginHistory = new LoginHistory();
         loginHistory.setLhId(loginHistoryMapper.selectNextLoginHistoryId());

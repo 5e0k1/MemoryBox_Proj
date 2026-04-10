@@ -346,4 +346,119 @@
 .login-user {
     font-size: 0.85rem;
     color: var(--muted);
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.icon-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: #334155;
+    display: inline-grid;
+    place-items: center;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.feedback-msg {
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 0.86rem;
+}
+
+.feedback-msg.is-error {
+    background: #fff1f2;
+    border: 1px solid #fecdd3;
+    color: #be123c;
+}
+
+.feedback-msg.is-success {
+    background: #ecfdf5;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+}
+
+body.modal-open {
+    overflow: hidden;
+}
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    display: grid;
+    place-items: center;
+    padding: 14px;
+    z-index: 200;
+}
+
+.password-modal {
+    width: min(100%, 420px);
+    max-height: calc(100vh - 28px);
+    overflow-y: auto;
+    background: var(--surface);
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    padding: 16px;
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.modal-close-btn {
+    border: 0;
+    background: #e2e8f0;
+    border-radius: 10px;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+}
+
+.password-form {
+    display: grid;
+    gap: 8px;
+}
+
+.password-form label {
+    font-size: 0.83rem;
+    font-weight: 600;
+}
+
+.password-form input {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 11px;
+    font-size: 0.92rem;
+}
+
+.password-form input[readonly] {
+    background: #f8fafc;
+    color: #64748b;
+}
+
+.modal-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.modal-cancel {
+    font-weight: 700;
 }

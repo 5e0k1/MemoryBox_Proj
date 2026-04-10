@@ -8,10 +8,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.util.UriUtils;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PostMapping;
 
 @Controller
@@ -77,5 +79,28 @@ public class AuthController {
             session.invalidate();
         }
         return "redirect:/login";
+    }
+
+    @PostMapping("/account/password")
+    public String changePassword(@RequestParam String currentPassword,
+                                 @RequestParam String newPassword,
+                                 @RequestParam String newPasswordConfirm,
+                                 HttpSession session) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        if (loginUser == null) {
+            return "redirect:/login?expired=true";
+        }
+
+        String errorMessage = authService.changePassword(
+                loginUser.getUserId(),
+                currentPassword,
+                newPassword,
+                newPasswordConfirm
+        );
+
+        if (errorMessage != null) {
+            return "redirect:/feed?pwdError=" + UriUtils.encode(errorMessage, java.nio.charset.StandardCharsets.UTF_8);
+        }
+        return "redirect:/feed?pwdChanged=true";
     }
 }

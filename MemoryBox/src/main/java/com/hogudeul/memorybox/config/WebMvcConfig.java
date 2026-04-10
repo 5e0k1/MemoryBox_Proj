@@ -17,7 +17,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(loginCheckInterceptor)
-                .addPathPatterns("/feed/**", "/upload/**")
+                .addPathPatterns("/feed/**", "/upload/**", "/account/**")
                 .excludePathPatterns("/css/**", "/js/**", "/images/**", "/error");
     }
 }

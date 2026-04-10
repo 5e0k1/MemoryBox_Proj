@@ -14,12 +14,22 @@
     <header class="feed-header">
         <h1>MemoryBox Feed</h1>
         <div class="header-actions">
-            <span class="login-user">${loginUser.displayName} (${loginUser.loginId})</span>
+            <span class="login-user">${loginUser.displayName}</span>
+            <button class="icon-btn" type="button" id="openPasswordModalBtn" aria-label="비밀번호 변경">
+                ⚙
+            </button>
             <form action="/logout" method="post">
-                <button class="btn btn-text" type="submit">로그아웃</button>
+                <button class="icon-btn" type="submit" aria-label="로그아웃">⎋</button>
             </form>
         </div>
     </header>
+
+    <c:if test="${not empty pwdError}">
+        <div class="feedback-msg is-error">${pwdError}</div>
+    </c:if>
+    <c:if test="${pwdChanged}">
+        <div class="feedback-msg is-success">비밀번호가 변경되었습니다.</div>
+    </c:if>
 
     <section class="control-panel">
         <div class="type-tabs" role="tablist" aria-label="미디어 타입 선택">
@@ -138,6 +148,67 @@
     <a href="/upload" class="fab-upload" aria-label="업로드 페이지로 이동">＋</a>
 </main>
 
+<div id="passwordModalBackdrop" class="modal-backdrop" hidden>
+    <section class="password-modal" role="dialog" aria-modal="true" aria-labelledby="passwordModalTitle">
+        <header class="modal-header">
+            <h2 id="passwordModalTitle">비밀번호 변경</h2>
+            <button type="button" class="modal-close-btn" id="closePasswordModalBtn" aria-label="닫기">✕</button>
+        </header>
+
+        <form action="/account/password" method="post" class="password-form">
+            <label>사용자명</label>
+            <input type="text" value="${loginUser.displayName}" readonly>
+
+            <label>아이디</label>
+            <input type="text" value="${loginUser.loginId}" readonly>
+
+            <label for="currentPassword">현재 비밀번호</label>
+            <input id="currentPassword" name="currentPassword" type="password" required autocomplete="current-password">
+
+            <label for="newPassword">새 비밀번호</label>
+            <input id="newPassword" name="newPassword" type="password" required minlength="8" autocomplete="new-password">
+
+            <label for="newPasswordConfirm">새 비밀번호 재확인</label>
+            <input id="newPasswordConfirm" name="newPasswordConfirm" type="password" required minlength="8" autocomplete="new-password">
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary modal-cancel" id="cancelPasswordModalBtn">취소</button>
+                <button type="submit" class="btn btn-primary">수정</button>
+            </div>
+        </form>
+    </section>
+</div>
+
 <script src="/js/feed.js"></script>
+<script>
+    const passwordModalBackdrop = document.getElementById('passwordModalBackdrop');
+    const openPasswordModalBtn = document.getElementById('openPasswordModalBtn');
+    const closePasswordModalBtn = document.getElementById('closePasswordModalBtn');
+    const cancelPasswordModalBtn = document.getElementById('cancelPasswordModalBtn');
+
+    function openPasswordModal() {
+        passwordModalBackdrop.hidden = false;
+        document.body.classList.add('modal-open');
+    }
+
+    function closePasswordModal() {
+        passwordModalBackdrop.hidden = true;
+        document.body.classList.remove('modal-open');
+    }
+
+    openPasswordModalBtn.addEventListener('click', openPasswordModal);
+    closePasswordModalBtn.addEventListener('click', closePasswordModal);
+    cancelPasswordModalBtn.addEventListener('click', closePasswordModal);
+
+    passwordModalBackdrop.addEventListener('click', (event) => {
+        if (event.target === passwordModalBackdrop) {
+            closePasswordModal();
+        }
+    });
+
+    <c:if test="${not empty pwdError}">
+    openPasswordModal();
+    </c:if>
+</script>
 </body>
 </html>

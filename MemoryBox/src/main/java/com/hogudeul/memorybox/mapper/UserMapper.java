@@ -9,5 +9,10 @@ public interface UserMapper {
 
     UserAccount findByLoginId(@Param("loginId") String loginId);
 
+    UserAccount findByUserId(@Param("userId") Long userId);
+
     int updateLastLoginAt(@Param("userId") Long userId);
+
+    int updatePasswordHash(@Param("userId") Long userId,
+                           @Param("passwordHash") String passwordHash);
 }

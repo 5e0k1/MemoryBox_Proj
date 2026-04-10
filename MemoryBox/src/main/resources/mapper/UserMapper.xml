@@ -32,9 +32,33 @@
         LIMIT 1
     </select>
 
+    <select id="findByUserId" resultMap="UserAccountMap">
+        SELECT
+            user_id,
+            login_id,
+            password_hash,
+            display_name,
+            role,
+            created_at,
+            updated_at,
+            last_login_at,
+            del_yn,
+            del_at
+        FROM `USER`
+        WHERE user_id = #{userId}
+        LIMIT 1
+    </select>
+
     <update id="updateLastLoginAt">
         UPDATE `USER`
         SET last_login_at = NOW(),
+            updated_at = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+    <update id="updatePasswordHash">
+        UPDATE `USER`
+        SET password_hash = #{passwordHash},
             updated_at = NOW()
         WHERE user_id = #{userId}
     </update>
