@@ -92,6 +92,25 @@
         LIMIT 1
     </select>
 
+    <select id="findActiveTagsByUserId" resultMap="TagMap">
+        SELECT tag_id, user_id, tag_name, normalized_name
+        FROM TAG
+        WHERE user_id = #{userId}
+          AND del_yn = 'N'
+        ORDER BY tag_name ASC
+    </select>
+
+    <select id="findActiveTagsByIds" resultMap="TagMap">
+        SELECT tag_id, user_id, tag_name, normalized_name
+        FROM TAG
+        WHERE user_id = #{userId}
+          AND del_yn = 'N'
+          AND tag_id IN
+          <foreach collection="tagIds" item="tagId" open="(" separator="," close=")">
+              #{tagId}
+          </foreach>
+    </select>
+
     <insert id="insertTag" parameterType="com.hogudeul.memorybox.model.Tag">
         INSERT INTO TAG (
             tag_id,

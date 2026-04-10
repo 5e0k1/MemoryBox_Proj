@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -54,12 +55,22 @@ public class UploadService {
         return albumMapper.findActiveAlbums();
     }
 
+    public List<Tag> getActiveTags(Long userId) {
+        return uploadMapper.findActiveTagsByUserId(userId);
+    }
+
     @Transactional
     public void uploadSinglePhoto(Long userId, SinglePhotoUploadForm form) {
         if (form.getImageFile() == null || form.getImageFile().isEmpty()) {
             throw new UploadException("업로드할 이미지 파일을 선택해 주세요.");
         }
-        processPhoto(userId, form.getAlbumId(), form.getTitle(), form.getTakenAt(), form.getTags(), form.getImageFile());
+        processPhoto(userId,
+                form.getAlbumId(),
+                form.getTitle(),
+                form.getTakenAt(),
+                form.getSelectedTagIds(),
+                form.getNewTags(),
+                form.getImageFile());
     }
 
     @Transactional
@@ -74,8 +85,13 @@ public class UploadService {
             if (file == null || file.isEmpty()) {
                 continue;
             }
-            String perFileTags = i < form.getFileTags().size() ? form.getFileTags().get(i) : null;
-            processPhoto(userId, form.getAlbumId(), null, form.getTakenAt(), perFileTags, file);
+            processPhoto(userId,
+                    form.getAlbumId(),
+                    null,
+                    form.getTakenAt(),
+                    form.getSelectedTagIds(),
+                    form.getNewTags(),
+                    file);
             created++;
         }
         if (created == 0) {
@@ -106,7 +122,7 @@ public class UploadService {
             savedKeys.add(thumb.getStorageKey());
             uploadMapper.insertMediaVariant(buildVariant(mediaItem.getMediaId(), "THUMB", thumb, 320, 180, null));
 
-            bindTags(userId, mediaItem.getMediaId(), form.getTags());
+            bindTags(userId, mediaItem.getMediaId(), form.getSelectedTagIds(), form.getNewTags());
         } catch (Exception e) {
             rollbackFiles(savedKeys);
             if (e instanceof UploadException) {
@@ -120,7 +136,8 @@ public class UploadService {
                               Long albumId,
                               String title,
                               String takenAtRaw,
-                              String tags,
+                              List<Long> selectedTagIds,
+                              String newTags,
                               MultipartFile file) {
         requireAlbum(albumId);
         validateMimeType(file, "image/");
@@ -147,7 +164,7 @@ public class UploadService {
             uploadMapper.insertMediaVariant(buildVariant(mediaItem.getMediaId(), "SMALL", small, smallImageWidth(source, 720), smallImageHeight(source, 720), null));
             uploadMapper.insertMediaVariant(buildVariant(mediaItem.getMediaId(), "MEDIUM", medium, smallImageWidth(source, 1280), smallImageHeight(source, 1280), null));
 
-            bindTags(userId, mediaItem.getMediaId(), tags);
+            bindTags(userId, mediaItem.getMediaId(), selectedTagIds, newTags);
         } catch (Exception e) {
             rollbackFiles(savedKeys);
             if (e instanceof UploadException) {
@@ -218,9 +235,11 @@ public class UploadService {
         return variant;
     }
 
-    private void bindTags(Long userId, Long mediaId, String rawTags) {
-        Set<String> tagSet = parseTags(rawTags);
-        for (String tagName : tagSet) {
+    private void bindTags(Long userId, Long mediaId, List<Long> selectedTagIds, String newTagsRaw) {
+        Set<Long> resolvedTagIds = resolveSelectedTagIds(userId, selectedTagIds);
+        Set<String> newTagNames = parseTags(newTagsRaw);
+
+        for (String tagName : newTagNames) {
             String normalized = normalizeTag(tagName);
             Tag tag = uploadMapper.findTagByUserAndNormalizedName(userId, normalized);
             if (tag == null) {
@@ -231,8 +250,40 @@ public class UploadService {
                 tag.setNormalizedName(normalized);
                 uploadMapper.insertTag(tag);
             }
-            uploadMapper.insertMediaTag(uploadMapper.selectNextMediaTagId(), mediaId, tag.getTagId());
+            resolvedTagIds.add(tag.getTagId());
         }
+
+        for (Long tagId : resolvedTagIds) {
+            uploadMapper.insertMediaTag(uploadMapper.selectNextMediaTagId(), mediaId, tagId);
+        }
+    }
+
+    private Set<Long> resolveSelectedTagIds(Long userId, List<Long> selectedTagIds) {
+        Set<Long> sanitized = new LinkedHashSet<>();
+        if (selectedTagIds == null || selectedTagIds.isEmpty()) {
+            return sanitized;
+        }
+
+        for (Long tagId : selectedTagIds) {
+            if (tagId != null) {
+                sanitized.add(tagId);
+            }
+        }
+
+        if (sanitized.isEmpty()) {
+            return sanitized;
+        }
+
+        List<Tag> validTags = uploadMapper.findActiveTagsByIds(userId, new ArrayList<>(sanitized));
+        Set<Long> validTagIds = new HashSet<>();
+        for (Tag validTag : validTags) {
+            validTagIds.add(validTag.getTagId());
+        }
+
+        if (!validTagIds.containsAll(sanitized)) {
+            throw new UploadException("선택한 태그 중 사용할 수 없는 항목이 있습니다.");
+        }
+        return sanitized;
     }
 
     private Set<String> parseTags(String rawTags) {

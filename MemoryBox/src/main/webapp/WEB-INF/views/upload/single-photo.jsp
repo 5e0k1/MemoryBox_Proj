@@ -25,7 +25,19 @@
                 </c:forEach>
             </select>
         </label>
-        <label>태그(쉼표 구분)<input type="text" name="tags" value="${form.tags}" placeholder="여행, 가족, 제주"></label>
+
+        <label>기존 태그 선택(다중)
+            <select name="selectedTagIds" multiple size="6">
+                <c:forEach items="${tags}" var="tag">
+                    <option value="${tag.tagId}">${tag.tagName}</option>
+                </c:forEach>
+            </select>
+            <small>목록에서 여러 태그를 선택할 수 있습니다.</small>
+        </label>
+        <label>새 태그 추가(쉼표 구분)
+            <input type="text" name="newTags" value="${form.newTags}" placeholder="여행, 가족, 제주">
+        </label>
+
         <button type="submit">업로드</button>
     </form>
 </div>

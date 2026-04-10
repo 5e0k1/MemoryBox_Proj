@@ -3,6 +3,7 @@ package com.hogudeul.memorybox.mapper;
 import com.hogudeul.memorybox.model.MediaItem;
 import com.hogudeul.memorybox.model.MediaVariant;
 import com.hogudeul.memorybox.model.Tag;
+import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -23,6 +24,11 @@ public interface UploadMapper {
 
     Tag findTagByUserAndNormalizedName(@Param("userId") Long userId,
                                        @Param("normalizedName") String normalizedName);
+
+    List<Tag> findActiveTagsByUserId(@Param("userId") Long userId);
+
+    List<Tag> findActiveTagsByIds(@Param("userId") Long userId,
+                                  @Param("tagIds") List<Long> tagIds);
 
     int insertTag(Tag tag);
 

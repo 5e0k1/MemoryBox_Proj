@@ -6,7 +6,7 @@
     input.addEventListener('change', function () {
         previewList.innerHTML = '';
         const files = Array.from(input.files || []);
-        files.forEach(function (file, idx) {
+        files.forEach(function (file) {
             const wrapper = document.createElement('div');
             wrapper.className = 'preview-item';
 
@@ -17,14 +17,8 @@
             const right = document.createElement('div');
             const name = document.createElement('div');
             name.textContent = file.name;
-            const tagInput = document.createElement('input');
-            tagInput.type = 'text';
-            tagInput.name = 'fileTags';
-            tagInput.placeholder = '파일별 태그 입력 (쉼표 구분)';
-            tagInput.setAttribute('data-index', String(idx));
 
             right.appendChild(name);
-            right.appendChild(tagInput);
             wrapper.appendChild(image);
             wrapper.appendChild(right);
             previewList.appendChild(wrapper);

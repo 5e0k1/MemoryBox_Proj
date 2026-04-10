@@ -27,8 +27,20 @@
             </select>
         </label>
 
+        <label>기존 태그 선택(다중)
+            <select name="selectedTagIds" multiple size="6">
+                <c:forEach items="${tags}" var="tag">
+                    <option value="${tag.tagId}">${tag.tagName}</option>
+                </c:forEach>
+            </select>
+            <small>선택한 태그가 업로드되는 모든 사진에 공통 적용됩니다.</small>
+        </label>
+        <label>새 태그 추가(쉼표 구분)
+            <input type="text" name="newTags" value="${form.newTags}" placeholder="여행, 가족, 제주">
+        </label>
+
         <section>
-            <h2>파일별 미리보기 / 태그</h2>
+            <h2>파일 미리보기</h2>
             <div id="previewList" class="preview-list"></div>
         </section>
 

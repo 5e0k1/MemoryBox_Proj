@@ -1,5 +1,7 @@
 package com.hogudeul.memorybox.upload;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.web.multipart.MultipartFile;
 
 public class SinglePhotoUploadForm {
@@ -8,7 +10,8 @@ public class SinglePhotoUploadForm {
     private String title;
     private String takenAt;
     private Long albumId;
-    private String tags;
+    private List<Long> selectedTagIds = new ArrayList<>();
+    private String newTags;
 
     public MultipartFile getImageFile() {
         return imageFile;
@@ -42,11 +45,19 @@ public class SinglePhotoUploadForm {
         this.albumId = albumId;
     }
 
-    public String getTags() {
-        return tags;
+    public List<Long> getSelectedTagIds() {
+        return selectedTagIds;
     }
 
-    public void setTags(String tags) {
-        this.tags = tags;
+    public void setSelectedTagIds(List<Long> selectedTagIds) {
+        this.selectedTagIds = selectedTagIds;
+    }
+
+    public String getNewTags() {
+        return newTags;
+    }
+
+    public void setNewTags(String newTags) {
+        this.newTags = newTags;
     }
 }

@@ -9,7 +9,8 @@ public class MultiPhotoUploadForm {
     private List<MultipartFile> imageFiles = new ArrayList<>();
     private String takenAt;
     private Long albumId;
-    private List<String> fileTags = new ArrayList<>();
+    private List<Long> selectedTagIds = new ArrayList<>();
+    private String newTags;
 
     public List<MultipartFile> getImageFiles() {
         return imageFiles;
@@ -35,11 +36,19 @@ public class MultiPhotoUploadForm {
         this.albumId = albumId;
     }
 
-    public List<String> getFileTags() {
-        return fileTags;
+    public List<Long> getSelectedTagIds() {
+        return selectedTagIds;
     }
 
-    public void setFileTags(List<String> fileTags) {
-        this.fileTags = fileTags;
+    public void setSelectedTagIds(List<Long> selectedTagIds) {
+        this.selectedTagIds = selectedTagIds;
+    }
+
+    public String getNewTags() {
+        return newTags;
+    }
+
+    public void setNewTags(String newTags) {
+        this.newTags = newTags;
     }
 }

@@ -34,6 +34,7 @@ public class UploadController {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         model.addAttribute("loginUser", loginUser);
         model.addAttribute("albums", uploadService.getActiveAlbums(loginUser.getUserId()));
+        model.addAttribute("tags", uploadService.getActiveTags(loginUser.getUserId()));
         if (!model.containsAttribute("form")) {
             model.addAttribute("form", new SinglePhotoUploadForm());
         }
@@ -61,6 +62,7 @@ public class UploadController {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         model.addAttribute("loginUser", loginUser);
         model.addAttribute("albums", uploadService.getActiveAlbums(loginUser.getUserId()));
+        model.addAttribute("tags", uploadService.getActiveTags(loginUser.getUserId()));
         if (!model.containsAttribute("form")) {
             model.addAttribute("form", new MultiPhotoUploadForm());
         }
@@ -88,6 +90,7 @@ public class UploadController {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         model.addAttribute("loginUser", loginUser);
         model.addAttribute("albums", uploadService.getActiveAlbums(loginUser.getUserId()));
+        model.addAttribute("tags", uploadService.getActiveTags(loginUser.getUserId()));
         if (!model.containsAttribute("form")) {
             model.addAttribute("form", new VideoUploadForm());
         }
