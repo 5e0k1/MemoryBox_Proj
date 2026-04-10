@@ -124,6 +124,7 @@ tmp/
 ### =========================
 ### Optional DB local files
 ### =========================
+docker-compose.yml
 *.db
 *.sqlite
 *.sqlite3

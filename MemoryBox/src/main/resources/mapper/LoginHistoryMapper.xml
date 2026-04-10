@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hogudeul.memorybox.mapper.LoginHistoryMapper">
+
+    <select id="selectNextLoginHistoryId" resultType="java.lang.Long">
+        SELECT COALESCE(MAX(lh_id), 0) + 1
+        FROM LOGIN_HISTORY
+    </select>
+
+    <insert id="insert" parameterType="com.hogudeul.memorybox.model.LoginHistory">
+        INSERT INTO LOGIN_HISTORY (
+            lh_id,
+            user_id,
+            login_id_input,
+            login_at,
+            ip_addr,
+            user_agent,
+            success_yn
+        ) VALUES (
+            #{lhId},
+            #{userId},
+            #{loginIdInput},
+            #{loginAt},
+            #{ipAddr},
+            #{userAgent},
+            #{successYn}
+        )
+    </insert>
+
+</mapper>

@@ -1,4 +1,5 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -16,10 +17,13 @@
             <p>우리만 보는 소규모 사진/영상 공유함</p>
         </header>
 
-        <%-- 실제 인증 로직 연결 전까지 /feed로 더미 이동 --%>
-        <form class="login-form" action="/feed" method="get">
-            <label for="username">아이디</label>
-            <input id="username" name="username" type="text" placeholder="아이디를 입력하세요" autocomplete="username" required>
+        <c:if test="${not empty globalError}">
+            <div class="form-error" role="alert">${globalError}</div>
+        </c:if>
+
+        <form class="login-form" action="/login" method="post">
+            <label for="loginId">아이디</label>
+            <input id="loginId" name="loginId" type="text" value="${loginForm.loginId}" placeholder="아이디를 입력하세요" autocomplete="username" required>
 
             <label for="password">비밀번호</label>
             <input id="password" name="password" type="password" placeholder="비밀번호를 입력하세요" autocomplete="current-password" required>
@@ -28,11 +32,7 @@
         </form>
 
         <section class="account-actions">
-            <p class="hint">최초 로그인 시 비밀번호 변경이 필요합니다.</p>
-            <div class="action-row">
-                <button type="button" class="btn btn-secondary" disabled>최초 비밀번호 변경(준비중)</button>
-                <button type="button" class="btn btn-text" disabled>계정관리(추후 연결)</button>
-            </div>
+            <p class="hint">관리자가 등록한 계정으로만 로그인할 수 있습니다.</p>
         </section>
     </section>
 </main>
