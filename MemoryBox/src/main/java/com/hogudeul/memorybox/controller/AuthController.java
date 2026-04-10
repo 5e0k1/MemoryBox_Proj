@@ -55,17 +55,17 @@ public class AuthController {
                 request.getHeader("User-Agent")
         );
 
-        if (!result.success()) {
-            model.addAttribute("globalError", result.message());
+        if (!result.isSuccess()) {
+            model.addAttribute("globalError", result.getMessage());
             return "login";
         }
 
         HttpSession session = request.getSession(true);
         session.setAttribute("loginUser", new LoginUserSession(
-                result.userAccount().getUserId(),
-                result.userAccount().getLoginId(),
-                result.userAccount().getDisplayName(),
-                result.userAccount().getRole()
+                result.getUserAccount().getUserId(),
+                result.getUserAccount().getLoginId(),
+                result.getUserAccount().getDisplayName(),
+                result.getUserAccount().getRole()
         ));
         session.setMaxInactiveInterval(60 * 30);
         return "redirect:/feed";
