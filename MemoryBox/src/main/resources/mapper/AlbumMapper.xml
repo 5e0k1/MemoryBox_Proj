@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hogudeul.memorybox.mapper.AlbumMapper">
+
+    <select id="findActiveAlbumsByUserId" resultType="com.hogudeul.memorybox.model.AlbumOption">
+        SELECT
+            album_id,
+            album_name
+        FROM ALBUM
+        WHERE user_id = #{userId}
+          AND del_yn = 'N'
+        ORDER BY album_id DESC
+    </select>
+
+</mapper>

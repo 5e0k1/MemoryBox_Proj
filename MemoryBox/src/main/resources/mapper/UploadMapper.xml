@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hogudeul.memorybox.mapper.UploadMapper">
+
+    <resultMap id="TagMap" type="com.hogudeul.memorybox.model.Tag">
+        <id column="tag_id" property="tagId"/>
+        <result column="tag_name" property="tagName"/>
+        <result column="normalized_name" property="normalizedName"/>
+    </resultMap>
+
+    <insert id="insertMediaItem" parameterType="com.hogudeul.memorybox.model.MediaItem" useGeneratedKeys="true" keyProperty="mediaId">
+        INSERT INTO MEDIA_ITEMS (
+            user_id,
+            album_id,
+            media_type,
+            title,
+            uploaded_at,
+            taken_at,
+            del_yn
+        ) VALUES (
+            #{userId},
+            #{albumId},
+            #{mediaType},
+            #{title},
+            #{uploadedAt},
+            #{takenAt},
+            'N'
+        )
+    </insert>
+
+    <insert id="insertMediaVariant" parameterType="com.hogudeul.memorybox.model.MediaVariant" useGeneratedKeys="true" keyProperty="variantId">
+        INSERT INTO MEDIA_VARIANT (
+            media_id,
+            variant_type,
+            storage_key,
+            file_org_name,
+            file_save_name,
+            extension,
+            mime_type,
+            file_size,
+            width,
+            height,
+            duration_sec,
+            created_at
+        ) VALUES (
+            #{mediaId},
+            #{variantType},
+            #{storageKey},
+            #{fileOrgName},
+            #{fileSaveName},
+            #{extension},
+            #{mimeType},
+            #{fileSize},
+            #{width},
+            #{height},
+            #{durationSec},
+            #{createdAt}
+        )
+    </insert>
+
+    <select id="findTagByNormalizedName" resultMap="TagMap">
+        SELECT tag_id, tag_name, normalized_name
+        FROM TAG
+        WHERE normalized_name = #{normalizedName}
+        LIMIT 1
+    </select>
+
+    <insert id="insertTag" parameterType="com.hogudeul.memorybox.model.Tag" useGeneratedKeys="true" keyProperty="tagId">
+        INSERT INTO TAG (
+            tag_name,
+            normalized_name,
+            created_at
+        ) VALUES (
+            #{tagName},
+            #{normalizedName},
+            NOW()
+        )
+    </insert>
+
+    <insert id="insertMediaTag">
+        INSERT INTO MEDIA_TAG (
+            media_id,
+            tag_id,
+            created_at
+        ) VALUES (
+            #{mediaId},
+            #{tagId},
+            NOW()
+        )
+    </insert>
+
+</mapper>

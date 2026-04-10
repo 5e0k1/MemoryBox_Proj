@@ -29,11 +29,6 @@ public class PageController {
         return "feed";
     }
 
-    @GetMapping("/upload")
-    public String uploadPlaceholder(Model model, HttpSession session) {
-        model.addAttribute("loginUser", session.getAttribute("loginUser"));
-        return "upload-placeholder";
-    }
 
     @GetMapping("/feed/{itemId}")
     public String feedDetailPlaceholder(@PathVariable Long itemId, Model model, HttpSession session) {
