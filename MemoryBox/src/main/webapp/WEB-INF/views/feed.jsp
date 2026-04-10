@@ -13,7 +13,12 @@
 <main class="feed-layout">
     <header class="feed-header">
         <h1>MemoryBox Feed</h1>
-        <a href="/login" class="btn btn-text">로그아웃(더미)</a>
+        <div class="header-actions">
+            <span class="login-user">${loginUser.displayName} (${loginUser.loginId})</span>
+            <form action="/logout" method="post">
+                <button class="btn btn-text" type="submit">로그아웃</button>
+            </form>
+        </div>
     </header>
 
     <section class="control-panel">

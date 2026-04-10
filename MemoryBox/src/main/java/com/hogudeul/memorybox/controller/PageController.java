@@ -1,6 +1,8 @@
 package com.hogudeul.memorybox.controller;
 
+import com.hogudeul.memorybox.auth.LoginUserSession;
 import com.hogudeul.memorybox.dto.FeedItemView;
+import jakarta.servlet.http.HttpSession;
 import java.util.List;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -10,13 +12,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 @Controller
 public class PageController {
 
-    @GetMapping({"/", "/login"})
-    public String loginPage() {
-        return "login";
-    }
-
     @GetMapping("/feed")
-    public String feedPage(Model model) {
+    public String feedPage(Model model, HttpSession session) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        model.addAttribute("loginUser", loginUser);
         model.addAttribute("feedItems", buildMockFeedItems());
         model.addAttribute("authors", List.of("전체", "민수", "지은", "현우", "서연", "지훈", "수빈", "유나"));
         model.addAttribute("tags", List.of("전체", "여행", "일상", "생일", "캠핑", "바다", "반려동물"));
@@ -25,15 +24,15 @@ public class PageController {
     }
 
     @GetMapping("/upload")
-    public String uploadPlaceholder() {
-        // 업로드 구현 전 임시 페이지로 연결한다.
+    public String uploadPlaceholder(Model model, HttpSession session) {
+        model.addAttribute("loginUser", session.getAttribute("loginUser"));
         return "upload-placeholder";
     }
 
     @GetMapping("/feed/{itemId}")
-    public String feedDetailPlaceholder(@PathVariable Long itemId, Model model) {
-        // 상세보기 구현 전 링크 구조 확인용 임시 페이지.
+    public String feedDetailPlaceholder(@PathVariable Long itemId, Model model, HttpSession session) {
         model.addAttribute("itemId", itemId);
+        model.addAttribute("loginUser", session.getAttribute("loginUser"));
         return "detail-placeholder";
     }
 
