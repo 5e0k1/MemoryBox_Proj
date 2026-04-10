@@ -1,17 +1,22 @@
 package com.hogudeul.memorybox.controller;
 
 import com.hogudeul.memorybox.auth.LoginUserSession;
+import com.hogudeul.memorybox.model.Tag;
 import com.hogudeul.memorybox.service.UploadService;
 import com.hogudeul.memorybox.upload.MultiPhotoUploadForm;
 import com.hogudeul.memorybox.upload.SinglePhotoUploadForm;
 import com.hogudeul.memorybox.upload.UploadException;
 import com.hogudeul.memorybox.upload.VideoUploadForm;
 import jakarta.servlet.http.HttpSession;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -110,6 +115,31 @@ public class UploadController {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             redirectAttributes.addFlashAttribute("form", form);
             return "redirect:/upload/video";
+        }
+    }
+
+    @PostMapping("/upload/tag")
+    @ResponseBody
+    public Map<String, Object> createTag(@RequestParam("tagName") String tagName, HttpSession session) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        if (loginUser == null) {
+            result.put("success", false);
+            result.put("message", "로그인이 필요합니다.");
+            return result;
+        }
+
+        try {
+            Tag tag = uploadService.createOrGetTag(loginUser.getUserId(), tagName);
+            result.put("success", true);
+            result.put("tagId", tag.getTagId());
+            result.put("tagName", tag.getTagName());
+            result.put("normalizedName", tag.getNormalizedName());
+            return result;
+        } catch (UploadException e) {
+            result.put("success", false);
+            result.put("message", e.getMessage());
+            return result;
         }
     }
 }

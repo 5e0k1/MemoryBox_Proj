@@ -34,24 +34,27 @@
     function initTagWidgets() {
         const widgets = document.querySelectorAll('[data-widget="tag-picker"]');
         widgets.forEach(function (widget) {
-            const select = widget.querySelector('.tag-select');
+            const optionList = widget.querySelector('.tag-option-list');
             const addInput = widget.querySelector('.tag-add-input');
             const addBtn = widget.querySelector('.tag-add-btn');
             const hiddenNewTags = widget.querySelector('.new-tags-hidden');
-            const pillList = widget.querySelector('.tag-pill-list');
             const count = widget.querySelector('.tag-count');
-            if (!select || !addInput || !addBtn || !hiddenNewTags || !pillList || !count) return;
+            const createUrl = widget.dataset.createUrl || '';
+            if (!optionList || !addInput || !addBtn || !hiddenNewTags || !count) return;
 
-            const customTags = new Set();
-            hydrateCustomTags(hiddenNewTags.value);
+            hiddenNewTags.value = '';
             refreshCount();
 
-            select.addEventListener('change', refreshCount);
-            addBtn.addEventListener('click', function () {
-                addNewTag(addInput.value);
+            optionList.querySelectorAll('.tag-check').forEach(function (checkbox) {
+                checkbox.addEventListener('change', refreshCount);
+            });
+
+            addBtn.addEventListener('click', async function () {
+                await addNewTag(addInput.value);
                 addInput.value = '';
                 addInput.focus();
             });
+
             addInput.addEventListener('keydown', function (event) {
                 if (event.key === 'Enter') {
                     event.preventDefault();
@@ -59,64 +62,92 @@
                 }
             });
 
-            function hydrateCustomTags(raw) {
-                if (!raw) return;
-                raw.split(',').map(function (x) { return x.trim(); }).filter(Boolean).forEach(addCustomTag);
-            }
-
-            function addNewTag(rawValue) {
+            async function addNewTag(rawValue) {
                 const tagName = (rawValue || '').trim();
                 if (!tagName) return;
 
                 const normalized = normalize(tagName);
-                const options = Array.from(select.options || []);
-                const existingOption = options.find(function (opt) {
-                    return normalize(opt.textContent || '') === normalized;
-                });
-
-                if (existingOption) {
-                    existingOption.selected = true;
-                    refreshCount();
+                const existing = findOptionByNormalized(normalized);
+                if (existing) {
+                    const input = existing.querySelector('input[type="checkbox"]');
+                    if (input) {
+                        input.checked = true;
+                        input.dispatchEvent(new Event('change'));
+                    }
                     return;
                 }
-                addCustomTag(tagName);
-            }
 
-            function addCustomTag(tagName) {
-                const normalized = normalize(tagName);
-                if (!normalized || customTags.has(normalized)) return;
-                customTags.add(normalized);
-                renderPill(tagName, normalized);
-                syncHidden();
-                refreshCount();
-            }
+                if (!createUrl) {
+                    return;
+                }
 
-            function renderPill(label, key) {
-                const pill = document.createElement('span');
-                pill.className = 'tag-pill';
-                pill.dataset.tagKey = key;
-                pill.innerHTML = '<span>' + escapeHtml(label) + '</span><button type="button" aria-label="삭제">✕</button>';
-                const removeBtn = pill.querySelector('button');
-                removeBtn.addEventListener('click', function () {
-                    customTags.delete(key);
-                    pill.remove();
-                    syncHidden();
+                try {
+                    addBtn.disabled = true;
+                    const response = await fetch(createUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                        },
+                        body: 'tagName=' + encodeURIComponent(tagName)
+                    });
+
+                    if (!response.ok) {
+                        alert('태그 추가 중 오류가 발생했습니다.');
+                        return;
+                    }
+
+                    const data = await response.json();
+                    if (!data.success) {
+                        alert(data.message || '태그를 추가할 수 없습니다.');
+                        return;
+                    }
+
+                    appendServerTagOption(data.tagId, data.tagName, data.normalizedName, true);
                     refreshCount();
-                });
-                pillList.appendChild(pill);
+                } catch (error) {
+                    alert('태그 추가 중 오류가 발생했습니다.');
+                } finally {
+                    addBtn.disabled = false;
+                }
             }
 
-            function syncHidden() {
-                const labels = Array.from(pillList.querySelectorAll('.tag-pill > span')).map(function (node) {
-                    return (node.textContent || '').trim();
-                }).filter(Boolean);
-                hiddenNewTags.value = labels.join(',');
+            function appendServerTagOption(tagId, tagName, normalizedName, checked) {
+                const normalized = normalize(normalizedName || tagName);
+                if (!normalized || findOptionByNormalized(normalized)) return;
+
+                const wrapper = document.createElement('label');
+                wrapper.className = 'tag-option';
+                wrapper.dataset.normalized = normalized;
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'tag-check';
+                checkbox.name = 'selectedTagIds';
+                checkbox.value = String(tagId);
+                checkbox.checked = !!checked;
+                checkbox.addEventListener('change', refreshCount);
+
+                const text = document.createElement('span');
+                text.className = 'tag-label';
+                text.textContent = tagName;
+
+                wrapper.appendChild(checkbox);
+                wrapper.appendChild(text);
+                optionList.prepend(wrapper);
+            }
+
+            function findOptionByNormalized(normalized) {
+                const options = optionList.querySelectorAll('.tag-option');
+                return Array.from(options).find(function (option) {
+                    const source = option.dataset.normalized
+                        || (option.querySelector('.tag-label') ? option.querySelector('.tag-label').textContent : '');
+                    return normalize(source) === normalized;
+                });
             }
 
             function refreshCount() {
-                const selectedExisting = Array.from(select.selectedOptions || []).length;
-                const selectedTotal = selectedExisting + customTags.size;
-                count.textContent = '선택 ' + selectedTotal + '개';
+                const existingChecked = optionList.querySelectorAll('.tag-check:checked').length;
+                count.textContent = '선택 ' + existingChecked + '개';
             }
         });
     }
@@ -140,14 +171,5 @@
 
     function normalize(value) {
         return (value || '').trim().toLowerCase().replace(/\s+/g, ' ');
-    }
-
-    function escapeHtml(value) {
-        return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
     }
 })();

@@ -60,6 +60,28 @@ public class UploadService {
     }
 
     @Transactional
+    public Tag createOrGetTag(Long userId, String rawTagName) {
+        String tagName = rawTagName == null ? "" : rawTagName.trim();
+        if (tagName.isBlank()) {
+            throw new UploadException("태그명을 입력해 주세요.");
+        }
+
+        String normalized = normalizeTag(tagName);
+        Tag existing = uploadMapper.findTagByUserAndNormalizedName(userId, normalized);
+        if (existing != null) {
+            return existing;
+        }
+
+        Tag tag = new Tag();
+        tag.setTagId(uploadMapper.selectNextTagId());
+        tag.setUserId(userId);
+        tag.setTagName(tagName);
+        tag.setNormalizedName(normalized);
+        uploadMapper.insertTag(tag);
+        return tag;
+    }
+
+    @Transactional
     public void uploadSinglePhoto(Long userId, SinglePhotoUploadForm form) {
         if (form.getImageFile() == null || form.getImageFile().isEmpty()) {
             throw new UploadException("업로드할 이미지 파일을 선택해 주세요.");

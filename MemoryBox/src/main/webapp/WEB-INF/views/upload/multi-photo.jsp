@@ -27,26 +27,30 @@
             </select>
         </label>
 
-        <section class="tag-widget" data-widget="tag-picker">
+        <section class="tag-widget" data-widget="tag-picker" data-create-url="${pageContext.request.contextPath}/upload/tag">
             <div class="tag-widget-header">
-                <h2>태그 선택</h2>
+                <h2>태그 목록</h2>
                 <span class="tag-count">선택 0개</span>
             </div>
+            <div class="tag-title-row">
+                <small>추천 태그를 고르거나 새 태그를 추가하세요.</small>
+            </div>
 
-            <label>기존 태그 목록(다중 선택)
-                <select name="selectedTagIds" multiple size="6" class="tag-select">
-                    <c:forEach items="${tags}" var="tag">
-                        <option value="${tag.tagId}">${tag.tagName}</option>
-                    </c:forEach>
-                </select>
-            </label>
+            <div class="tag-option-list">
+                <c:forEach items="${tags}" var="tag">
+                    <label class="tag-option" data-normalized="${tag.normalizedName}">
+                        <input type="checkbox" name="selectedTagIds" value="${tag.tagId}" class="tag-check"
+                               <c:forEach items="${form.selectedTagIds}" var="selectedId"><c:if test="${selectedId == tag.tagId}">checked</c:if></c:forEach>>
+                        <span class="tag-label">${tag.tagName}</span>
+                    </label>
+                </c:forEach>
+            </div>
 
             <div class="tag-add-row">
-                <input type="text" class="tag-add-input" placeholder="새 태그 입력">
-                <button type="button" class="tag-add-btn">추가</button>
+                <input type="text" class="tag-add-input" placeholder="새 태그 입력 후 추가 버튼">
+                <button type="button" class="tag-add-btn">목록에 추가</button>
             </div>
             <input type="hidden" name="newTags" class="new-tags-hidden" value="${form.newTags}">
-            <div class="tag-pill-list"></div>
         </section>
 
         <section>
