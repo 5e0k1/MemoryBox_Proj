@@ -353,16 +353,33 @@
 }
 
 .icon-btn {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
     border: 1px solid var(--line);
     background: #fff;
     color: #334155;
     display: inline-grid;
     place-items: center;
-    font-size: 1rem;
+    padding: 0;
     cursor: pointer;
+}
+
+.icon-btn svg {
+    width: 21px;
+    height: 21px;
+}
+
+.icon-settings svg {
+    fill: #6b7280;
+}
+
+.icon-logout svg .door {
+    fill: #6b7280;
+}
+
+.icon-logout svg .arrow {
+    fill: #ef4444;
 }
 
 .feedback-msg {

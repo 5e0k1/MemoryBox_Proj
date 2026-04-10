@@ -15,11 +15,18 @@
         <h1>MemoryBox Feed</h1>
         <div class="header-actions">
             <span class="login-user">${loginUser.displayName}</span>
-            <button class="icon-btn" type="button" id="openPasswordModalBtn" aria-label="비밀번호 변경">
-                ⚙
+            <button class="icon-btn icon-settings" type="button" id="openPasswordModalBtn" aria-label="비밀번호 변경">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M19.14,12.94a7.43,7.43,0,0,0,.05-.94,7.43,7.43,0,0,0-.05-.94l2.11-1.65a.5.5,0,0,0,.12-.64l-2-3.46a.5.5,0,0,0-.6-.22L16.29,6.1a7.28,7.28,0,0,0-1.63-.94L14.3,2.5a.49.49,0,0,0-.49-.4H10.19a.49.49,0,0,0-.49.4L9.34,5.16a7.28,7.28,0,0,0-1.63.94L5.23,5.09a.5.5,0,0,0-.6.22l-2,3.46a.5.5,0,0,0,.12.64L4.86,11.06a7.43,7.43,0,0,0-.05.94,7.43,7.43,0,0,0,.05.94L2.75,14.59a.5.5,0,0,0-.12.64l2,3.46a.5.5,0,0,0,.6.22l2.48-1a7.28,7.28,0,0,0,1.63.94l.36,2.66a.49.49,0,0,0,.49.4h3.62a.49.49,0,0,0,.49-.4l.36-2.66a7.28,7.28,0,0,0,1.63-.94l2.48,1a.5.5,0,0,0,.6-.22l2-3.46a.5.5,0,0,0-.12-.64Zm-7.14,2.56A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z"/>
+                </svg>
             </button>
             <form action="/logout" method="post">
-                <button class="icon-btn" type="submit" aria-label="로그아웃">⎋</button>
+                <button class="icon-btn icon-logout" type="submit" aria-label="로그아웃">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path class="door" d="M5 3h8a2 2 0 0 1 2 2v2h-2V5H5v14h8v-2h2v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+                        <path class="arrow" d="M21.7 12.7a1 1 0 0 0 0-1.4l-3-3a1 1 0 1 0-1.4 1.4L18.6 11H10a1 1 0 1 0 0 2h8.6l-1.3 1.3a1 1 0 1 0 1.4 1.4z"/>
+                    </svg>
+                </button>
             </form>
         </div>
     </header>
