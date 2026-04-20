@@ -36,7 +36,8 @@
     border-radius: 12px;
     padding: 12px;
     background: #ffffff;
-    max-height: 210px;
+    /* 태그 3줄을 넘기면 내부 스크롤 */
+    max-height: 116px;
     overflow-y: auto;
 }
 .tag-option {
