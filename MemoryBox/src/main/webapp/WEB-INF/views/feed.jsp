@@ -117,7 +117,7 @@
 
                     <div class="overlay-meta overlay-top">
                         <p class="overlay-desc">${item.title}</p>
-                        <p class="overlay-album">앨범 ${item.shotYear}</p>
+                        <p class="overlay-album">앨범 ${item.albumName}</p>
                     </div>
                     <div class="overlay-meta overlay-bottom">
                         <p>💬 ${item.commentCount} · ❤ ${item.likeCount}</p>
@@ -127,7 +127,7 @@
 
                 <div class="feed-meta">
                     <h2>${item.title}</h2>
-                    <p>${item.author} · 촬영 ${item.shotYear} · 업로드 ${item.uploadedAt}</p>
+                    <p>${item.author} · 촬영 ${empty item.takenAt ? "-" : item.takenAt} · 업로드 ${item.uploadedAt}</p>
 
                     <ul class="tag-list">
                         <c:forEach var="tag" items="${item.tags}">
@@ -146,10 +146,13 @@
                 </div>
             </article>
         </c:forEach>
+        <c:if test="${empty feedItems}">
+            <p class="empty-feed-msg">표시할 이미지 피드가 없습니다.</p>
+        </c:if>
     </section>
 
     <div class="load-more-wrap">
-        <button type="button" class="btn btn-secondary" id="loadMoreBtn">더 보기 (UI 더미)</button>
+        <button type="button" class="btn btn-secondary" id="loadMoreBtn">더 보기</button>
     </div>
 
     <a href="/upload" class="fab-upload" aria-label="업로드 페이지로 이동">＋</a>
