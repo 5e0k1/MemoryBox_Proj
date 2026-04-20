@@ -1,8 +1,7 @@
 package com.hogudeul.memorybox.dto;
 
 /**
- * 메인 피드 정적 목업 렌더링용 DTO.
- * 추후 Entity/Service 계층 연결 전까지 View Model 역할만 수행한다.
+ * 메인 피드 렌더링용 DTO.
  */
 public class FeedItemView {
 
@@ -16,9 +15,13 @@ public class FeedItemView {
     private int likeCount;
     private int commentCount;
     private String[] tags;
+    private String albumName;
+    private String takenAt;
+    private String displayAt;
 
     public FeedItemView(Long id, String mediaType, String thumbnailUrl, String title, String author,
-                        int shotYear, String uploadedAt, int likeCount, int commentCount, String[] tags) {
+                        int shotYear, String uploadedAt, int likeCount, int commentCount, String[] tags,
+                        String albumName, String takenAt, String displayAt) {
         this.id = id;
         this.mediaType = mediaType;
         this.thumbnailUrl = thumbnailUrl;
@@ -29,6 +32,9 @@ public class FeedItemView {
         this.likeCount = likeCount;
         this.commentCount = commentCount;
         this.tags = tags;
+        this.albumName = albumName;
+        this.takenAt = takenAt;
+        this.displayAt = displayAt;
     }
 
     public Long getId() {
@@ -109,5 +115,29 @@ public class FeedItemView {
 
     public void setTags(String[] tags) {
         this.tags = tags;
+    }
+
+    public String getAlbumName() {
+        return albumName;
+    }
+
+    public void setAlbumName(String albumName) {
+        this.albumName = albumName;
+    }
+
+    public String getTakenAt() {
+        return takenAt;
+    }
+
+    public void setTakenAt(String takenAt) {
+        this.takenAt = takenAt;
+    }
+
+    public String getDisplayAt() {
+        return displayAt;
+    }
+
+    public void setDisplayAt(String displayAt) {
+        this.displayAt = displayAt;
     }
 }
