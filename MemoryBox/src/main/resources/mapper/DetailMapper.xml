@@ -79,9 +79,8 @@
         WHERE c.media_id = #{mediaId}
           AND c.del_yn = 'N'
           AND u.del_yn = 'N'
-        ORDER BY COALESCE(c.parent_id, c.comment_id) ASC,
-                 CASE WHEN c.parent_id IS NULL THEN 0 ELSE 1 END ASC,
-                 c.created_at ASC
+        ORDER BY c.created_at ASC,
+                 c.comment_id ASC
     </select>
 
     <select id="findCommentById" resultMap="CommentRowMap">

@@ -260,6 +260,16 @@
     gap: 6px;
 }
 
+.reply-actions {
+    margin-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.reply-write-wrap[hidden] {
+    display: none !important;
+}
+
 .reply-form textarea {
     width: 100%;
     min-height: 64px;

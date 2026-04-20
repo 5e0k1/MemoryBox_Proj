@@ -95,13 +95,6 @@
                         </div>
                         <p>${comment.content}</p>
 
-                        <form method="post" action="/feed/${detail.mediaId}/comments" class="reply-form">
-                            <input type="hidden" name="parentId" value="${comment.commentId}">
-                            <label for="reply-${comment.commentId}" class="sr-only">대댓글 작성</label>
-                            <textarea id="reply-${comment.commentId}" name="content" maxlength="3000" placeholder="답글 달기" required></textarea>
-                            <button type="submit" class="btn btn-secondary reply-submit">답글 등록</button>
-                        </form>
-
                         <c:if test="${not empty comment.replies}">
                             <ul class="reply-list">
                                 <c:forEach var="reply" items="${comment.replies}">
@@ -115,6 +108,23 @@
                                 </c:forEach>
                             </ul>
                         </c:if>
+
+                        <div class="reply-actions">
+                            <button type="button"
+                                    class="btn btn-text reply-toggle-btn"
+                                    data-target="replyForm-${comment.commentId}">
+                                답글 달기
+                            </button>
+                        </div>
+
+                        <div id="replyForm-${comment.commentId}" class="reply-write-wrap" hidden>
+                            <form method="post" action="/feed/${detail.mediaId}/comments" class="reply-form">
+                                <input type="hidden" name="parentId" value="${comment.commentId}">
+                                <label for="reply-${comment.commentId}" class="sr-only">대댓글 작성</label>
+                                <textarea id="reply-${comment.commentId}" name="content" maxlength="3000" placeholder="답글 달기" required></textarea>
+                                <button type="submit" class="btn btn-secondary reply-submit">답글 등록</button>
+                            </form>
+                        </div>
                     </li>
                 </c:forEach>
                 <c:if test="${empty comments}">
@@ -130,5 +140,27 @@
         </section>
     </c:if>
 </main>
+<script>
+    document.querySelectorAll('.reply-toggle-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+            const targetId = button.dataset.target;
+            const target = document.getElementById(targetId);
+            if (!target) {
+                return;
+            }
+
+            const nextHidden = !target.hidden;
+            target.hidden = nextHidden;
+            button.textContent = nextHidden ? '답글 달기' : '답글 작성 닫기';
+
+            if (!nextHidden) {
+                const textarea = target.querySelector('textarea');
+                if (textarea) {
+                    textarea.focus();
+                }
+            }
+        });
+    });
+</script>
 </body>
 </html>

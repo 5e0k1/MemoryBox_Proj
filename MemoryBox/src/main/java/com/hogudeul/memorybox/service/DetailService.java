@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Comparator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -65,25 +66,43 @@ public class DetailService {
 
     public List<CommentView> getComments(Long mediaId, Long viewerUserId) {
         List<CommentRow> rows = detailMapper.findCommentsByMediaId(mediaId);
-        Map<Long, CommentView> parents = new LinkedHashMap<>();
+        Map<Long, CommentView> commentMap = new LinkedHashMap<>();
+        Map<Long, LocalDateTime> createdAtMap = new LinkedHashMap<>();
         List<CommentView> rootComments = new ArrayList<>();
 
         for (CommentRow row : rows) {
             CommentView commentView = toCommentView(row, viewerUserId);
-            if (row.getParentId() == null) {
-                parents.put(row.getCommentId(), commentView);
+            commentMap.put(row.getCommentId(), commentView);
+            createdAtMap.put(row.getCommentId(), row.getCreatedAt());
+        }
+
+        for (CommentView commentView : commentMap.values()) {
+            if (commentView.getParentId() == null) {
                 rootComments.add(commentView);
                 continue;
             }
 
-            CommentView parent = parents.get(row.getParentId());
+            CommentView parent = commentMap.get(commentView.getParentId());
             if (parent != null) {
                 parent.addReply(commentView);
-                continue;
+            } else {
+                // 방어 로직: 부모가 조회 결과에 없는 경우 최상위로 노출
+                rootComments.add(commentView);
             }
+        }
 
-            // 방어 로직: 부모가 조회 결과에 없는 경우 최상위로 노출
-            rootComments.add(commentView);
+        Comparator<CommentView> newestFirst = Comparator.comparing(
+                comment -> createdAtMap.get(comment.getCommentId()),
+                Comparator.nullsLast(Comparator.reverseOrder())
+        );
+        Comparator<CommentView> oldestFirst = Comparator.comparing(
+                comment -> createdAtMap.get(comment.getCommentId()),
+                Comparator.nullsLast(Comparator.naturalOrder())
+        );
+
+        rootComments.sort(newestFirst);
+        for (CommentView rootComment : rootComments) {
+            rootComment.getReplies().sort(oldestFirst);
         }
 
         return rootComments;
