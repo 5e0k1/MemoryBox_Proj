@@ -1,0 +1,278 @@
+.detail-layout {
+    width: min(100%, 560px);
+    margin: 0 auto;
+    padding: 14px 12px 90px;
+    display: grid;
+    gap: 12px;
+}
+
+.detail-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: rgba(246, 247, 251, 0.92);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 2px;
+}
+
+.back-link {
+    color: #111827;
+    text-decoration: none;
+    font-weight: 700;
+    padding: 8px 10px;
+    border-radius: 10px;
+}
+
+.login-chip {
+    font-size: 0.8rem;
+    background: #e5edff;
+    color: #1d4ed8;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-weight: 600;
+}
+
+.detail-panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+}
+
+.state-panel {
+    padding: 20px;
+    display: grid;
+    gap: 10px;
+}
+
+.feedback-banner {
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+}
+
+.feedback-banner.is-info {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.feedback-banner.is-error {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.media-panel {
+    position: relative;
+    overflow: hidden;
+}
+
+.detail-image {
+    width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+    background: #0f172a;
+    display: block;
+}
+
+.variant-chip {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    background: rgba(15, 23, 42, 0.72);
+    color: #fff;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    padding: 5px 9px;
+}
+
+.image-empty {
+    min-height: 220px;
+    display: grid;
+    place-items: center;
+    color: #6b7280;
+    font-size: 0.92rem;
+}
+
+.meta-panel {
+    padding: 16px;
+}
+
+.detail-title {
+    font-size: 1.25rem;
+    margin: 0 0 8px;
+}
+
+.meta-line {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+.meta-grid {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.meta-grid span {
+    display: block;
+    color: var(--muted);
+    font-size: 0.76rem;
+    margin-bottom: 4px;
+}
+
+.meta-grid strong {
+    font-size: 0.92rem;
+    font-weight: 700;
+}
+
+.chip-like {
+    display: inline-block;
+    background: #f1f5f9;
+    padding: 3px 8px;
+    border-radius: 999px;
+}
+
+.tag-chips {
+    list-style: none;
+    margin: 14px 0 0;
+    padding: 0;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.tag-chip {
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+}
+
+.tag-chip.is-empty {
+    border-color: #e5e7eb;
+    background: #f9fafb;
+    color: #6b7280;
+}
+
+.action-panel {
+    padding: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.inline-form {
+    margin: 0;
+}
+
+.like-btn,
+.download-btn {
+    width: 100%;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 12px;
+}
+
+.like-btn {
+    background: #fff;
+    border: 1px solid #fda4af;
+    color: #be123c;
+}
+
+.like-btn.is-liked {
+    background: #ffe4e6;
+    border-color: #fb7185;
+}
+
+.comment-panel {
+    padding: 14px;
+}
+
+.comment-panel h2 {
+    margin: 0 0 10px;
+    font-size: 1rem;
+}
+
+.comment-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+}
+
+.comment-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 10px;
+    background: #fcfcfd;
+}
+
+.comment-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.comment-head strong {
+    font-size: 0.86rem;
+}
+
+.comment-head span {
+    color: #6b7280;
+    font-size: 0.75rem;
+}
+
+.comment-item p {
+    margin: 0;
+    white-space: pre-wrap;
+    line-height: 1.45;
+    font-size: 0.9rem;
+}
+
+.comment-empty {
+    color: #6b7280;
+    padding: 8px 2px;
+    font-size: 0.88rem;
+}
+
+.comment-form {
+    margin-top: 12px;
+    display: grid;
+    gap: 8px;
+}
+
+.comment-form textarea {
+    width: 100%;
+    min-height: 90px;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 0.92rem;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

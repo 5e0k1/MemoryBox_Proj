@@ -1,0 +1,29 @@
+package com.hogudeul.memorybox.mapper;
+
+import com.hogudeul.memorybox.model.CommentRow;
+import com.hogudeul.memorybox.model.MediaDetailRow;
+import java.util.List;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+@Mapper
+public interface DetailMapper {
+
+    MediaDetailRow findDetailByMediaId(@Param("mediaId") Long mediaId,
+                                       @Param("userId") Long userId);
+
+    List<CommentRow> findCommentsByMediaId(@Param("mediaId") Long mediaId);
+
+    Long selectNextCommentId();
+
+    int insertComment(@Param("commentId") Long commentId,
+                      @Param("mediaId") Long mediaId,
+                      @Param("userId") Long userId,
+                      @Param("content") String content);
+
+    int insertLike(@Param("mediaId") Long mediaId,
+                   @Param("userId") Long userId);
+
+    int deleteLike(@Param("mediaId") Long mediaId,
+                   @Param("userId") Long userId);
+}
