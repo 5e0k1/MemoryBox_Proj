@@ -48,7 +48,7 @@
 
             <div class="tag-add-row">
                 <input type="text" class="tag-add-input" placeholder="새 태그 입력 후 추가 버튼">
-                <button type="button" class="tag-add-btn">목록에 추가</button>
+                <button type="button" class="tag-add-btn">추가</button>
             </div>
             <input type="hidden" name="newTags" class="new-tags-hidden" value="${form.newTags}">
         </section>
