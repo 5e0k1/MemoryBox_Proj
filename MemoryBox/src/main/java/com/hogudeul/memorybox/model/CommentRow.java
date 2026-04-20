@@ -6,6 +6,7 @@ public class CommentRow {
 
     private Long commentId;
     private Long mediaId;
+    private Long parentId;
     private Long userId;
     private String content;
     private LocalDateTime createdAt;
@@ -33,6 +34,14 @@ public class CommentRow {
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    public Long getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
     }
 
     public String getContent() {

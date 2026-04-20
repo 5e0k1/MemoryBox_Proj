@@ -14,10 +14,13 @@ public interface DetailMapper {
 
     List<CommentRow> findCommentsByMediaId(@Param("mediaId") Long mediaId);
 
+    CommentRow findCommentById(@Param("commentId") Long commentId);
+
     Long selectNextCommentId();
 
     int insertComment(@Param("commentId") Long commentId,
                       @Param("mediaId") Long mediaId,
+                      @Param("parentId") Long parentId,
                       @Param("userId") Long userId,
                       @Param("content") String content);
 

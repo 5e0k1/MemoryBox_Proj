@@ -9,8 +9,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -37,10 +40,8 @@ public class DetailService {
         }
 
         String displayStorageKey = row.getMediumStorageKey();
-        String displayVariantType = "MEDIUM";
         if (isBlank(displayStorageKey)) {
             displayStorageKey = row.getSmallStorageKey();
-            displayVariantType = "SMALL";
         }
 
         return new MediaDetailView(
@@ -52,7 +53,7 @@ public class DetailService {
                 defaultText(row.getAlbumName(), "미분류"),
                 defaultText(row.getDisplayName(), "알 수 없음"),
                 toPublicFileUrl(displayStorageKey),
-                isBlank(displayStorageKey) ? "NONE" : displayVariantType,
+                "",
                 "/feed/" + mediaId + "/download",
                 parseTags(row.getTagsCsv()),
                 safeInt(row.getLikeCount()),
@@ -63,9 +64,29 @@ public class DetailService {
     }
 
     public List<CommentView> getComments(Long mediaId, Long viewerUserId) {
-        return detailMapper.findCommentsByMediaId(mediaId).stream()
-                .map(row -> toCommentView(row, viewerUserId))
-                .toList();
+        List<CommentRow> rows = detailMapper.findCommentsByMediaId(mediaId);
+        Map<Long, CommentView> parents = new LinkedHashMap<>();
+        List<CommentView> rootComments = new ArrayList<>();
+
+        for (CommentRow row : rows) {
+            CommentView commentView = toCommentView(row, viewerUserId);
+            if (row.getParentId() == null) {
+                parents.put(row.getCommentId(), commentView);
+                rootComments.add(commentView);
+                continue;
+            }
+
+            CommentView parent = parents.get(row.getParentId());
+            if (parent != null) {
+                parent.addReply(commentView);
+                continue;
+            }
+
+            // 방어 로직: 부모가 조회 결과에 없는 경우 최상위로 노출
+            rootComments.add(commentView);
+        }
+
+        return rootComments;
     }
 
     public DownloadFileInfo getDownloadFileInfo(Long mediaId, Long userId) {
@@ -97,7 +118,7 @@ public class DetailService {
     }
 
     @Transactional
-    public boolean addComment(Long mediaId, Long userId, String content) {
+    public boolean addComment(Long mediaId, Long userId, String content, Long parentId) {
         if (detailMapper.findDetailByMediaId(mediaId, userId) == null) {
             return false;
         }
@@ -107,8 +128,23 @@ public class DetailService {
             return false;
         }
 
+        Long normalizedParentId = null;
+        if (parentId != null) {
+            CommentRow parent = detailMapper.findCommentById(parentId);
+            if (parent == null) {
+                return false;
+            }
+            if (!mediaId.equals(parent.getMediaId())) {
+                return false;
+            }
+            if (parent.getParentId() != null) {
+                return false;
+            }
+            normalizedParentId = parentId;
+        }
+
         Long commentId = detailMapper.selectNextCommentId();
-        detailMapper.insertComment(commentId, mediaId, userId, normalized);
+        detailMapper.insertComment(commentId, mediaId, normalizedParentId, userId, normalized);
         return true;
     }
 
@@ -116,6 +152,7 @@ public class DetailService {
         boolean mine = viewerUserId != null && viewerUserId.equals(row.getUserId());
         return new CommentView(
                 row.getCommentId(),
+                row.getParentId(),
                 defaultText(row.getDisplayName(), "알 수 없음"),
                 defaultText(row.getContent(), ""),
                 formatDateTime(row.getCreatedAt()),

@@ -104,6 +104,7 @@ public class PageController {
     @PostMapping("/feed/{itemId}/comments")
     public String addComment(@PathVariable Long itemId,
                              @RequestParam("content") String content,
+                             @RequestParam(required = false) Long parentId,
                              HttpSession session,
                              RedirectAttributes redirectAttributes) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
@@ -112,12 +113,12 @@ public class PageController {
         }
 
         try {
-            boolean ok = detailService.addComment(itemId, loginUser.getUserId(), content);
+            boolean ok = detailService.addComment(itemId, loginUser.getUserId(), content, parentId);
             if (!ok) {
                 if (content == null || content.isBlank()) {
                     redirectAttributes.addAttribute("error", "댓글 내용을 입력해 주세요.");
                 } else {
-                    redirectAttributes.addAttribute("error", "댓글 등록에 실패했습니다.");
+                    redirectAttributes.addAttribute("error", "댓글 등록에 실패했습니다. (대댓글은 1단계까지만 가능합니다)");
                 }
             } else {
                 redirectAttributes.addAttribute("info", "댓글이 등록되었습니다.");

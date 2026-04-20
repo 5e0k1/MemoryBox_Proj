@@ -24,6 +24,7 @@
     <resultMap id="CommentRowMap" type="com.hogudeul.memorybox.model.CommentRow">
         <id column="comment_id" property="commentId"/>
         <result column="media_id" property="mediaId"/>
+        <result column="parent_id" property="parentId"/>
         <result column="user_id" property="userId"/>
         <result column="content" property="content"/>
         <result column="created_at" property="createdAt"/>
@@ -68,6 +69,7 @@
     <select id="findCommentsByMediaId" resultMap="CommentRowMap">
         SELECT c.comment_id,
                c.media_id,
+               c.parent_id,
                c.user_id,
                c.content,
                c.created_at,
@@ -75,10 +77,27 @@
         FROM COMMENT c
                  JOIN USER u ON c.user_id = u.user_id
         WHERE c.media_id = #{mediaId}
-          AND c.parent_id IS NULL
           AND c.del_yn = 'N'
           AND u.del_yn = 'N'
-        ORDER BY c.created_at ASC
+        ORDER BY COALESCE(c.parent_id, c.comment_id) ASC,
+                 CASE WHEN c.parent_id IS NULL THEN 0 ELSE 1 END ASC,
+                 c.created_at ASC
+    </select>
+
+    <select id="findCommentById" resultMap="CommentRowMap">
+        SELECT c.comment_id,
+               c.media_id,
+               c.parent_id,
+               c.user_id,
+               c.content,
+               c.created_at,
+               u.display_name
+        FROM COMMENT c
+                 JOIN USER u ON c.user_id = u.user_id
+        WHERE c.comment_id = #{commentId}
+          AND c.del_yn = 'N'
+          AND u.del_yn = 'N'
+        LIMIT 1
     </select>
 
     <select id="selectNextCommentId" resultType="java.lang.Long">
@@ -98,7 +117,7 @@
         ) VALUES (
             #{commentId},
             #{mediaId},
-            NULL,
+            #{parentId},
             #{userId},
             #{content},
             NOW(),

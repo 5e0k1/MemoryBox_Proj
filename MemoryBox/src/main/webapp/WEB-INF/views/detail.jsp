@@ -36,7 +36,6 @@
             <c:choose>
                 <c:when test="${not empty detail.displayImageUrl}">
                     <img src="${detail.displayImageUrl}" alt="${detail.title}" class="detail-image" loading="eager">
-                    <span class="variant-chip">${detail.displayVariantType}</span>
                 </c:when>
                 <c:otherwise>
                     <div class="image-empty">표시 가능한 이미지가 없습니다.</div>
@@ -95,6 +94,27 @@
                             <span>${comment.createdAt}</span>
                         </div>
                         <p>${comment.content}</p>
+
+                        <form method="post" action="/feed/${detail.mediaId}/comments" class="reply-form">
+                            <input type="hidden" name="parentId" value="${comment.commentId}">
+                            <label for="reply-${comment.commentId}" class="sr-only">대댓글 작성</label>
+                            <textarea id="reply-${comment.commentId}" name="content" maxlength="3000" placeholder="답글 달기" required></textarea>
+                            <button type="submit" class="btn btn-secondary reply-submit">답글 등록</button>
+                        </form>
+
+                        <c:if test="${not empty comment.replies}">
+                            <ul class="reply-list">
+                                <c:forEach var="reply" items="${comment.replies}">
+                                    <li class="reply-item">
+                                        <div class="comment-head">
+                                            <strong>${reply.authorName}</strong>
+                                            <span>${reply.createdAt}</span>
+                                        </div>
+                                        <p>${reply.content}</p>
+                                    </li>
+                                </c:forEach>
+                            </ul>
+                        </c:if>
                     </li>
                 </c:forEach>
                 <c:if test="${empty comments}">
