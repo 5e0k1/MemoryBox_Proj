@@ -174,6 +174,25 @@ public class DetailService {
         }
     }
 
+    @Transactional
+    public void logDownloadAttempt(Long mediaId,
+                                   Long userId,
+                                   String ipAddr,
+                                   String userAgent,
+                                   boolean success,
+                                   String failReason) {
+        Long dlId = detailMapper.selectNextDownloadLogId();
+        detailMapper.insertDownloadLog(
+                dlId,
+                userId,
+                mediaId,
+                ipAddr,
+                userAgent,
+                success ? "Y" : "N",
+                failReason
+        );
+    }
+
     private void validateDownloadRequest(List<Long> mediaIds) {
         if (mediaIds == null || mediaIds.isEmpty()) {
             throw new DownloadException("다운로드할 파일을 선택해 주세요.");

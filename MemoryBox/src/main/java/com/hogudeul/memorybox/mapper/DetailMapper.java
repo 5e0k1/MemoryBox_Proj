@@ -32,4 +32,14 @@ public interface DetailMapper {
 
     int deleteLike(@Param("mediaId") Long mediaId,
                    @Param("userId") Long userId);
+
+    Long selectNextDownloadLogId();
+
+    int insertDownloadLog(@Param("dlId") Long dlId,
+                          @Param("userId") Long userId,
+                          @Param("mediaId") Long mediaId,
+                          @Param("ipAddr") String ipAddr,
+                          @Param("userAgent") String userAgent,
+                          @Param("successYn") String successYn,
+                          @Param("failReason") String failReason);
 }

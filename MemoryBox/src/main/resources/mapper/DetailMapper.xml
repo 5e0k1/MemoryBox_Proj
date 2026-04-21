@@ -180,4 +180,31 @@
           AND user_id = #{userId}
     </delete>
 
+    <select id="selectNextDownloadLogId" resultType="java.lang.Long">
+        SELECT COALESCE(MAX(dl_id), 0) + 1
+        FROM DOWNLOAD_LOG
+    </select>
+
+    <insert id="insertDownloadLog">
+        INSERT INTO DOWNLOAD_LOG (
+            dl_id,
+            user_id,
+            media_id,
+            download_at,
+            ip_addr,
+            user_agent,
+            success_yn,
+            fail_reason
+        ) VALUES (
+            #{dlId},
+            #{userId},
+            #{mediaId},
+            NOW(),
+            #{ipAddr},
+            #{userAgent},
+            #{successYn},
+            #{failReason}
+        )
+    </insert>
+
 </mapper>

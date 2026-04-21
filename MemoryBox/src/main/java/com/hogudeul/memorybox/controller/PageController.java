@@ -6,14 +6,16 @@ import com.hogudeul.memorybox.dto.FeedItemView;
 import com.hogudeul.memorybox.dto.MediaDetailView;
 import com.hogudeul.memorybox.service.DetailService;
 import com.hogudeul.memorybox.service.FeedService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import org.springframework.http.ContentDisposition;
+import java.util.Locale;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -26,10 +28,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Controller
 public class PageController {
 
+    private static final Logger log = LoggerFactory.getLogger(PageController.class);
     private static final DateTimeFormatter ZIP_FILE_NAME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
     private final FeedService feedService;
     private final DetailService detailService;
@@ -134,6 +139,7 @@ public class PageController {
 
     @GetMapping("/feed/{itemId}/download")
     public ResponseEntity<StreamingResponseBody> downloadOriginal(@PathVariable Long itemId,
+                                                                  HttpServletRequest request,
                                                                   HttpSession session) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         if (loginUser == null) {
@@ -160,22 +166,48 @@ public class PageController {
             mediaType = MediaType.parseMediaType(fileInfo.getMimeType());
         }
 
-        ContentDisposition disposition = ContentDisposition.attachment()
-                .filename(fileInfo.getFileName(), StandardCharsets.UTF_8)
-                .build();
+        String contentDisposition = buildAttachmentContentDisposition(fileInfo.getFileName(), "download");
 
-        return ResponseEntity.ok()
+        detailService.logDownloadAttempt(
+                itemId,
+                loginUser.getUserId(),
+                request.getRemoteAddr(),
+                request.getHeader(HttpHeaders.USER_AGENT),
+                true,
+                null
+        );
+
+        long contentLength = -1L;
+        try {
+            contentLength = Files.size(fileInfo.getFilePath());
+        } catch (IOException ignore) {
+            // 길이 조회 실패 시 chunked 전송으로 처리.
+        }
+
+        ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
                 .contentType(mediaType)
-                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
-                .body((StreamingResponseBody) outputStream -> {
-                    try (var inputStream = fileInfo.openInputStream()) {
-                        inputStream.transferTo(outputStream);
-                    }
-                });
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition);
+        if (contentLength >= 0) {
+            responseBuilder.contentLength(contentLength);
+        }
+
+        return responseBuilder.body((StreamingResponseBody) outputStream -> {
+            try (var inputStream = fileInfo.openInputStream()) {
+                inputStream.transferTo(outputStream);
+            } catch (IOException e) {
+                if (isClientAbortIOException(e)) {
+                    log.debug("Client aborted single download. mediaId={}, userId={}, msg={}",
+                            itemId, loginUser.getUserId(), e.getMessage());
+                    return;
+                }
+                throw e;
+            }
+        });
     }
 
     @PostMapping(value = "/feed/download-zip", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<StreamingResponseBody> downloadSelectedAsZip(@RequestBody DownloadZipRequest request,
+                                                                       HttpServletRequest httpRequest,
                                                                        HttpSession session) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         if (loginUser == null) {
@@ -188,6 +220,12 @@ public class PageController {
             files = detailService.getDownloadFileInfos(mediaIds, loginUser.getUserId());
         } catch (DetailService.DownloadException e) {
             return errorStreamingResponse(400, e.getMessage());
+        }
+
+        String requesterIp = httpRequest.getRemoteAddr();
+        String requesterAgent = httpRequest.getHeader(HttpHeaders.USER_AGENT);
+        for (Long mediaId : mediaIds) {
+            detailService.logDownloadAttempt(mediaId, loginUser.getUserId(), requesterIp, requesterAgent, true, null);
         }
 
         String zipFileName = "memorybox_" + LocalDateTime.now().format(ZIP_FILE_NAME_FORMAT) + ".zip";
@@ -213,6 +251,35 @@ public class PageController {
         return ResponseEntity.status(statusCode)
                 .contentType(MediaType.TEXT_PLAIN)
                 .body(body);
+    }
+
+    private String buildAttachmentContentDisposition(String utf8FileName, String fallbackName) {
+        String normalizedFileName = (utf8FileName == null || utf8FileName.isBlank())
+                ? fallbackName
+                : utf8FileName;
+        String asciiFallback = normalizedFileName.replaceAll("[^\\x20-\\x7E]", "_");
+        if (asciiFallback.isBlank()) {
+            asciiFallback = fallbackName;
+        }
+        return "attachment; filename=\"" + asciiFallback + "\"; filename*=UTF-8''"
+                + URLEncoder.encode(normalizedFileName, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    private boolean isClientAbortIOException(IOException e) {
+        Throwable current = e;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null) {
+                String normalized = message.toLowerCase(Locale.ROOT);
+                if (normalized.contains("broken pipe")
+                        || normalized.contains("connection reset by peer")
+                        || normalized.contains("forcibly closed")) {
+                    return true;
+                }
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     public static class DownloadZipRequest {
