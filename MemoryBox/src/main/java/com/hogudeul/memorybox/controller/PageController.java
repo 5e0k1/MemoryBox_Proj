@@ -133,8 +133,8 @@ public class PageController {
     }
 
     @GetMapping("/feed/{itemId}/download")
-    public ResponseEntity<?> downloadOriginal(@PathVariable Long itemId,
-                                              HttpSession session) {
+    public ResponseEntity<StreamingResponseBody> downloadOriginal(@PathVariable Long itemId,
+                                                                  HttpSession session) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         if (loginUser == null) {
             return ResponseEntity.status(302).header(HttpHeaders.LOCATION, "/login").build();
@@ -191,9 +191,8 @@ public class PageController {
         }
 
         String zipFileName = "memorybox_" + LocalDateTime.now().format(ZIP_FILE_NAME_FORMAT) + ".zip";
-        ContentDisposition disposition = ContentDisposition.attachment()
-                .filename(zipFileName, StandardCharsets.UTF_8)
-                .build();
+        String disposition = "attachment; filename=\"memorybox_download.zip\"; filename*=UTF-8''"
+                + URLEncoder.encode(zipFileName, StandardCharsets.UTF_8).replace("+", "%20");
 
         StreamingResponseBody body = outputStream -> {
             try {
@@ -205,7 +204,7 @@ public class PageController {
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/zip"))
-                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition)
                 .body(body);
     }
 

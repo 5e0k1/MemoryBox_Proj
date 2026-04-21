@@ -176,6 +176,24 @@ document.addEventListener('DOMContentLoaded', () => {
         URL.revokeObjectURL(url);
     };
 
+    const extractDownloadFileName = (contentDispositionHeader) => {
+        if (!contentDispositionHeader) {
+            return '';
+        }
+
+        const utf8Match = contentDispositionHeader.match(/filename\*=UTF-8''([^;]+)/i);
+        if (utf8Match && utf8Match[1]) {
+            return decodeURIComponent(utf8Match[1].trim());
+        }
+
+        const plainMatch = contentDispositionHeader.match(/filename="?([^\";]+)"?/i);
+        if (plainMatch && plainMatch[1]) {
+            return plainMatch[1].trim();
+        }
+
+        return '';
+    };
+
     downloadSelectedBtn.addEventListener('click', async () => {
         if (selectedIds.size === 0) {
             window.alert('다운로드할 파일을 먼저 선택해 주세요.');
@@ -218,10 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const contentDisposition = response.headers.get('Content-Disposition') || '';
-            const matchedFileName = contentDisposition.match(/filename\*?=(?:UTF-8''|")?([^\";]+)/i);
-            const decodedFileName = matchedFileName
-                ? decodeURIComponent(matchedFileName[1].replace(/"/g, ''))
-                : 'memorybox_download.zip';
+            const decodedFileName = extractDownloadFileName(contentDisposition) || 'memorybox_download.zip';
             const blob = await response.blob();
             startDownload(blob, decodedFileName);
         } catch (error) {
