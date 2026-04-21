@@ -175,11 +175,11 @@ public class PageController {
     }
 
     @PostMapping(value = "/feed/download-zip", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> downloadSelectedAsZip(@RequestBody DownloadZipRequest request,
-                                                   HttpSession session) {
+    public ResponseEntity<StreamingResponseBody> downloadSelectedAsZip(@RequestBody DownloadZipRequest request,
+                                                                       HttpSession session) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         if (loginUser == null) {
-            return ResponseEntity.status(401).body(new ErrorResponse("로그인이 필요합니다."));
+            return errorStreamingResponse(401, "로그인이 필요합니다.");
         }
 
         List<Long> mediaIds = request == null ? null : request.getMediaIds();
@@ -187,7 +187,7 @@ public class PageController {
         try {
             files = detailService.getDownloadFileInfos(mediaIds, loginUser.getUserId());
         } catch (DetailService.DownloadException e) {
-            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+            return errorStreamingResponse(400, e.getMessage());
         }
 
         String zipFileName = "memorybox_" + LocalDateTime.now().format(ZIP_FILE_NAME_FORMAT) + ".zip";
@@ -209,6 +209,13 @@ public class PageController {
                 .body(body);
     }
 
+    private ResponseEntity<StreamingResponseBody> errorStreamingResponse(int statusCode, String message) {
+        StreamingResponseBody body = outputStream -> outputStream.write(message.getBytes(StandardCharsets.UTF_8));
+        return ResponseEntity.status(statusCode)
+                .contentType(MediaType.TEXT_PLAIN)
+                .body(body);
+    }
+
     public static class DownloadZipRequest {
         private List<Long> mediaIds;
 
@@ -221,15 +228,4 @@ public class PageController {
         }
     }
 
-    public static class ErrorResponse {
-        private final String message;
-
-        public ErrorResponse(String message) {
-            this.message = message;
-        }
-
-        public String getMessage() {
-            return message;
-        }
-    }
 }

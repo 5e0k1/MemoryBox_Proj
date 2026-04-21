@@ -197,12 +197,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) {
                 let message = '다중 다운로드 처리 중 오류가 발생했습니다.';
                 try {
-                    const errorPayload = await response.json();
-                    if (errorPayload && errorPayload.message) {
-                        message = errorPayload.message;
+                    const responseText = await response.text();
+                    if (responseText) {
+                        try {
+                            const errorPayload = JSON.parse(responseText);
+                            if (errorPayload && errorPayload.message) {
+                                message = errorPayload.message;
+                            } else {
+                                message = responseText;
+                            }
+                        } catch (ignore) {
+                            message = responseText;
+                        }
                     }
                 } catch (ignore) {
-                    // JSON 파싱 실패 시 기본 메시지 사용
+                    // 오류 본문 파싱 실패 시 기본 메시지 사용
                 }
                 window.alert(message);
                 return;
