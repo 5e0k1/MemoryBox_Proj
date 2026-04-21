@@ -148,37 +148,30 @@ public class PageController {
                     .build();
         }
 
-        try {
-            if (!fileInfo.existsReadable()) {
-                return ResponseEntity.status(302)
-                        .header(HttpHeaders.LOCATION, "/feed/" + itemId + "?error="
-                                + URLEncoder.encode("원본 파일을 찾을 수 없습니다.", StandardCharsets.UTF_8))
-                        .build();
-            }
-
-            MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
-            if (fileInfo.getMimeType() != null && !fileInfo.getMimeType().isBlank()) {
-                mediaType = MediaType.parseMediaType(fileInfo.getMimeType());
-            }
-
-            ContentDisposition disposition = ContentDisposition.attachment()
-                    .filename(fileInfo.getFileName(), StandardCharsets.UTF_8)
-                    .build();
-
-            return ResponseEntity.ok()
-                    .contentType(mediaType)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
-                    .body((StreamingResponseBody) outputStream -> {
-                        try (var inputStream = fileInfo.openInputStream()) {
-                            inputStream.transferTo(outputStream);
-                        }
-                    });
-        } catch (IOException e) {
+        if (!fileInfo.existsReadable()) {
             return ResponseEntity.status(302)
                     .header(HttpHeaders.LOCATION, "/feed/" + itemId + "?error="
-                            + URLEncoder.encode("다운로드 처리 중 오류가 발생했습니다.", StandardCharsets.UTF_8))
+                            + URLEncoder.encode("원본 파일을 찾을 수 없습니다.", StandardCharsets.UTF_8))
                     .build();
         }
+
+        MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        if (fileInfo.getMimeType() != null && !fileInfo.getMimeType().isBlank()) {
+            mediaType = MediaType.parseMediaType(fileInfo.getMimeType());
+        }
+
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename(fileInfo.getFileName(), StandardCharsets.UTF_8)
+                .build();
+
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .body((StreamingResponseBody) outputStream -> {
+                    try (var inputStream = fileInfo.openInputStream()) {
+                        inputStream.transferTo(outputStream);
+                    }
+                });
     }
 
     @PostMapping(value = "/feed/download-zip", consumes = MediaType.APPLICATION_JSON_VALUE)
