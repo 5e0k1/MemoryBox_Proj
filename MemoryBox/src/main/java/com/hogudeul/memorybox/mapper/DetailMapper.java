@@ -12,6 +12,9 @@ public interface DetailMapper {
     MediaDetailRow findDetailByMediaId(@Param("mediaId") Long mediaId,
                                        @Param("userId") Long userId);
 
+    List<MediaDetailRow> findDetailsByMediaIds(@Param("mediaIds") List<Long> mediaIds,
+                                               @Param("userId") Long userId);
+
     List<CommentRow> findCommentsByMediaId(@Param("mediaId") Long mediaId);
 
     CommentRow findCommentById(@Param("commentId") Long commentId);

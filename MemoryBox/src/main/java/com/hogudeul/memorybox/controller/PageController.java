@@ -10,24 +10,27 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 public class PageController {
 
+    private static final DateTimeFormatter ZIP_FILE_NAME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
     private final FeedService feedService;
     private final DetailService detailService;
 
@@ -146,14 +149,13 @@ public class PageController {
         }
 
         try {
-            if (!Files.exists(fileInfo.getFilePath()) || !Files.isReadable(fileInfo.getFilePath())) {
+            if (!fileInfo.existsReadable()) {
                 return ResponseEntity.status(302)
                         .header(HttpHeaders.LOCATION, "/feed/" + itemId + "?error="
                                 + URLEncoder.encode("원본 파일을 찾을 수 없습니다.", StandardCharsets.UTF_8))
                         .build();
             }
 
-            byte[] data = Files.readAllBytes(fileInfo.getFilePath());
             MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
             if (fileInfo.getMimeType() != null && !fileInfo.getMimeType().isBlank()) {
                 mediaType = MediaType.parseMediaType(fileInfo.getMimeType());
@@ -166,12 +168,75 @@ public class PageController {
             return ResponseEntity.ok()
                     .contentType(mediaType)
                     .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
-                    .body(new ByteArrayResource(data));
+                    .body((StreamingResponseBody) outputStream -> {
+                        try (var inputStream = fileInfo.openInputStream()) {
+                            inputStream.transferTo(outputStream);
+                        }
+                    });
         } catch (IOException e) {
             return ResponseEntity.status(302)
                     .header(HttpHeaders.LOCATION, "/feed/" + itemId + "?error="
                             + URLEncoder.encode("다운로드 처리 중 오류가 발생했습니다.", StandardCharsets.UTF_8))
                     .build();
+        }
+    }
+
+    @PostMapping(value = "/feed/download-zip", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> downloadSelectedAsZip(@RequestBody DownloadZipRequest request,
+                                                   HttpSession session) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        if (loginUser == null) {
+            return ResponseEntity.status(401).body(new ErrorResponse("로그인이 필요합니다."));
+        }
+
+        List<Long> mediaIds = request == null ? null : request.getMediaIds();
+        final List<DetailService.DownloadFileInfo> files;
+        try {
+            files = detailService.getDownloadFileInfos(mediaIds, loginUser.getUserId());
+        } catch (DetailService.DownloadException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        }
+
+        String zipFileName = "memorybox_" + LocalDateTime.now().format(ZIP_FILE_NAME_FORMAT) + ".zip";
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename(zipFileName, StandardCharsets.UTF_8)
+                .build();
+
+        StreamingResponseBody body = outputStream -> {
+            try {
+                detailService.streamZip(files, outputStream);
+            } catch (DetailService.DownloadException e) {
+                throw new IOException(e.getMessage(), e);
+            }
+        };
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/zip"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .body(body);
+    }
+
+    public static class DownloadZipRequest {
+        private List<Long> mediaIds;
+
+        public List<Long> getMediaIds() {
+            return mediaIds;
+        }
+
+        public void setMediaIds(List<Long> mediaIds) {
+            this.mediaIds = mediaIds;
+        }
+    }
+
+    public static class ErrorResponse {
+        private final String message;
+
+        public ErrorResponse(String message) {
+            this.message = message;
+        }
+
+        public String getMessage() {
+            return message;
         }
     }
 }

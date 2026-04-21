@@ -6,6 +6,8 @@
  * - 태그 다중 선택 표시 UI
  */
 document.addEventListener('DOMContentLoaded', () => {
+    const MAX_SELECTION_COUNT = 30;
+    const DOWNLOAD_API_URL = '/feed/download-zip';
     const grid = document.getElementById('feedGrid');
     const tabButtons = document.querySelectorAll('.tab-btn');
     const colButtons = document.querySelectorAll('.col-btn');
@@ -51,6 +53,10 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedIds.delete(id);
             card.classList.remove('is-selected');
         } else {
+            if (selectedIds.size >= MAX_SELECTION_COUNT) {
+                window.alert(`최대 ${MAX_SELECTION_COUNT}개까지 선택할 수 있습니다.`);
+                return;
+            }
             selectedIds.add(id);
             card.classList.add('is-selected');
         }
@@ -154,8 +160,66 @@ document.addEventListener('DOMContentLoaded', () => {
 
     cancelSelectionBtn.addEventListener('click', clearSelectionMode);
 
-    downloadSelectedBtn.addEventListener('click', () => {
-        console.info('다중 선택 다운로드(추후 서버 연결):', Array.from(selectedIds));
+    const setDownloadButtonLoading = (loading) => {
+        downloadSelectedBtn.disabled = loading;
+        downloadSelectedBtn.textContent = loading ? '다운로드 준비중...' : '다운로드';
+    };
+
+    const startDownload = (blob, fileName) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    };
+
+    downloadSelectedBtn.addEventListener('click', async () => {
+        if (selectedIds.size === 0) {
+            window.alert('다운로드할 파일을 먼저 선택해 주세요.');
+            return;
+        }
+
+        setDownloadButtonLoading(true);
+        try {
+            const response = await fetch(DOWNLOAD_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    mediaIds: Array.from(selectedIds, (id) => Number(id))
+                })
+            });
+
+            if (!response.ok) {
+                let message = '다중 다운로드 처리 중 오류가 발생했습니다.';
+                try {
+                    const errorPayload = await response.json();
+                    if (errorPayload && errorPayload.message) {
+                        message = errorPayload.message;
+                    }
+                } catch (ignore) {
+                    // JSON 파싱 실패 시 기본 메시지 사용
+                }
+                window.alert(message);
+                return;
+            }
+
+            const contentDisposition = response.headers.get('Content-Disposition') || '';
+            const matchedFileName = contentDisposition.match(/filename\*?=(?:UTF-8''|")?([^\";]+)/i);
+            const decodedFileName = matchedFileName
+                ? decodeURIComponent(matchedFileName[1].replace(/"/g, ''))
+                : 'memorybox_download.zip';
+            const blob = await response.blob();
+            startDownload(blob, decodedFileName);
+        } catch (error) {
+            window.alert('네트워크 오류로 다운로드에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+        } finally {
+            setDownloadButtonLoading(false);
+        }
     });
 
     const updateTagSummary = () => {
