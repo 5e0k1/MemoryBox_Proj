@@ -5,16 +5,23 @@ import com.hogudeul.memorybox.dto.MediaDetailView;
 import com.hogudeul.memorybox.mapper.DetailMapper;
 import com.hogudeul.memorybox.model.CommentRow;
 import com.hogudeul.memorybox.model.MediaDetailRow;
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Comparator;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -23,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DetailService {
 
+    public static final int MAX_DOWNLOAD_COUNT = 30;
     private static final DateTimeFormatter DATETIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final DetailMapper detailMapper;
@@ -113,6 +121,108 @@ public class DetailService {
         if (row == null || isBlank(row.getOriginalStorageKey())) {
             return null;
         }
+        return toDownloadFileInfo(row);
+    }
+
+    public List<DownloadFileInfo> getDownloadFileInfos(List<Long> mediaIds, Long userId) {
+        validateDownloadRequest(mediaIds);
+
+        List<MediaDetailRow> rows = detailMapper.findDetailsByMediaIds(mediaIds, userId);
+        if (rows.size() != mediaIds.size()) {
+            throw new DownloadException("유효하지 않은 파일 ID가 포함되어 있습니다.");
+        }
+
+        Map<Long, MediaDetailRow> rowMap = new HashMap<>();
+        for (MediaDetailRow row : rows) {
+            rowMap.put(row.getMediaId(), row);
+        }
+
+        List<DownloadFileInfo> result = new ArrayList<>();
+        for (Long mediaId : mediaIds) {
+            MediaDetailRow row = rowMap.get(mediaId);
+            if (row == null) {
+                throw new DownloadException("유효하지 않은 파일 ID가 포함되어 있습니다.");
+            }
+            if (isBlank(row.getOriginalStorageKey())) {
+                throw new DownloadException("원본 파일이 없는 항목이 포함되어 있습니다.");
+            }
+            result.add(toDownloadFileInfo(row));
+        }
+        return result;
+    }
+
+    public void streamZip(List<DownloadFileInfo> files, OutputStream outputStream) throws IOException {
+        Map<String, Integer> nameCounter = new HashMap<>();
+        try (ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
+            for (DownloadFileInfo file : files) {
+                if (!file.existsReadable()) {
+                    throw new DownloadException("원본 파일을 찾을 수 없습니다.");
+                }
+
+                String zipEntryName = resolveDuplicatedName(file.getFileName(), nameCounter);
+                zipOutputStream.putNextEntry(new ZipEntry(zipEntryName));
+                try (InputStream inputStream = new BufferedInputStream(file.openInputStream())) {
+                    inputStream.transferTo(zipOutputStream);
+                }
+                zipOutputStream.closeEntry();
+            }
+            zipOutputStream.finish();
+        } catch (DownloadException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new IOException("ZIP 생성 중 오류가 발생했습니다.", e);
+        }
+    }
+
+    @Transactional
+    public void logDownloadAttempt(Long mediaId,
+                                   Long userId,
+                                   String ipAddr,
+                                   String userAgent,
+                                   boolean success,
+                                   String failReason) {
+        Long dlId = detailMapper.selectNextDownloadLogId();
+        detailMapper.insertDownloadLog(
+                dlId,
+                userId,
+                mediaId,
+                ipAddr,
+                userAgent,
+                success ? "Y" : "N",
+                failReason
+        );
+    }
+
+    private void validateDownloadRequest(List<Long> mediaIds) {
+        if (mediaIds == null || mediaIds.isEmpty()) {
+            throw new DownloadException("다운로드할 파일을 선택해 주세요.");
+        }
+        if (mediaIds.size() > MAX_DOWNLOAD_COUNT) {
+            throw new DownloadException("한 번에 최대 30개까지만 다운로드할 수 있습니다.");
+        }
+        if (mediaIds.stream().anyMatch(id -> id == null || id <= 0L)) {
+            throw new DownloadException("유효하지 않은 파일 ID가 포함되어 있습니다.");
+        }
+    }
+
+    private String resolveDuplicatedName(String originalName, Map<String, Integer> nameCounter) {
+        String normalized = defaultText(originalName, "download");
+        int count = nameCounter.getOrDefault(normalized, 0);
+        nameCounter.put(normalized, count + 1);
+        if (count == 0) {
+            return normalized;
+        }
+
+        int dotIndex = normalized.lastIndexOf('.');
+        if (dotIndex <= 0 || dotIndex == normalized.length() - 1) {
+            return normalized + " (" + count + ")";
+        }
+        String base = normalized.substring(0, dotIndex);
+        String extension = normalized.substring(dotIndex);
+        return base + " (" + count + ")" + extension;
+    }
+
+    private DownloadFileInfo toDownloadFileInfo(MediaDetailRow row) {
         Path filePath = storageRoot.resolve(row.getOriginalStorageKey()).normalize();
         return new DownloadFileInfo(filePath, defaultText(row.getOriginalFileName(), "download"), row.getOriginalMimeType());
     }
@@ -233,6 +343,24 @@ public class DetailService {
 
         public String getMimeType() {
             return mimeType;
+        }
+
+        public boolean existsReadable() {
+            try {
+                return java.nio.file.Files.exists(filePath) && java.nio.file.Files.isReadable(filePath);
+            } catch (Exception ignore) {
+                return false;
+            }
+        }
+
+        public InputStream openInputStream() throws IOException {
+            return java.nio.file.Files.newInputStream(filePath);
+        }
+    }
+
+    public static class DownloadException extends RuntimeException {
+        public DownloadException(String message) {
+            super(message);
         }
     }
 }

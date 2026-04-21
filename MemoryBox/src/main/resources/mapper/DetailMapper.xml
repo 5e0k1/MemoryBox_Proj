@@ -66,6 +66,44 @@
           AND a.del_yn = 'N'
     </select>
 
+    <select id="findDetailsByMediaIds" resultMap="MediaDetailRowMap">
+        SELECT mi.media_id,
+               mi.title,
+               mi.media_type,
+               mi.uploaded_at,
+               mi.taken_at,
+               a.album_name,
+               u.display_name,
+               medium_mv.storage_key AS medium_storage_key,
+               small_mv.storage_key AS small_storage_key,
+               original_mv.storage_key AS original_storage_key,
+               original_mv.file_org_name AS original_file_name,
+               original_mv.mime_type AS original_mime_type,
+               (SELECT COUNT(*) FROM MEDIA_LIKE ml WHERE ml.media_id = mi.media_id) AS like_count,
+               (SELECT COUNT(*) FROM COMMENT c WHERE c.media_id = mi.media_id AND c.del_yn = 'N') AS comment_count,
+               (SELECT COUNT(*) FROM MEDIA_LIKE me WHERE me.media_id = mi.media_id AND me.user_id = #{userId}) AS liked_by_me,
+               (
+                   SELECT GROUP_CONCAT(t.tag_name ORDER BY t.tag_name SEPARATOR ',')
+                   FROM MEDIA_TAG mt
+                            JOIN TAG t ON mt.tag_id = t.tag_id
+                   WHERE mt.media_id = mi.media_id
+                     AND t.del_yn = 'N'
+               ) AS tags_csv
+        FROM MEDIA_ITEMS mi
+                 JOIN USER u ON mi.user_id = u.user_id
+                 JOIN ALBUM a ON mi.album_id = a.album_id
+                 LEFT JOIN MEDIA_VARIANT medium_mv ON mi.media_id = medium_mv.media_id AND medium_mv.variant_type = 'MEDIUM'
+                 LEFT JOIN MEDIA_VARIANT small_mv ON mi.media_id = small_mv.media_id AND small_mv.variant_type = 'SMALL'
+                 LEFT JOIN MEDIA_VARIANT original_mv ON mi.media_id = original_mv.media_id AND original_mv.variant_type = 'ORIGINAL'
+        WHERE mi.media_id IN
+              <foreach item="mediaId" collection="mediaIds" open="(" separator="," close=")">
+                  #{mediaId}
+              </foreach>
+          AND mi.del_yn = 'N'
+          AND u.del_yn = 'N'
+          AND a.del_yn = 'N'
+    </select>
+
     <select id="findCommentsByMediaId" resultMap="CommentRowMap">
         SELECT c.comment_id,
                c.media_id,
@@ -141,5 +179,32 @@
         WHERE media_id = #{mediaId}
           AND user_id = #{userId}
     </delete>
+
+    <select id="selectNextDownloadLogId" resultType="java.lang.Long">
+        SELECT COALESCE(MAX(dl_id), 0) + 1
+        FROM DOWNLOAD_LOG
+    </select>
+
+    <insert id="insertDownloadLog">
+        INSERT INTO DOWNLOAD_LOG (
+            dl_id,
+            user_id,
+            media_id,
+            download_at,
+            ip_addr,
+            user_agent,
+            success_yn,
+            fail_reason
+        ) VALUES (
+            #{dlId},
+            #{userId},
+            #{mediaId},
+            NOW(),
+            #{ipAddr},
+            #{userAgent},
+            #{successYn},
+            #{failReason}
+        )
+    </insert>
 
 </mapper>
