@@ -24,32 +24,27 @@ public class FeedService {
     }
 
     public List<FeedItemView> getImageFeedItems() {
-        List<FeedRow> rows = feedMapper.findImageFeedRows();
-        List<FeedItemView> items = new ArrayList<>();
+        return toView(feedMapper.findImageFeedRows());
+    }
 
-        for (FeedRow row : rows) {
-            String[] tags = parseTags(row.getTagsCsv());
-            LocalDateTime displayAt = row.getTakenAt() != null ? row.getTakenAt() : row.getUploadedAt();
-            int shotYear = displayAt != null ? displayAt.getYear() : 0;
+    public List<FeedItemView> getFeedItems(String mediaType, String author, String album, String tag,
+                                           String sort, Long userId, boolean likedOnly, boolean mineOnly,
+                                           int page, int size) {
+        int safeSize = Math.max(1, Math.min(size, 60));
+        int safePage = Math.max(1, page);
+        int offset = (safePage - 1) * safeSize;
 
-            items.add(new FeedItemView(
-                    row.getMediaId(),
-                    "photo",
-                    toPublicFileUrl(row.getStorageKey()),
-                    defaultText(row.getTitle(), "(제목 없음)"),
-                    defaultText(row.getDisplayName(), "알 수 없음"),
-                    shotYear,
-                    formatDateTime(row.getUploadedAt()),
-                    safeInt(row.getLikeCount()),
-                    safeInt(row.getCommentCount()),
-                    tags,
-                    defaultText(row.getAlbumName(), "미분류"),
-                    formatDateTime(row.getTakenAt()),
-                    formatDateTime(displayAt)
-            ));
-        }
-
-        return items;
+        return toView(feedMapper.findFeedRows(
+                normalizeFilter(mediaType),
+                normalizeFilter(author),
+                normalizeFilter(album),
+                normalizeFilter(tag),
+                normalizeSort(sort),
+                userId,
+                likedOnly,
+                mineOnly,
+                safeSize,
+                offset));
     }
 
     public List<String> getAuthorFilterOptions(List<FeedItemView> feedItems) {
@@ -80,6 +75,58 @@ public class FeedService {
         options.add("전체");
         options.addAll(tags);
         return options;
+    }
+
+    private List<FeedItemView> toView(List<FeedRow> rows) {
+        List<FeedItemView> items = new ArrayList<>();
+
+        for (FeedRow row : rows) {
+            String[] tags = parseTags(row.getTagsCsv());
+            LocalDateTime displayAt = row.getTakenAt() != null ? row.getTakenAt() : row.getUploadedAt();
+            int shotYear = displayAt != null ? displayAt.getYear() : 0;
+
+            items.add(new FeedItemView(
+                    row.getMediaId(),
+                    toUiMediaType(row.getMediaType()),
+                    toPublicFileUrl(row.getStorageKey()),
+                    defaultText(row.getTitle(), "(제목 없음)"),
+                    defaultText(row.getDisplayName(), "알 수 없음"),
+                    shotYear,
+                    formatDateTime(row.getUploadedAt()),
+                    safeInt(row.getLikeCount()),
+                    safeInt(row.getCommentCount()),
+                    tags,
+                    defaultText(row.getAlbumName(), "미분류"),
+                    formatDateTime(row.getTakenAt()),
+                    formatDateTime(displayAt)
+            ));
+        }
+
+        return items;
+    }
+
+    private String normalizeFilter(String value) {
+        if (value == null || value.isBlank() || "전체".equals(value) || "all".equalsIgnoreCase(value)) {
+            return null;
+        }
+        return value;
+    }
+
+    private String normalizeSort(String value) {
+        if (value == null || value.isBlank()) {
+            return "uploaded_desc";
+        }
+        return switch (value) {
+            case "uploaded_asc", "taken_desc", "taken_asc", "likes_desc" -> value;
+            default -> "uploaded_desc";
+        };
+    }
+
+    private String toUiMediaType(String mediaType) {
+        if (mediaType == null) {
+            return "photo";
+        }
+        return "VIDEO".equalsIgnoreCase(mediaType) ? "video" : "photo";
     }
 
     private String toPublicFileUrl(String storageKey) {

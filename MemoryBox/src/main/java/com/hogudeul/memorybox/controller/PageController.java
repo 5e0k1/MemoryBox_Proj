@@ -14,28 +14,32 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Controller
 public class PageController {
 
     private static final Logger log = LoggerFactory.getLogger(PageController.class);
     private static final DateTimeFormatter ZIP_FILE_NAME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+    private static final int FEED_PAGE_SIZE = 24;
     private final FeedService feedService;
     private final DetailService detailService;
 
@@ -50,16 +54,69 @@ public class PageController {
                            Model model,
                            HttpSession session) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
-        List<FeedItemView> feedItems = feedService.getImageFeedItems();
+        List<FeedItemView> feedItems = feedService.getFeedItems(null, null, null, null,
+                "uploaded_desc", null, false, false, 1, FEED_PAGE_SIZE);
+        List<FeedItemView> optionSource = feedService.getImageFeedItems();
 
         model.addAttribute("loginUser", loginUser);
         model.addAttribute("pwdError", pwdError);
         model.addAttribute("pwdChanged", "true".equals(pwdChanged));
         model.addAttribute("feedItems", feedItems);
-        model.addAttribute("authors", feedService.getAuthorFilterOptions(feedItems));
-        model.addAttribute("tags", feedService.getTagFilterOptions(feedItems));
-        model.addAttribute("years", feedService.getAlbumFilterOptions(feedItems));
+        model.addAttribute("authors", feedService.getAuthorFilterOptions(optionSource));
+        model.addAttribute("tags", feedService.getTagFilterOptions(optionSource));
+        model.addAttribute("years", feedService.getAlbumFilterOptions(optionSource));
         return "feed";
+    }
+
+    @GetMapping("/likes")
+    public String likesPage(Model model, HttpSession session) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        Long userId = loginUser != null ? loginUser.getUserId() : null;
+        List<FeedItemView> feedItems = feedService.getFeedItems(null, null, null, null,
+                "uploaded_desc", userId, true, false, 1, 60);
+
+        model.addAttribute("loginUser", loginUser);
+        model.addAttribute("pageTitle", "좋아요");
+        model.addAttribute("mode", "likes");
+        model.addAttribute("feedItems", feedItems);
+        return "feed";
+    }
+
+    @GetMapping("/mypage")
+    public String myPage(Model model, HttpSession session) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        Long userId = loginUser != null ? loginUser.getUserId() : null;
+        List<FeedItemView> feedItems = feedService.getFeedItems(null, null, null, null,
+                "uploaded_desc", userId, false, true, 1, 60);
+
+        model.addAttribute("loginUser", loginUser);
+        model.addAttribute("pageTitle", "마이페이지");
+        model.addAttribute("mode", "mypage");
+        model.addAttribute("feedItems", feedItems);
+        return "feed";
+    }
+
+    @GetMapping("/api/feed/items")
+    @ResponseBody
+    public Map<String, Object> feedItemsApi(@RequestParam(defaultValue = "1") int page,
+                                            @RequestParam(defaultValue = "24") int size,
+                                            @RequestParam(required = false) String type,
+                                            @RequestParam(required = false) String author,
+                                            @RequestParam(required = false) String album,
+                                            @RequestParam(required = false) String tag,
+                                            @RequestParam(required = false, defaultValue = "uploaded_desc") String sort,
+                                            @RequestParam(required = false, defaultValue = "false") boolean likesOnly,
+                                            @RequestParam(required = false, defaultValue = "false") boolean mineOnly,
+                                            HttpSession session) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        Long userId = loginUser != null ? loginUser.getUserId() : null;
+        List<FeedItemView> items = feedService.getFeedItems(type, author, album, tag, sort,
+                userId, likesOnly, mineOnly, page, size);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("items", items);
+        response.put("hasMore", items.size() >= Math.max(1, Math.min(size, 60)));
+        return response;
     }
 
     @GetMapping("/feed/{itemId}")
@@ -293,5 +350,4 @@ public class PageController {
             this.mediaIds = mediaIds;
         }
     }
-
 }

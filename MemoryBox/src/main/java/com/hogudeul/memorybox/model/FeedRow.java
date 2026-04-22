@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 public class FeedRow {
 
     private Long mediaId;
+    private String mediaType;
+    private Long userId;
     private String title;
     private LocalDateTime uploadedAt;
     private LocalDateTime takenAt;
@@ -21,6 +23,22 @@ public class FeedRow {
 
     public void setMediaId(Long mediaId) {
         this.mediaId = mediaId;
+    }
+
+    public String getMediaType() {
+        return mediaType;
+    }
+
+    public void setMediaType(String mediaType) {
+        this.mediaType = mediaType;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public String getTitle() {

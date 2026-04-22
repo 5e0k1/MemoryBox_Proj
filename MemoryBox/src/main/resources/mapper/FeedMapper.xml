@@ -4,6 +4,8 @@
 
     <resultMap id="FeedRowMap" type="com.hogudeul.memorybox.model.FeedRow">
         <id column="media_id" property="mediaId"/>
+        <result column="media_type" property="mediaType"/>
+        <result column="user_id" property="userId"/>
         <result column="title" property="title"/>
         <result column="uploaded_at" property="uploadedAt"/>
         <result column="taken_at" property="takenAt"/>
@@ -15,8 +17,54 @@
         <result column="tags_csv" property="tagsCsv"/>
     </resultMap>
 
-    <select id="findImageFeedRows" resultMap="FeedRowMap">
+    <sql id="FeedBaseFrom">
+        FROM MEDIA_ITEMS mi
+            JOIN MEDIA_VARIANT mv ON mi.media_id = mv.media_id
+            LEFT JOIN USER u ON mi.user_id = u.user_id
+            LEFT JOIN ALBUM a ON mi.album_id = a.album_id
+        WHERE mi.del_yn = 'N'
+          AND mv.variant_type = 'SMALL'
+          AND u.del_yn = 'N'
+          AND a.del_yn = 'N'
+    </sql>
+
+    <sql id="FeedBaseWhere">
+        <if test="mediaType != null">
+            AND mi.media_type = #{mediaType}
+        </if>
+        <if test="author != null">
+            AND u.display_name = #{author}
+        </if>
+        <if test="album != null">
+            AND a.album_name = #{album}
+        </if>
+        <if test="tag != null">
+            AND EXISTS (
+                SELECT 1
+                FROM MEDIA_TAG mt
+                         JOIN TAG t ON mt.tag_id = t.tag_id
+                WHERE mt.media_id = mi.media_id
+                  AND t.del_yn = 'N'
+                  AND t.tag_name = #{tag}
+            )
+        </if>
+        <if test="likedOnly and userId != null">
+            AND EXISTS (
+                SELECT 1
+                FROM MEDIA_LIKE ml2
+                WHERE ml2.media_id = mi.media_id
+                  AND ml2.user_id = #{userId}
+            )
+        </if>
+        <if test="mineOnly and userId != null">
+            AND mi.user_id = #{userId}
+        </if>
+    </sql>
+
+    <select id="findFeedRows" resultMap="FeedRowMap">
         SELECT mi.media_id,
+               mi.media_type,
+               mi.user_id,
                mi.title,
                mi.uploaded_at,
                mi.taken_at,
@@ -41,15 +89,58 @@
                    WHERE mt.media_id = mi.media_id
                      AND t.del_yn = 'N'
                ) AS tags_csv
-        FROM MEDIA_ITEMS mi
-            JOIN MEDIA_VARIANT mv ON mi.media_id = mv.media_id
-            LEFT JOIN USER u ON mi.user_id = u.user_id
-            LEFT JOIN ALBUM a ON mi.album_id = a.album_id
-        WHERE mi.del_yn = 'N'
-          AND mi.media_type = 'IMAGE'
-          AND mv.variant_type = 'SMALL'
-          AND u.del_yn = 'N'
-          AND a.del_yn = 'N'
+        <include refid="FeedBaseFrom"/>
+        <include refid="FeedBaseWhere"/>
+        <choose>
+            <when test="sort == 'uploaded_asc'">
+                ORDER BY mi.uploaded_at ASC
+            </when>
+            <when test="sort == 'taken_desc'">
+                ORDER BY (mi.taken_at IS NULL) ASC, mi.taken_at DESC, mi.uploaded_at DESC
+            </when>
+            <when test="sort == 'taken_asc'">
+                ORDER BY (mi.taken_at IS NULL) ASC, mi.taken_at ASC, mi.uploaded_at ASC
+            </when>
+            <when test="sort == 'likes_desc'">
+                ORDER BY like_count DESC, mi.uploaded_at DESC
+            </when>
+            <otherwise>
+                ORDER BY mi.uploaded_at DESC
+            </otherwise>
+        </choose>
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="findImageFeedRows" resultMap="FeedRowMap">
+        SELECT mi.media_id,
+               mi.media_type,
+               mi.user_id,
+               mi.title,
+               mi.uploaded_at,
+               mi.taken_at,
+               a.album_name,
+               u.display_name,
+               mv.storage_key,
+               (
+                   SELECT COUNT(*)
+                   FROM MEDIA_LIKE ml
+                   WHERE ml.media_id = mi.media_id
+               ) AS like_count,
+               (
+                   SELECT COUNT(*)
+                   FROM COMMENT c
+                   WHERE c.media_id = mi.media_id
+                     AND c.del_yn = 'N'
+               ) AS comment_count,
+               (
+                   SELECT GROUP_CONCAT(t.tag_name ORDER BY t.tag_name SEPARATOR ',')
+                   FROM MEDIA_TAG mt
+                       JOIN TAG t ON mt.tag_id = t.tag_id
+                   WHERE mt.media_id = mi.media_id
+                     AND t.del_yn = 'N'
+               ) AS tags_csv
+        <include refid="FeedBaseFrom"/>
+        AND mi.media_type = 'IMAGE'
         ORDER BY (mi.taken_at IS NULL) ASC,
                  mi.taken_at DESC,
                  mi.uploaded_at DESC

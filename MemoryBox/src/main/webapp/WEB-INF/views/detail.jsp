@@ -12,7 +12,7 @@
 <body class="page page-detail">
 <main class="detail-layout">
     <header class="detail-header">
-        <a href="/feed" class="back-link" aria-label="피드로 돌아가기">← 피드</a>
+        <a href="javascript:history.back()" class="back-link" aria-label="피드로 돌아가기">← 피드</a>
         <div class="login-chip">${loginUser.displayName}</div>
     </header>
 
