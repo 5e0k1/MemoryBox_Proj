@@ -67,7 +67,7 @@ public class UploadService {
         }
 
         String normalized = normalizeTag(tagName);
-        Tag existing = uploadMapper.findTagByUserAndNormalizedName(userId, normalized);
+        Tag existing = uploadMapper.findTagByNormalizedName(normalized);
         if (existing != null) {
             return existing;
         }
@@ -263,7 +263,7 @@ public class UploadService {
 
         for (String tagName : newTagNames) {
             String normalized = normalizeTag(tagName);
-            Tag tag = uploadMapper.findTagByUserAndNormalizedName(userId, normalized);
+            Tag tag = uploadMapper.findTagByNormalizedName(normalized);
             if (tag == null) {
                 tag = new Tag();
                 tag.setTagId(uploadMapper.selectNextTagId());
@@ -296,7 +296,7 @@ public class UploadService {
             return sanitized;
         }
 
-        List<Tag> validTags = uploadMapper.findActiveTagsByIds(userId, new ArrayList<>(sanitized));
+        List<Tag> validTags = uploadMapper.findActiveTagsByIds(new ArrayList<>(sanitized));
         Set<Long> validTagIds = new HashSet<>();
         for (Tag validTag : validTags) {
             validTagIds.add(validTag.getTagId());

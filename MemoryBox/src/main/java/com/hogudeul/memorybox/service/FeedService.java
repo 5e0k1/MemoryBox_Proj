@@ -131,6 +131,12 @@ public class FeedService {
         if (value == null || value.isBlank() || "전체".equals(value) || "all".equalsIgnoreCase(value)) {
             return null;
         }
+        if ("photo".equalsIgnoreCase(value)) {
+            return "IMAGE";
+        }
+        if ("video".equalsIgnoreCase(value)) {
+            return "VIDEO";
+        }
         if (value.startsWith("#") || value.startsWith("@")) {
             return value.substring(1);
         }

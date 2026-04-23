@@ -6,6 +6,7 @@ public class Tag {
     private Long userId;
     private String tagName;
     private String normalizedName;
+    private String tagScope;
 
     public Long getTagId() {
         return tagId;
@@ -37,5 +38,13 @@ public class Tag {
 
     public void setNormalizedName(String normalizedName) {
         this.normalizedName = normalizedName;
+    }
+
+    public String getTagScope() {
+        return tagScope;
+    }
+
+    public void setTagScope(String tagScope) {
+        this.tagScope = tagScope;
     }
 }

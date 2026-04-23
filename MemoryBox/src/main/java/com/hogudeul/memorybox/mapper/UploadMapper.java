@@ -22,13 +22,11 @@ public interface UploadMapper {
 
     int insertMediaVariant(MediaVariant mediaVariant);
 
-    Tag findTagByUserAndNormalizedName(@Param("userId") Long userId,
-                                       @Param("normalizedName") String normalizedName);
+    Tag findTagByNormalizedName(@Param("normalizedName") String normalizedName);
 
     List<Tag> findActiveTagsByUserId(@Param("userId") Long userId);
 
-    List<Tag> findActiveTagsByIds(@Param("userId") Long userId,
-                                  @Param("tagIds") List<Long> tagIds);
+    List<Tag> findActiveTagsByIds(@Param("tagIds") List<Long> tagIds);
 
     int insertTag(Tag tag);
 

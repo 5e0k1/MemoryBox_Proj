@@ -42,19 +42,13 @@
                 }
 
                 const wrapper = document.createElement('div');
-                wrapper.className = 'preview-item';
+                wrapper.className = 'preview-item single-preview-item';
 
                 const image = document.createElement('img');
                 image.alt = file.name;
                 image.src = URL.createObjectURL(file);
 
-                const right = document.createElement('div');
-                const name = document.createElement('div');
-                name.textContent = file.name;
-                right.appendChild(name);
-
                 wrapper.appendChild(image);
-                wrapper.appendChild(right);
                 singlePreview.appendChild(wrapper);
             });
         }

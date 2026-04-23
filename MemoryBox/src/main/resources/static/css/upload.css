@@ -78,6 +78,20 @@
     background: rgba(255,255,255,.22);
     color: #fff;
 }
+.tag-option.is-person {
+    border-color: #86efac;
+    background: #f0fdf4;
+}
+.tag-option.is-person .tag-label {
+    color: #166534;
+    font-weight: 600;
+}
+.tag-option.is-person:has(input:checked) {
+    background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+    border-color: #16a34a;
+    color: #fff;
+    box-shadow: 0 6px 14px rgba(22, 163, 74, 0.26);
+}
 
 .tag-add-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 10px; }
 .tag-add-btn {
@@ -90,6 +104,19 @@
 .preview-list { display: grid; gap: 10px; }
 .preview-item { display: grid; grid-template-columns: 80px 1fr; gap: 8px; align-items: center; border: 1px solid #ddd; border-radius: 10px; padding: 8px; }
 .preview-item img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; }
+.single-preview-item {
+    display: block;
+    padding: 12px;
+}
+.single-preview-item img {
+    width: 100%;
+    max-height: 340px;
+    height: auto;
+    aspect-ratio: 4 / 3;
+    object-fit: contain;
+    border-radius: 10px;
+    background: #f8fafc;
+}
 .msg.error { color: #c0392b; }
 
 .upload-home {
