@@ -73,7 +73,8 @@ public class VideoProcessingService {
     }
 
     protected void generateThumb(Long mediaId, Path originalPath, String originalName) throws IOException {
-        Path tempThumb = Files.createTempFile("memorybox-thumb-", ".jpg");
+        Path tempDir = Files.createTempDirectory("memorybox-thumb-");
+        Path tempThumb = tempDir.resolve("thumb.jpg");
         try {
             runFfmpeg(buildThumbCommand(originalPath, tempThumb, "00:00:01"), mediaId, "THUMB");
 
@@ -86,11 +87,13 @@ public class VideoProcessingService {
             log.info("[video-processing] THUMB 생성 완료. mediaId={}, key={}", mediaId, thumb.getStorageKey());
         } finally {
             Files.deleteIfExists(tempThumb);
+            Files.deleteIfExists(tempDir);
         }
     }
 
     protected void generateThumbFromStart(Long mediaId, Path originalPath, String originalName) throws IOException {
-        Path tempThumb = Files.createTempFile("memorybox-thumb-fallback-", ".jpg");
+        Path tempDir = Files.createTempDirectory("memorybox-thumb-fallback-");
+        Path tempThumb = tempDir.resolve("thumb.jpg");
         try {
             runFfmpeg(buildThumbCommand(originalPath, tempThumb, "00:00:00"), mediaId, "THUMB-FALLBACK");
             byte[] bytes = Files.readAllBytes(tempThumb);
@@ -102,11 +105,13 @@ public class VideoProcessingService {
             log.info("[video-processing] THUMB fallback 생성 완료. mediaId={}, key={}", mediaId, thumb.getStorageKey());
         } finally {
             Files.deleteIfExists(tempThumb);
+            Files.deleteIfExists(tempDir);
         }
     }
 
     protected void generatePreview(Long mediaId, Path originalPath, String originalName) throws IOException {
-        Path tempPreview = Files.createTempFile("memorybox-preview-", ".mp4");
+        Path tempDir = Files.createTempDirectory("memorybox-preview-");
+        Path tempPreview = tempDir.resolve("preview.mp4");
         try {
             runFfmpeg(List.of(
                     ffmpegCommand,
@@ -130,6 +135,7 @@ public class VideoProcessingService {
             log.info("[video-processing] PREVIEW 생성 완료. mediaId={}, key={}", mediaId, preview.getStorageKey());
         } finally {
             Files.deleteIfExists(tempPreview);
+            Files.deleteIfExists(tempDir);
         }
     }
 
@@ -163,6 +169,7 @@ public class VideoProcessingService {
                 "-ss", seekTime,
                 "-i", originalPath.toString(),
                 "-frames:v", "1",
+                "-update", "1",
                 "-q:v", "4",
                 tempThumb.toString()
         );
