@@ -108,7 +108,7 @@ public class PageController {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         Long userId = loginUser != null ? loginUser.getUserId() : null;
         List<FeedItemView> feedItems = feedService.getFeedItems(null, null, null, null,
-                "uploaded_desc", userId, false, true, 1, 60);
+                "uploaded_desc", userId, false, true, 1, FEED_PAGE_SIZE);
         int totalCount = feedService.getFeedItemCount(null, null, null, null, userId, false, true);
 
         model.addAttribute("loginUser", loginUser);

@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mode = document.body.dataset.mode || 'feed';
     const isFeedMode = mode === 'feed';
     const isSearchMode = mode === 'search';
-    const canInfinite = isFeedMode || isSearchMode || mode === 'likes';
+    const canInfinite = isFeedMode || isSearchMode || mode === 'likes' || mode === 'mypage';
 
     const grid = document.getElementById('feedGrid');
     const tabButtons = document.querySelectorAll('.tab-btn');
@@ -191,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadNextPage = async () => {
         if (!canInfinite || loading || !hasMore) return;
         loading = true;
+        if (feedEndMessage) feedEndMessage.hidden = true;
         infiniteLoader.hidden = false;
         try {
             const response = await fetch(`${FEED_API_URL}?${buildParams().toString()}`);
@@ -208,12 +209,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateBadgeLabels(state.columns);
                 page += 1;
             }
-            if (!hasMore && feedEndMessage) {
-                feedEndMessage.hidden = false;
-            }
         } finally {
             loading = false;
             infiniteLoader.hidden = true;
+            if (!hasMore && feedEndMessage) {
+                feedEndMessage.hidden = false;
+            }
         }
     };
 
