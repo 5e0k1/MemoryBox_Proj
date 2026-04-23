@@ -448,6 +448,13 @@ public class PageController {
                 detailService.streamZip(files, outputStream);
             } catch (DetailService.DownloadException e) {
                 throw new IOException(e.getMessage(), e);
+            } catch (IOException e) {
+                if (isClientAbortIOException(e)) {
+                    log.debug("Client aborted zip download. userId={}, msg={}",
+                            loginUser.getUserId(), e.getMessage());
+                    return;
+                }
+                throw e;
             }
         };
 
@@ -484,7 +491,11 @@ public class PageController {
                 String normalized = message.toLowerCase(Locale.ROOT);
                 if (normalized.contains("broken pipe")
                         || normalized.contains("connection reset by peer")
-                        || normalized.contains("forcibly closed")) {
+                        || normalized.contains("forcibly closed")
+                        || normalized.contains("현재 연결은")
+                        || normalized.contains("호스트 시스템의 소프트웨어")
+                        || normalized.contains("원격 호스트에 의해 강제로 끊겼")
+                        || normalized.contains("connection aborted")) {
                     return true;
                 }
             }
