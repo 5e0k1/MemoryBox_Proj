@@ -19,5 +19,13 @@ public interface FeedMapper {
                                @Param("limit") int limit,
                                @Param("offset") int offset);
 
+    int countFeedRows(@Param("mediaType") String mediaType,
+                      @Param("author") String author,
+                      @Param("album") String album,
+                      @Param("tag") String tag,
+                      @Param("userId") Long userId,
+                      @Param("likedOnly") boolean likedOnly,
+                      @Param("mineOnly") boolean mineOnly);
+
     List<FeedRow> findImageFeedRows();
 }

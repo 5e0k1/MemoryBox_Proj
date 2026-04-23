@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mode = document.body.dataset.mode || 'feed';
     const isFeedMode = mode === 'feed';
     const isSearchMode = mode === 'search';
-    const canInfinite = isFeedMode || isSearchMode;
+    const canInfinite = isFeedMode || isSearchMode || mode === 'likes';
 
     const grid = document.getElementById('feedGrid');
     const tabButtons = document.querySelectorAll('.tab-btn');
@@ -23,6 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedTagText = document.getElementById('selectedTagText');
     const infiniteLoader = document.getElementById('infiniteLoader');
     const feedSentinel = document.getElementById('feedSentinel');
+    const feedEndMessage = document.getElementById('feedEndMessage');
+    const loadedCountText = document.getElementById('loadedCountText');
+    const totalCountText = document.getElementById('totalCountText');
 
     const passwordModalBackdrop = document.getElementById('passwordModalBackdrop');
     const openPasswordModalBtn = document.getElementById('openPasswordModalBtn');
@@ -179,6 +182,12 @@ document.addEventListener('DOMContentLoaded', () => {
             </div></article>`;
     };
 
+
+    const updateCountUI = (loadedCount, totalCount) => {
+        if (loadedCountText) loadedCountText.textContent = String(loadedCount);
+        if (totalCountText) totalCountText.textContent = String(totalCount);
+    };
+
     const loadNextPage = async () => {
         if (!canInfinite || loading || !hasMore) return;
         loading = true;
@@ -188,12 +197,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error();
             const payload = await response.json();
             const items = payload.items || [];
-            hasMore = Boolean(payload.hasMore && items.length > 0);
+            const totalCount = Number(payload.totalCount || 0);
+            const loadedCount = Number(payload.loadedCount || 0);
+            updateCountUI(loadedCount, totalCount);
+            hasMore = Boolean(payload.hasMore);
             if (items.length > 0) {
+                if (feedEndMessage) feedEndMessage.hidden = true;
                 grid.insertAdjacentHTML('beforeend', items.map(buildCardHtml).join(''));
                 Array.from(grid.querySelectorAll('.feed-card')).slice(-items.length).forEach(bindCardEvents);
                 updateBadgeLabels(state.columns);
                 page += 1;
+            }
+            if (!hasMore && feedEndMessage) {
+                feedEndMessage.hidden = false;
             }
         } finally {
             loading = false;
@@ -205,6 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!canInfinite) return;
         page = 1;
         hasMore = true;
+        if (feedEndMessage) feedEndMessage.hidden = true;
         grid.innerHTML = '';
         clearSelectionMode();
         await loadNextPage();
@@ -309,6 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     getCards().forEach(bindCardEvents);
     updateSelectionUI();
+    updateCountUI(getCards().length, getCards().length);
     updateTagSummary();
     applyColumn(state.columns);
     if (sortOption) sortOption.value = state.sort;

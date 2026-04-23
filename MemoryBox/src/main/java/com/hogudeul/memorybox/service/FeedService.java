@@ -47,6 +47,20 @@ public class FeedService {
                 offset));
     }
 
+
+    public int getFeedItemCount(String mediaType, String author, String album, String tag,
+                                Long userId, boolean likedOnly, boolean mineOnly) {
+        return feedMapper.countFeedRows(
+                normalizeFilter(mediaType),
+                normalizeFilter(author),
+                normalizeFilter(album),
+                normalizeFilter(tag),
+                userId,
+                likedOnly,
+                mineOnly
+        );
+    }
+
     public List<String> getAuthorFilterOptions(List<FeedItemView> feedItems) {
         Set<String> authors = new LinkedHashSet<>();
         authors.add("전체");

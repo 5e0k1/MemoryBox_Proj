@@ -88,7 +88,7 @@ public class PageController {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         Long userId = loginUser != null ? loginUser.getUserId() : null;
         List<FeedItemView> feedItems = feedService.getFeedItems(null, null, null, null,
-                "uploaded_desc", userId, true, false, 1, 60);
+                "uploaded_desc", userId, true, false, 1, FEED_PAGE_SIZE);
 
         model.addAttribute("loginUser", loginUser);
         model.addAttribute("pageTitle", "좋아요");
@@ -125,12 +125,17 @@ public class PageController {
                                             HttpSession session) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         Long userId = loginUser != null ? loginUser.getUserId() : null;
+        int safeSize = Math.max(1, Math.min(size, 60));
         List<FeedItemView> items = feedService.getFeedItems(type, author, album, tag, sort,
-                userId, likesOnly, mineOnly, page, size);
+                userId, likesOnly, mineOnly, page, safeSize);
+        int totalCount = feedService.getFeedItemCount(type, author, album, tag, userId, likesOnly, mineOnly);
+        int loadedCount = Math.min(totalCount, Math.max(0, (page - 1) * safeSize + items.size()));
 
         Map<String, Object> response = new HashMap<>();
         response.put("items", items);
-        response.put("hasMore", items.size() >= Math.max(1, Math.min(size, 60)));
+        response.put("totalCount", totalCount);
+        response.put("loadedCount", loadedCount);
+        response.put("hasMore", loadedCount < totalCount);
         return response;
     }
 

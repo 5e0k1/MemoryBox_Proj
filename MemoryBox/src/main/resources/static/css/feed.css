@@ -666,3 +666,33 @@ body.modal-open {
     border-radius: 999px;
     padding: 1px 6px;
 }
+
+.strong-chip {
+    font-weight: 800;
+    color: #0f172a;
+    background: #dbeafe;
+    border: 1px solid #93c5fd;
+}
+
+.feed-count-summary {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: #475569;
+    margin-bottom: 2px;
+    padding: 0 4px;
+}
+
+.feed-end-message {
+    text-align: center;
+    color: #64748b;
+    font-size: 0.85rem;
+    margin: 10px 0;
+}
+
+.nav-item em {
+    font-size: 0.68rem;
+    line-height: 1.15;
+    text-align: center;
+}
