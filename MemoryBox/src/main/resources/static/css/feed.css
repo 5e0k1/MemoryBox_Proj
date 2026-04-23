@@ -913,6 +913,9 @@ body.modal-open {
     place-items: center;
     font-weight: 700;
 }
+.notification-badge[hidden] {
+    display: none !important;
+}
 
 .notification-dropdown {
     position: absolute;
@@ -934,8 +937,28 @@ body.modal-open {
 }
 
 .notification-list { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow: auto; }
-.notification-list li a { display: block; padding: 10px 12px; text-decoration: none; color: #1f2937; border-bottom: 1px solid #f1f5f9; }
+.notification-list li a { display: block; padding: 10px 12px 6px; text-decoration: none; color: #1f2937; }
 .notification-list li p { margin: 0 0 4px; font-size: 0.84rem; }
 .notification-list li small { color: #64748b; font-size: 0.72rem; }
 .notification-list li.is-unread { background: #eff6ff; }
 .notification-list li.empty { padding: 14px; text-align: center; color: #64748b; font-size: 0.82rem; }
+.notification-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    padding: 0 12px 10px;
+    border-bottom: 1px solid #f1f5f9;
+}
+.notification-action-btn {
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    padding: 4px 8px;
+    cursor: pointer;
+}
+.notification-action-btn.is-delete {
+    color: #b91c1c;
+    border-color: #fecaca;
+    background: #fff5f5;
+}

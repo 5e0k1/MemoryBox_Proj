@@ -98,7 +98,16 @@ public class FeedService {
         for (FeedItemView item : feedItems) {
             tags.addAll(Arrays.asList(item.getTags()));
         }
-        return new ArrayList<>(tags);
+        List<String> sortedTags = new ArrayList<>(tags);
+        sortedTags.sort((left, right) -> {
+            boolean leftPerson = left.startsWith("@");
+            boolean rightPerson = right.startsWith("@");
+            if (leftPerson == rightPerson) {
+                return left.compareToIgnoreCase(right);
+            }
+            return leftPerson ? -1 : 1;
+        });
+        return sortedTags;
     }
 
     private List<FeedItemView> toView(List<FeedRow> rows) {

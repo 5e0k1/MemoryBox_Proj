@@ -26,6 +26,9 @@ public interface NotificationMapper {
     int markAsRead(@Param("notificationId") Long notificationId,
                    @Param("userId") Long userId);
 
+    int deleteNotification(@Param("notificationId") Long notificationId,
+                           @Param("userId") Long userId);
+
     List<Long> findActiveUserIdsExcept(@Param("excludeUserId") Long excludeUserId);
 
     String findDisplayNameByUserId(@Param("userId") Long userId);

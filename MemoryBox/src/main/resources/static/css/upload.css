@@ -247,6 +247,10 @@ body.upload-busy .mobile-wrap {
     padding: 16px;
 }
 
+.album-modal-backdrop[hidden] {
+    display: none !important;
+}
+
 .album-modal {
     width: min(360px, 100%);
     background: #fff;

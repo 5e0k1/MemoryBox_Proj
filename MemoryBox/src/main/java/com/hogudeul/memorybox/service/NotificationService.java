@@ -117,6 +117,29 @@ public class NotificationService {
         return "/feed";
     }
 
+    @Transactional
+    public boolean markRead(Long userId, Long notificationId) {
+        if (userId == null || notificationId == null) {
+            return false;
+        }
+        NotificationRow row = notificationMapper.findById(notificationId, userId);
+        if (row == null) {
+            return false;
+        }
+        if ("Y".equalsIgnoreCase(row.getIsRead())) {
+            return true;
+        }
+        return notificationMapper.markAsRead(notificationId, userId) > 0;
+    }
+
+    @Transactional
+    public boolean deleteNotification(Long userId, Long notificationId) {
+        if (userId == null || notificationId == null) {
+            return false;
+        }
+        return notificationMapper.deleteNotification(notificationId, userId) > 0;
+    }
+
     private String safeDisplayName(Long userId) {
         String displayName = notificationMapper.findDisplayNameByUserId(userId);
         return (displayName == null || displayName.isBlank()) ? "사용자" : displayName;

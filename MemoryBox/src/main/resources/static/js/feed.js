@@ -613,10 +613,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             notificationList.innerHTML = items.map((item) => `
                 <li class="${item.isRead ? '' : 'is-unread'}">
-                    <a href="/notifications/${item.notificationId}/open">
+                    <a href="/notifications/${item.notificationId}/open" class="notification-link">
                         <p>${escapeHtml(item.message || '')}</p>
                         <small>${escapeHtml(item.relativeCreatedAt || '')}</small>
                     </a>
+                    <div class="notification-actions">
+                        <button type="button" class="notification-action-btn" data-action="notification-read" data-id="${item.notificationId}">읽음</button>
+                        <button type="button" class="notification-action-btn is-delete" data-action="notification-delete" data-id="${item.notificationId}">삭제</button>
+                    </div>
                 </li>
             `).join('');
         } catch (_) {
@@ -637,6 +641,30 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!notificationDropdown || notificationDropdown.hidden) return;
         if (event.target.closest('#notificationDropdown, #notificationToggleBtn')) return;
         notificationDropdown.hidden = true;
+    });
+
+    notificationList?.addEventListener('click', async (event) => {
+        const actionButton = event.target.closest('[data-action="notification-read"], [data-action="notification-delete"]');
+        if (!actionButton) return;
+        event.preventDefault();
+        event.stopPropagation();
+
+        const notificationId = actionButton.dataset.id;
+        if (!notificationId) return;
+        const isDelete = actionButton.dataset.action === 'notification-delete';
+        const endpoint = isDelete
+            ? `/api/notifications/${notificationId}/delete`
+            : `/api/notifications/${notificationId}/read`;
+
+        try {
+            const response = await fetch(endpoint, { method: 'POST' });
+            if (!response.ok) {
+                return;
+            }
+            await refreshNotifications();
+        } catch (_) {
+            // noop
+        }
     });
 
     getCards().forEach(bindCardEvents);

@@ -1,5 +1,6 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -57,7 +58,7 @@
             </div>
             <ul class="tag-chips">
                 <c:forEach var="tag" items="${detail.tags}">
-                    <li><button type="button" class="tag-chip" aria-label="태그 ${tag}">#${tag}</button></li>
+                    <li><button type="button" class="tag-chip ${fn:startsWith(tag, '@') ? 'is-person' : ''}" aria-label="태그 ${tag}">${tag}</button></li>
                 </c:forEach>
                 <c:if test="${empty detail.tags}">
                     <li><span class="tag-chip is-empty">태그 없음</span></li>

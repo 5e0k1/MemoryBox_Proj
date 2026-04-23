@@ -92,6 +92,12 @@
           AND is_read = 'N'
     </update>
 
+    <delete id="deleteNotification">
+        DELETE FROM NOTIFICATION
+        WHERE notification_id = #{notificationId}
+          AND receiver_user_id = #{userId}
+    </delete>
+
     <select id="findActiveUserIdsExcept" resultType="java.lang.Long">
         SELECT user_id
         FROM USER

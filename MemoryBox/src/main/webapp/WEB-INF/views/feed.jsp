@@ -21,8 +21,7 @@
             <span class="login-user">${loginUser.displayName}</span>
             <button type="button" class="icon-btn icon-notification" id="notificationToggleBtn" aria-label="알림 열기">
                 🔔
-                <c:if test="${notificationPanel.unreadCount > 0}"><span class="notification-badge" id="notificationUnreadBadge">${notificationPanel.unreadCount}</span></c:if>
-                <c:if test="${notificationPanel.unreadCount == 0}"><span class="notification-badge" id="notificationUnreadBadge" hidden>0</span></c:if>
+                <span class="notification-badge" id="notificationUnreadBadge" style="${notificationPanel.unreadCount == 0 ? 'display:none;' : ''}">${notificationPanel.unreadCount}</span>
             </button>
             <form action="/logout" method="post">
                 <button class="icon-btn icon-logout" type="submit" aria-label="로그아웃">
@@ -41,10 +40,14 @@
         <ul id="notificationList" class="notification-list">
             <c:forEach var="noti" items="${notificationPanel.items}">
                 <li class="${noti.isRead ? '' : 'is-unread'}">
-                    <a href="/notifications/${noti.notificationId}/open">
+                    <a href="/notifications/${noti.notificationId}/open" class="notification-link">
                         <p>${noti.message}</p>
                         <small>${noti.relativeCreatedAt}</small>
                     </a>
+                    <div class="notification-actions">
+                        <button type="button" class="notification-action-btn" data-action="notification-read" data-id="${noti.notificationId}">읽음</button>
+                        <button type="button" class="notification-action-btn is-delete" data-action="notification-delete" data-id="${noti.notificationId}">삭제</button>
+                    </div>
                 </li>
             </c:forEach>
             <c:if test="${empty notificationPanel.items}"><li class="empty">새 알림이 없습니다.</li></c:if>

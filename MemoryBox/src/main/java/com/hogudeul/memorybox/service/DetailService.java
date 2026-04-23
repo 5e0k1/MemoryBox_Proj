@@ -297,7 +297,7 @@ public class DetailService {
                 row.getParentId(),
                 defaultText(row.getDisplayName(), "알 수 없음"),
                 defaultText(row.getContent(), ""),
-                formatDateTime(row.getCreatedAt()),
+                timeDisplayService.formatRelativeUploadedAt(row.getCreatedAt()),
                 mine
         );
     }
@@ -309,7 +309,29 @@ public class DetailService {
         return Arrays.stream(tagsCsv.split(","))
                 .map(String::trim)
                 .filter(tag -> !tag.isBlank())
+                .map(this::formatScopedTag)
+                .sorted((left, right) -> {
+                    boolean leftPerson = left.startsWith("@");
+                    boolean rightPerson = right.startsWith("@");
+                    if (leftPerson == rightPerson) {
+                        return left.compareToIgnoreCase(right);
+                    }
+                    return leftPerson ? -1 : 1;
+                })
                 .toArray(String[]::new);
+    }
+
+    private String formatScopedTag(String rawTag) {
+        int delimiterIndex = rawTag.indexOf("|");
+        if (delimiterIndex < 0) {
+            return "#" + rawTag;
+        }
+        String scope = rawTag.substring(0, delimiterIndex);
+        String name = rawTag.substring(delimiterIndex + 1);
+        if ("P".equalsIgnoreCase(scope)) {
+            return "@" + name;
+        }
+        return "#" + name;
     }
 
     private String toPublicFileUrl(String storageKey) {
