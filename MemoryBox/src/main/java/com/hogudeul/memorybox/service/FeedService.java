@@ -117,6 +117,9 @@ public class FeedService {
         if (value == null || value.isBlank() || "전체".equals(value) || "all".equalsIgnoreCase(value)) {
             return null;
         }
+        if (value.startsWith("#") || value.startsWith("@")) {
+            return value.substring(1);
+        }
         return value;
     }
 
@@ -152,7 +155,23 @@ public class FeedService {
         return Arrays.stream(tagsCsv.split(","))
                 .map(String::trim)
                 .filter(tag -> !tag.isBlank())
+                .map(this::formatScopedTag)
                 .toArray(String[]::new);
+    }
+
+
+    private String formatScopedTag(String rawTag) {
+        int delimiterIndex = rawTag.indexOf("|");
+        if (delimiterIndex < 0) {
+            return "#" + rawTag;
+        }
+
+        String scope = rawTag.substring(0, delimiterIndex);
+        String name = rawTag.substring(delimiterIndex + 1);
+        if ("P".equalsIgnoreCase(scope)) {
+            return "@" + name;
+        }
+        return "#" + name;
     }
 
     private String formatDateTime(LocalDateTime time) {

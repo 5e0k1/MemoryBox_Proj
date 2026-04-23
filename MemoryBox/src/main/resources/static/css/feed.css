@@ -649,3 +649,20 @@ body.modal-open {
 .control-panel .inline-filter select {
     margin-top: 4px;
 }
+
+.tag-option.is-person span {
+    color: #166534;
+    font-weight: 600;
+}
+
+.tag-option.is-person input {
+    accent-color: #22c55e;
+}
+
+.tag-list li.person-tag {
+    color: #166534;
+    background: #dcfce7;
+    border: 1px solid #86efac;
+    border-radius: 999px;
+    padding: 1px 6px;
+}

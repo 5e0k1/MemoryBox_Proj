@@ -18,8 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
     const authorFilter = document.getElementById('authorFilter');
     const albumFilter = document.getElementById('albumFilter');
-    const tagFilter = document.getElementById('tagFilter');
     const sortOption = document.getElementById('sortOption');
+    const tagChecks = document.querySelectorAll('.tag-check');
+    const selectedTagText = document.getElementById('selectedTagText');
     const infiniteLoader = document.getElementById('infiniteLoader');
     const feedSentinel = document.getElementById('feedSentinel');
 
@@ -38,12 +39,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = {
         type: 'all',
         columns: isSearchMode ? '3' : '1',
-        author: '전체',
-        album: '전체',
-        tag: '',
         sort: 'uploaded_desc',
         scrollTop: 0
     };
+
+    const updateTagSummary = () => {
+        if (!selectedTagText) return;
+        const selectedTags = Array.from(tagChecks).filter((check) => check.checked).map((check) => check.value);
+        if (selectedTags.length === 0) {
+            selectedTagText.textContent = '태그 전체';
+        } else if (selectedTags.length <= 2) {
+            selectedTagText.textContent = selectedTags.join(', ');
+        } else {
+            selectedTagText.textContent = `${selectedTags.slice(0, 2).join(', ')} 외 ${selectedTags.length - 2}`;
+        }
+    };
+
+    const selectedPrimaryTag = () => Array.from(tagChecks).find((check) => check.checked)?.value || '';
 
     const getCards = () => grid.querySelectorAll('.feed-card');
     const getMediaBadges = () => grid.querySelectorAll('.media-badge');
@@ -140,16 +152,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.type !== 'all') params.set('type', state.type);
         if (authorFilter && authorFilter.value !== '전체') params.set('author', authorFilter.value);
         if (albumFilter && albumFilter.value !== '전체') params.set('album', albumFilter.value);
-        if (tagFilter && tagFilter.value) params.set('tag', tagFilter.value);
+        const selectedTag = selectedPrimaryTag();
+        if (selectedTag) params.set('tag', selectedTag);
         if (sortOption) params.set('sort', sortOption.value);
         if (mode === 'likes') params.set('likesOnly', 'true');
         if (mode === 'mypage') params.set('mineOnly', 'true');
         return params;
     };
 
+    const buildTagLi = (tag) => `<li class="${tag.startsWith('@') ? 'person-tag' : ''}">${tag}</li>`;
+
     const buildCardHtml = (item) => {
         const mediaLabel = item.mediaType === 'video' ? 'Video' : 'Photo';
-        const tagHtml = (item.tags || []).map((tag) => `<li>#${tag}</li>`).join('');
+        const tagHtml = (item.tags || []).map(buildTagLi).join('');
         const title = item.title || '(제목 없음)';
         return `<article class="feed-card" data-media-type="${item.mediaType}" data-item-id="${item.id}">
             <a class="thumb-link" href="/feed/${item.id}" aria-label="${title} 상세보기">
@@ -205,6 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
             Object.assign(state, JSON.parse(raw));
             tabButtons.forEach((button) => button.classList.toggle('is-active', button.dataset.filterType === state.type));
             applyColumn(state.columns || '1');
+            if (sortOption) sortOption.value = state.sort || 'uploaded_desc';
             window.requestAnimationFrame(() => window.scrollTo({ top: state.scrollTop || 0, behavior: 'auto' }));
         } catch (ignore) {
             // noop
@@ -233,8 +249,14 @@ document.addEventListener('DOMContentLoaded', () => {
     colButtons.forEach((button) => button.addEventListener('click', () => applyColumn(button.dataset.columns)));
     albumFilter?.addEventListener('change', reloadFromFirstPage);
     authorFilter?.addEventListener('change', reloadFromFirstPage);
-    tagFilter?.addEventListener('change', reloadFromFirstPage);
-    sortOption?.addEventListener('change', reloadFromFirstPage);
+    sortOption?.addEventListener('change', () => {
+        state.sort = sortOption.value;
+        reloadFromFirstPage();
+    });
+    tagChecks.forEach((check) => check.addEventListener('change', () => {
+        updateTagSummary();
+        reloadFromFirstPage();
+    }));
 
     cancelSelectionBtn?.addEventListener('click', clearSelectionMode);
 
@@ -287,7 +309,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     getCards().forEach(bindCardEvents);
     updateSelectionUI();
+    updateTagSummary();
     applyColumn(state.columns);
+    if (sortOption) sortOption.value = state.sort;
     if (isFeedMode) restoreFeedState();
     initInfiniteObserver();
     if (isFeedMode) window.addEventListener('beforeunload', saveFeedState);
