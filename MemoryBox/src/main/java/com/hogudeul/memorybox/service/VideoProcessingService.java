@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.imageio.ImageIO;
@@ -41,10 +42,11 @@ public class VideoProcessingService {
         this.uploadMapper = uploadMapper;
         this.storageService = storageService;
         this.storageRoot = Paths.get(storageRoot).toAbsolutePath().normalize();
-        this.ffmpegCommand = ffmpegCommand;
+        this.ffmpegCommand = ffmpegCommand == null || ffmpegCommand.isBlank() ? "ffmpeg" : ffmpegCommand.trim();
     }
 
     @Async("mediaTaskExecutor")
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void generateVideoVariantsAsync(Long mediaId, String originalStorageKey, String originalName) {
         Path originalPath = storageRoot.resolve(originalStorageKey).normalize();
         if (!Files.exists(originalPath)) {
@@ -55,7 +57,12 @@ public class VideoProcessingService {
         try {
             generateThumb(mediaId, originalPath, originalName);
         } catch (Exception e) {
-            log.error("[video-processing] THUMB 생성 실패. mediaId={}", mediaId, e);
+            log.error("[video-processing] THUMB 생성 실패(1차). mediaId={}", mediaId, e);
+            try {
+                generateThumbFromStart(mediaId, originalPath, originalName);
+            } catch (Exception secondEx) {
+                log.error("[video-processing] THUMB 생성 실패(2차 fallback). mediaId={}", mediaId, secondEx);
+            }
         }
 
         try {
@@ -65,19 +72,10 @@ public class VideoProcessingService {
         }
     }
 
-    @Transactional
     protected void generateThumb(Long mediaId, Path originalPath, String originalName) throws IOException {
         Path tempThumb = Files.createTempFile("memorybox-thumb-", ".jpg");
         try {
-            runFfmpeg(List.of(
-                    ffmpegCommand,
-                    "-y",
-                    "-ss", "00:00:01",
-                    "-i", originalPath.toString(),
-                    "-frames:v", "1",
-                    "-q:v", "4",
-                    tempThumb.toString()
-            ), mediaId, "THUMB");
+            runFfmpeg(buildThumbCommand(originalPath, tempThumb, "00:00:01"), mediaId, "THUMB");
 
             byte[] bytes = Files.readAllBytes(tempThumb);
             StoredFile thumb = storageService.store(bytes, originalName, "jpg", "image/jpeg", StorageCategory.THUMB, LocalDate.now());
@@ -91,7 +89,22 @@ public class VideoProcessingService {
         }
     }
 
-    @Transactional
+    protected void generateThumbFromStart(Long mediaId, Path originalPath, String originalName) throws IOException {
+        Path tempThumb = Files.createTempFile("memorybox-thumb-fallback-", ".jpg");
+        try {
+            runFfmpeg(buildThumbCommand(originalPath, tempThumb, "00:00:00"), mediaId, "THUMB-FALLBACK");
+            byte[] bytes = Files.readAllBytes(tempThumb);
+            StoredFile thumb = storageService.store(bytes, originalName, "jpg", "image/jpeg", StorageCategory.THUMB, LocalDate.now());
+            BufferedImage image = ImageIO.read(tempThumb.toFile());
+            Integer width = image != null ? image.getWidth() : null;
+            Integer height = image != null ? image.getHeight() : null;
+            saveVariant(mediaId, "THUMB", thumb, width, height, null);
+            log.info("[video-processing] THUMB fallback 생성 완료. mediaId={}, key={}", mediaId, thumb.getStorageKey());
+        } finally {
+            Files.deleteIfExists(tempThumb);
+        }
+    }
+
     protected void generatePreview(Long mediaId, Path originalPath, String originalName) throws IOException {
         Path tempPreview = Files.createTempFile("memorybox-preview-", ".mp4");
         try {
@@ -102,7 +115,7 @@ public class VideoProcessingService {
                     "-t", "4",
                     "-i", originalPath.toString(),
                     "-an",
-                    "-vf", "setpts=0.5*PTS,scale='min(480,iw)':-2",
+                    "-vf", "setpts=0.5*PTS,scale=min(480\\,iw):-2",
                     "-r", "24",
                     "-c:v", "libx264",
                     "-preset", "veryfast",
@@ -121,6 +134,7 @@ public class VideoProcessingService {
     }
 
     private void runFfmpeg(List<String> command, Long mediaId, String variantType) throws IOException {
+        log.info("[video-processing] ffmpeg 실행. mediaId={}, variant={}, command={}", mediaId, variantType, String.join(" ", command));
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.redirectErrorStream(true);
         Process process = pb.start();
@@ -140,6 +154,18 @@ public class VideoProcessingService {
         if (process.exitValue() != 0) {
             throw new IOException("ffmpeg 실패(mediaId=" + mediaId + ", variant=" + variantType + "): " + output);
         }
+    }
+
+    private List<String> buildThumbCommand(Path originalPath, Path tempThumb, String seekTime) {
+        return List.of(
+                ffmpegCommand,
+                "-y",
+                "-ss", seekTime,
+                "-i", originalPath.toString(),
+                "-frames:v", "1",
+                "-q:v", "4",
+                tempThumb.toString()
+        );
     }
 
     private void saveVariant(Long mediaId,
