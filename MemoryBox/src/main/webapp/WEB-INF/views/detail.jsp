@@ -89,8 +89,8 @@
                                 <input type="checkbox"
                                        name="selectedTagIds"
                                        value="${tagOption.tagId}"
-                                       ${fn:contains(fn:join(detail.tags, ','), tagOption.tagScope == 'P' ? fn:concat('@', tagOption.tagName) : fn:concat('#', tagOption.tagName)) ? 'checked' : ''}>
-                                <span>${tagOption.tagScope == 'P' ? fn:concat('@', tagOption.tagName) : fn:concat('#', tagOption.tagName)}</span>
+                                       ${fn:contains(fn:join(detail.tags, ','), tagOption.tagName) ? 'checked' : ''}>
+                                <span>${tagOption.tagScope == 'P' ? '@' : '#'}${tagOption.tagName}</span>
                             </label>
                         </c:forEach>
                     </div>
