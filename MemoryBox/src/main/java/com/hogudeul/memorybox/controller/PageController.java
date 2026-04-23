@@ -56,6 +56,7 @@ public class PageController {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         List<FeedItemView> feedItems = feedService.getFeedItems(null, null, null, null,
                 "uploaded_desc", null, false, false, 1, FEED_PAGE_SIZE);
+        int totalCount = feedService.getFeedItemCount(null, null, null, null, null, false, false);
         List<FeedItemView> optionSource = feedService.getImageFeedItems();
 
         model.addAttribute("loginUser", loginUser);
@@ -63,6 +64,7 @@ public class PageController {
         model.addAttribute("pwdChanged", "true".equals(pwdChanged));
         model.addAttribute("pageTitle", "피드");
         model.addAttribute("feedItems", feedItems);
+        model.addAttribute("totalCount", totalCount);
         return "feed";
     }
 
@@ -71,12 +73,14 @@ public class PageController {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         List<FeedItemView> feedItems = feedService.getFeedItems(null, null, null, null,
                 "uploaded_desc", null, false, false, 1, FEED_PAGE_SIZE);
+        int totalCount = feedService.getFeedItemCount(null, null, null, null, null, false, false);
         List<FeedItemView> optionSource = feedService.getImageFeedItems();
 
         model.addAttribute("loginUser", loginUser);
         model.addAttribute("mode", "search");
         model.addAttribute("pageTitle", "검색");
         model.addAttribute("feedItems", feedItems);
+        model.addAttribute("totalCount", totalCount);
         model.addAttribute("authors", feedService.getAuthorFilterOptions(optionSource));
         model.addAttribute("albums", feedService.getAlbumFilterOptions(optionSource));
         model.addAttribute("tags", feedService.getTagFilterOptionsWithoutAll(optionSource));
@@ -89,11 +93,13 @@ public class PageController {
         Long userId = loginUser != null ? loginUser.getUserId() : null;
         List<FeedItemView> feedItems = feedService.getFeedItems(null, null, null, null,
                 "uploaded_desc", userId, true, false, 1, FEED_PAGE_SIZE);
+        int totalCount = feedService.getFeedItemCount(null, null, null, null, userId, true, false);
 
         model.addAttribute("loginUser", loginUser);
-        model.addAttribute("pageTitle", "좋아요");
+        model.addAttribute("pageTitle", "좋아요 누른 항목");
         model.addAttribute("mode", "likes");
         model.addAttribute("feedItems", feedItems);
+        model.addAttribute("totalCount", totalCount);
         return "feed";
     }
 
@@ -103,11 +109,13 @@ public class PageController {
         Long userId = loginUser != null ? loginUser.getUserId() : null;
         List<FeedItemView> feedItems = feedService.getFeedItems(null, null, null, null,
                 "uploaded_desc", userId, false, true, 1, 60);
+        int totalCount = feedService.getFeedItemCount(null, null, null, null, userId, false, true);
 
         model.addAttribute("loginUser", loginUser);
-        model.addAttribute("pageTitle", "마이페이지");
+        model.addAttribute("pageTitle", "마이페이지 & 업로드한 게시물");
         model.addAttribute("mode", "mypage");
         model.addAttribute("feedItems", feedItems);
+        model.addAttribute("totalCount", totalCount);
         return "feed";
     }
 

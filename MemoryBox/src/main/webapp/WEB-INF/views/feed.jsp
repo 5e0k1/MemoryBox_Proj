@@ -89,7 +89,7 @@
     <div class="floating-head">
         <div class="feed-count-summary" id="feedCountSummary">
             <span>불러온 <strong id="loadedCountText">${fn:length(feedItems)}</strong>개</span>
-            <span>/ 전체 <strong id="totalCountText">-</strong>개</span>
+            <span>/ 전체 <strong id="totalCountText">${totalCount}</strong>개</span>
         </div>
         <div class="view-sort-bar">
             <div class="column-controls" aria-label="피드 보기 방식 선택">
@@ -155,8 +155,8 @@
 <nav class="bottom-nav" aria-label="하단 메뉴">
     <a class="nav-item ${empty mode or mode eq 'feed' ? 'is-active' : ''}" href="/feed"><span>🏠</span><em>피드</em></a>
     <a class="nav-item ${mode eq 'search' ? 'is-active' : ''}" href="/search"><span>🔎</span><em>검색</em></a>
-    <a class="nav-item ${mode eq 'likes' ? 'is-active' : ''}" href="/likes"><span>❤</span><em>좋아요 누른 항목</em></a>
-    <a class="nav-item ${mode eq 'mypage' ? 'is-active' : ''}" href="/mypage"><span>👤</span><em>마이페이지 &amp; 업로드한 게시물</em></a>
+    <a class="nav-item ${mode eq 'likes' ? 'is-active' : ''}" href="/likes"><span>❤</span><em>좋아요</em></a>
+    <a class="nav-item ${mode eq 'mypage' ? 'is-active' : ''}" href="/mypage"><span>👤</span><em>마이</em></a>
 </nav>
 
 <div id="passwordModalBackdrop" class="modal-backdrop" hidden>

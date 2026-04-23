@@ -326,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     getCards().forEach(bindCardEvents);
     updateSelectionUI();
-    updateCountUI(getCards().length, getCards().length);
+    updateCountUI(getCards().length, Number(totalCountText?.textContent || getCards().length));
     updateTagSummary();
     applyColumn(state.columns);
     if (sortOption) sortOption.value = state.sort;
