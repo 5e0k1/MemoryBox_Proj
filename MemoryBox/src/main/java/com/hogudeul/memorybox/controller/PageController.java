@@ -370,7 +370,11 @@ public class PageController {
 
         MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
         if (fileInfo.getMimeType() != null && !fileInfo.getMimeType().isBlank()) {
-            mediaType = MediaType.parseMediaType(fileInfo.getMimeType());
+            try {
+                mediaType = MediaType.parseMediaType(fileInfo.getMimeType());
+            } catch (Exception ex) {
+                log.warn("Invalid mime type for download. mediaId={}, mimeType={}", itemId, fileInfo.getMimeType());
+            }
         }
 
         String contentDisposition = buildAttachmentContentDisposition(fileInfo.getFileName(), "download");

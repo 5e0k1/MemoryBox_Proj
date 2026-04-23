@@ -195,9 +195,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const bindCardEvents = (card) => {
         let longPressTimer;
         let longPressTriggered = false;
+        let suppressContextMenuUntil = 0;
 
         card.addEventListener('contextmenu', (event) => {
             if (isActionElement(event.target)) return;
+            if (Date.now() < suppressContextMenuUntil) {
+                event.preventDefault();
+                return;
+            }
             event.preventDefault();
             toggleCardSelection(card);
         });
@@ -207,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
             longPressTriggered = false;
             longPressTimer = setTimeout(() => {
                 longPressTriggered = true;
+                suppressContextMenuUntil = Date.now() + 800;
                 toggleCardSelection(card);
             }, 500);
         }, { passive: true });
