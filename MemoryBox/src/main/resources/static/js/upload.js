@@ -4,14 +4,43 @@
     initTakenAtDefault();
 
     function initPreview() {
-        const input = document.getElementById('multiImageInput');
+        const multiInput = document.getElementById('multiImageInput');
         const previewList = document.getElementById('previewList');
-        if (!input || !previewList) return;
+        const singleInput = document.getElementById('singleImageInput');
+        const singlePreview = document.getElementById('singlePreview');
 
-        input.addEventListener('change', function () {
-            previewList.innerHTML = '';
-            const files = Array.from(input.files || []);
-            files.forEach(function (file) {
+        if (multiInput && previewList) {
+            multiInput.addEventListener('change', function () {
+                previewList.innerHTML = '';
+                const files = Array.from(multiInput.files || []);
+                files.forEach(function (file) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'preview-item';
+
+                    const image = document.createElement('img');
+                    image.alt = file.name;
+                    image.src = URL.createObjectURL(file);
+
+                    const right = document.createElement('div');
+                    const name = document.createElement('div');
+                    name.textContent = file.name;
+
+                    right.appendChild(name);
+                    wrapper.appendChild(image);
+                    wrapper.appendChild(right);
+                    previewList.appendChild(wrapper);
+                });
+            });
+        }
+
+        if (singleInput && singlePreview) {
+            singleInput.addEventListener('change', function () {
+                singlePreview.innerHTML = '';
+                const file = (singleInput.files || [])[0];
+                if (!file) {
+                    return;
+                }
+
                 const wrapper = document.createElement('div');
                 wrapper.className = 'preview-item';
 
@@ -22,13 +51,13 @@
                 const right = document.createElement('div');
                 const name = document.createElement('div');
                 name.textContent = file.name;
-
                 right.appendChild(name);
+
                 wrapper.appendChild(image);
                 wrapper.appendChild(right);
-                previewList.appendChild(wrapper);
+                singlePreview.appendChild(wrapper);
             });
-        });
+        }
     }
 
     function initTagWidgets() {

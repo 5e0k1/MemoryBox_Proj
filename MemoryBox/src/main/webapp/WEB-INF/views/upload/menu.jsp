@@ -10,6 +10,7 @@
 </head>
 <body>
 <div class="mobile-wrap">
+    <a class="upload-home" href="${pageContext.request.contextPath}/feed">MemoryBox</a>
     <header class="upload-header">
         <h1>업로드 방식 선택</h1>
         <p>${loginUser.displayName}님, 어떤 업로드를 진행할까요?</p>

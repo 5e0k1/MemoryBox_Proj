@@ -95,15 +95,15 @@
     <select id="findActiveTagsByUserId" resultMap="TagMap">
         SELECT tag_id, user_id, tag_name, normalized_name
         FROM TAG
-        WHERE user_id = #{userId}
+        WHERE (user_id = #{userId} OR tag_scope = 'P')
           AND del_yn = 'N'
-        ORDER BY tag_name ASC
+        ORDER BY tag_scope DESC, tag_name ASC
     </select>
 
     <select id="findActiveTagsByIds" resultMap="TagMap">
         SELECT tag_id, user_id, tag_name, normalized_name
         FROM TAG
-        WHERE user_id = #{userId}
+        WHERE (user_id = #{userId} OR tag_scope = 'P')
           AND del_yn = 'N'
           AND tag_id IN
           <foreach collection="tagIds" item="tagId" open="(" separator="," close=")">

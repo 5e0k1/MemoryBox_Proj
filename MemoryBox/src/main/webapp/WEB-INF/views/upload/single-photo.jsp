@@ -11,10 +11,11 @@
 </head>
 <body>
 <div class="mobile-wrap">
+    <a class="upload-home" href="${pageContext.request.contextPath}/feed">MemoryBox</a>
     <h1>사진 1장 업로드</h1>
     <c:if test="${not empty errorMessage}"><p class="msg error">${errorMessage}</p></c:if>
     <form method="post" enctype="multipart/form-data" class="upload-form">
-        <label>사진 파일<input type="file" name="imageFile" accept="image/*" required></label>
+        <label>사진 파일<input id="singleImageInput" type="file" name="imageFile" accept="image/*" required></label>
         <label>제목<input type="text" name="title" value="${form.title}" maxlength="100"></label>
         <label>촬영일시<input type="datetime-local" class="taken-at-input" name="takenAt" value="${form.takenAt}"></label>
         <label>앨범
@@ -25,6 +26,11 @@
                 </c:forEach>
             </select>
         </label>
+
+        <section>
+            <h2>파일 미리보기</h2>
+            <div id="singlePreview" class="preview-list"></div>
+        </section>
 
         <section class="tag-widget" data-widget="tag-picker" data-create-url="${pageContext.request.contextPath}/upload/tag">
             <div class="tag-widget-header">

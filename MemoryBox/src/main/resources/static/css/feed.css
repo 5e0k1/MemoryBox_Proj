@@ -696,3 +696,7 @@ body.modal-open {
     line-height: 1.15;
     text-align: center;
 }
+
+.infinite-loader[hidden] {
+    display: none !important;
+}

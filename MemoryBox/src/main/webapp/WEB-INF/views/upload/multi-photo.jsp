@@ -11,6 +11,7 @@
 </head>
 <body>
 <div class="mobile-wrap">
+    <a class="upload-home" href="${pageContext.request.contextPath}/feed">MemoryBox</a>
     <h1>사진 여러 장 업로드</h1>
     <c:if test="${not empty errorMessage}"><p class="msg error">${errorMessage}</p></c:if>
     <form method="post" enctype="multipart/form-data" class="upload-form" id="multiUploadForm">
