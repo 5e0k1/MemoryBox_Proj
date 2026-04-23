@@ -54,9 +54,10 @@ public class PageController {
                            Model model,
                            HttpSession session) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        Long userId = loginUser != null ? loginUser.getUserId() : null;
         List<FeedItemView> feedItems = feedService.getFeedItems(null, null, null, null,
-                "uploaded_desc", null, false, false, 1, FEED_PAGE_SIZE);
-        int totalCount = feedService.getFeedItemCount(null, null, null, null, null, false, false);
+                "uploaded_desc", userId, false, false, 1, FEED_PAGE_SIZE);
+        int totalCount = feedService.getFeedItemCount(null, null, null, null, userId, false, false);
         List<FeedItemView> optionSource = feedService.getImageFeedItems();
 
         model.addAttribute("loginUser", loginUser);
@@ -71,9 +72,10 @@ public class PageController {
     @GetMapping("/search")
     public String searchPage(Model model, HttpSession session) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        Long userId = loginUser != null ? loginUser.getUserId() : null;
         List<FeedItemView> feedItems = feedService.getFeedItems(null, null, null, null,
-                "uploaded_desc", null, false, false, 1, FEED_PAGE_SIZE);
-        int totalCount = feedService.getFeedItemCount(null, null, null, null, null, false, false);
+                "uploaded_desc", userId, false, false, 1, FEED_PAGE_SIZE);
+        int totalCount = feedService.getFeedItemCount(null, null, null, null, userId, false, false);
         List<FeedItemView> optionSource = feedService.getImageFeedItems();
 
         model.addAttribute("loginUser", loginUser);
@@ -222,6 +224,68 @@ public class PageController {
         return "redirect:/feed/" + itemId;
     }
 
+    @PostMapping("/api/feed/{itemId}/like")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> likeApi(@PathVariable Long itemId,
+                                                       @RequestParam("action") String action,
+                                                       HttpSession session) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        if (loginUser == null) {
+            return ResponseEntity.status(401).body(buildInteractionResponse(false, "로그인이 필요합니다.", itemId, null));
+        }
+        try {
+            boolean like = "like".equalsIgnoreCase(action);
+            boolean ok = detailService.setLike(itemId, loginUser.getUserId(), like);
+            if (!ok) {
+                return ResponseEntity.badRequest().body(buildInteractionResponse(false, "게시물을 찾을 수 없습니다.", itemId, loginUser.getUserId()));
+            }
+            return ResponseEntity.ok(buildInteractionResponse(true, "", itemId, loginUser.getUserId()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(buildInteractionResponse(false, "좋아요 처리 중 오류가 발생했습니다.", itemId, loginUser.getUserId()));
+        }
+    }
+
+    @GetMapping("/api/feed/{itemId}/comments")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> commentsApi(@PathVariable Long itemId, HttpSession session) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        if (loginUser == null) {
+            return ResponseEntity.status(401).body(buildInteractionResponse(false, "로그인이 필요합니다.", itemId, null));
+        }
+
+        Map<String, Object> response = buildInteractionResponse(true, "", itemId, loginUser.getUserId());
+        response.put("comments", detailService.getComments(itemId, loginUser.getUserId()));
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/api/feed/{itemId}/comments")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> addCommentApi(@PathVariable Long itemId,
+                                                              @RequestParam("content") String content,
+                                                              @RequestParam(required = false) Long parentId,
+                                                              HttpSession session) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        if (loginUser == null) {
+            return ResponseEntity.status(401).body(buildInteractionResponse(false, "로그인이 필요합니다.", itemId, null));
+        }
+
+        try {
+            boolean ok = detailService.addComment(itemId, loginUser.getUserId(), content, parentId);
+            if (!ok) {
+                if (content == null || content.isBlank()) {
+                    return ResponseEntity.badRequest().body(buildInteractionResponse(false, "댓글 내용을 입력해 주세요.", itemId, loginUser.getUserId()));
+                }
+                return ResponseEntity.badRequest().body(buildInteractionResponse(false, "댓글 등록에 실패했습니다. (대댓글은 1단계까지만 가능합니다)", itemId, loginUser.getUserId()));
+            }
+
+            Map<String, Object> response = buildInteractionResponse(true, "댓글이 등록되었습니다.", itemId, loginUser.getUserId());
+            response.put("comments", detailService.getComments(itemId, loginUser.getUserId()));
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(buildInteractionResponse(false, "댓글 처리 중 오류가 발생했습니다.", itemId, loginUser.getUserId()));
+        }
+    }
+
     @GetMapping("/feed/{itemId}/download")
     public ResponseEntity<StreamingResponseBody> downloadOriginal(@PathVariable Long itemId,
                                                                   HttpServletRequest request,
@@ -365,6 +429,22 @@ public class PageController {
             current = current.getCause();
         }
         return false;
+    }
+
+    private Map<String, Object> buildInteractionResponse(boolean success, String message, Long itemId, Long userId) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", success);
+        response.put("message", message);
+
+        if (userId != null) {
+            MediaDetailView detail = detailService.getMediaDetail(itemId, userId);
+            if (detail != null) {
+                response.put("likeCount", detail.getLikeCount());
+                response.put("commentCount", detail.getCommentCount());
+                response.put("likedByMe", detail.isLikedByMe());
+            }
+        }
+        return response;
     }
 
     public static class DownloadZipRequest {

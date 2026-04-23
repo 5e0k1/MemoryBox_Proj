@@ -117,6 +117,7 @@ public class FeedService {
                     formatDateTime(row.getUploadedAt()),
                     safeInt(row.getLikeCount()),
                     safeInt(row.getCommentCount()),
+                    safeInt(row.getLikedByMe()) > 0,
                     tags,
                     defaultText(row.getAlbumName(), "미분류"),
                     formatDateTime(row.getTakenAt()),

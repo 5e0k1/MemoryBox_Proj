@@ -14,13 +14,14 @@ public class FeedItemView {
     private String uploadedAt;
     private int likeCount;
     private int commentCount;
+    private boolean likedByMe;
     private String[] tags;
     private String albumName;
     private String takenAt;
     private String displayAt;
 
     public FeedItemView(Long id, String mediaType, String thumbnailUrl, String title, String author,
-                        int shotYear, String uploadedAt, int likeCount, int commentCount, String[] tags,
+                        int shotYear, String uploadedAt, int likeCount, int commentCount, boolean likedByMe, String[] tags,
                         String albumName, String takenAt, String displayAt) {
         this.id = id;
         this.mediaType = mediaType;
@@ -31,6 +32,7 @@ public class FeedItemView {
         this.uploadedAt = uploadedAt;
         this.likeCount = likeCount;
         this.commentCount = commentCount;
+        this.likedByMe = likedByMe;
         this.tags = tags;
         this.albumName = albumName;
         this.takenAt = takenAt;
@@ -107,6 +109,14 @@ public class FeedItemView {
 
     public void setCommentCount(int commentCount) {
         this.commentCount = commentCount;
+    }
+
+    public boolean isLikedByMe() {
+        return likedByMe;
+    }
+
+    public void setLikedByMe(boolean likedByMe) {
+        this.likedByMe = likedByMe;
     }
 
     public String[] getTags() {
