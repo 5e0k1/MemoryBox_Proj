@@ -15,6 +15,7 @@ public class FeedRow {
     private String storageKey;
     private Integer likeCount;
     private Integer commentCount;
+    private Integer likedByMe;
     private String tagsCsv;
 
     public Long getMediaId() {
@@ -103,6 +104,14 @@ public class FeedRow {
 
     public void setCommentCount(Integer commentCount) {
         this.commentCount = commentCount;
+    }
+
+    public Integer getLikedByMe() {
+        return likedByMe;
+    }
+
+    public void setLikedByMe(Integer likedByMe) {
+        this.likedByMe = likedByMe;
     }
 
     public String getTagsCsv() {

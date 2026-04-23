@@ -117,6 +117,7 @@ public class FeedService {
                     formatDateTime(row.getUploadedAt()),
                     safeInt(row.getLikeCount()),
                     safeInt(row.getCommentCount()),
+                    safeInt(row.getLikedByMe()) > 0,
                     tags,
                     defaultText(row.getAlbumName(), "미분류"),
                     formatDateTime(row.getTakenAt()),
@@ -130,6 +131,12 @@ public class FeedService {
     private String normalizeFilter(String value) {
         if (value == null || value.isBlank() || "전체".equals(value) || "all".equalsIgnoreCase(value)) {
             return null;
+        }
+        if ("photo".equalsIgnoreCase(value)) {
+            return "IMAGE";
+        }
+        if ("video".equalsIgnoreCase(value)) {
+            return "VIDEO";
         }
         if (value.startsWith("#") || value.startsWith("@")) {
             return value.substring(1);

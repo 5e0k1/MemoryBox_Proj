@@ -43,7 +43,7 @@
 
             <div class="tag-option-list">
                 <c:forEach items="${tags}" var="tag">
-                    <label class="tag-option" data-normalized="${tag.normalizedName}">
+                    <label class="tag-option ${tag.tagScope == 'P' ? 'is-person' : ''}" data-normalized="${tag.normalizedName}" data-scope="${tag.tagScope}">
                         <input type="checkbox" name="selectedTagIds" value="${tag.tagId}" class="tag-check"
                                <c:forEach items="${form.selectedTagIds}" var="selectedId"><c:if test="${selectedId == tag.tagId}">checked</c:if></c:forEach>>
                         <span class="tag-label">${tag.tagName}</span>

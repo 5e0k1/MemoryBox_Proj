@@ -14,6 +14,7 @@
         <result column="storage_key" property="storageKey"/>
         <result column="like_count" property="likeCount"/>
         <result column="comment_count" property="commentCount"/>
+        <result column="liked_by_me" property="likedByMe"/>
         <result column="tags_csv" property="tagsCsv"/>
     </resultMap>
 
@@ -83,6 +84,12 @@
                      AND c.del_yn = 'N'
                ) AS comment_count,
                (
+                   SELECT COUNT(*)
+                   FROM MEDIA_LIKE mlm
+                   WHERE mlm.media_id = mi.media_id
+                     AND mlm.user_id = #{userId}
+               ) AS liked_by_me,
+               (
                    SELECT GROUP_CONCAT(CONCAT(COALESCE(t.tag_scope, 'N'), '|', t.tag_name) ORDER BY t.tag_name SEPARATOR ',')
                    FROM MEDIA_TAG mt
                        JOIN TAG t ON mt.tag_id = t.tag_id
@@ -138,6 +145,7 @@
                    WHERE c.media_id = mi.media_id
                      AND c.del_yn = 'N'
                ) AS comment_count,
+               0 AS liked_by_me,
                (
                    SELECT GROUP_CONCAT(CONCAT(COALESCE(t.tag_scope, 'N'), '|', t.tag_name) ORDER BY t.tag_name SEPARATOR ',')
                    FROM MEDIA_TAG mt

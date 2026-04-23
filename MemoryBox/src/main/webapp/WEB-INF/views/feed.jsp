@@ -120,14 +120,16 @@
 
     <section id="feedGrid" class="feed-grid columns-1" aria-live="polite">
         <c:forEach var="item" items="${feedItems}">
-            <article class="feed-card" data-media-type="${item.mediaType}" data-item-id="${item.id}">
+            <article class="feed-card" data-media-type="${item.mediaType}" data-item-id="${item.id}" data-detail-url="/feed/${item.id}">
                 <a class="thumb-link" href="/feed/${item.id}" aria-label="${item.title} 상세보기">
                     <img src="${item.thumbnailUrl}" alt="${item.title} 썸네일" loading="lazy">
                     <span class="media-badge ${item.mediaType}" data-full-text="${item.mediaType eq 'video' ? 'Video' : 'Photo'}" data-short-text="${item.mediaType eq 'video' ? 'V' : 'P'}">${item.mediaType eq 'video' ? 'Video' : 'Photo'}</span>
                     <span class="select-check" aria-hidden="true">✔</span>
-                    <div class="overlay-meta overlay-top"><p class="overlay-desc">${item.title}</p><p class="overlay-album">앨범 ${item.albumName}</p></div>
-                    <div class="overlay-meta overlay-bottom"><p>💬 ${item.commentCount} · ❤ ${item.likeCount}</p><p>${item.author}</p></div>
+                    <div class="overlay-meta overlay-bottom"><p>${item.author}</p></div>
                 </a>
+                <button type="button" class="like-toggle-btn ${item.likedByMe ? 'is-liked' : ''}" data-action="like-toggle" aria-label="좋아요 토글" aria-pressed="${item.likedByMe}">
+                    <span class="heart">${item.likedByMe ? '❤' : '♡'}</span>
+                </button>
                 <div class="feed-meta">
                     <h2>${item.title}</h2>
                     <p>${item.author} · 촬영 ${empty item.takenAt ? "-" : item.takenAt} · 업로드 ${item.uploadedAt}</p>
@@ -136,9 +138,13 @@
                             <li class="${fn:startsWith(tag, '@') ? 'person-tag' : ''}">${tag}</li>
                         </c:forEach>
                     </ul>
-                    <div class="engagement">
-                        <c:if test="${item.likeCount > 0}"><span>❤ ${item.likeCount}</span></c:if>
-                        <c:if test="${item.commentCount > 0}"><span>💬 ${item.commentCount}</span></c:if>
+                    <div class="engagement" data-action="meta-actions">
+                        <button type="button" class="meta-btn like-meta-btn ${item.likedByMe ? 'is-liked' : ''}" data-action="like-toggle" aria-label="좋아요 토글">
+                            ❤ <span class="like-count">${item.likeCount}</span>
+                        </button>
+                        <button type="button" class="meta-btn comment-meta-btn" data-action="open-comments" aria-label="댓글 열기">
+                            💬 <span class="comment-count">${item.commentCount}</span>
+                        </button>
                     </div>
                 </div>
             </article>
@@ -158,6 +164,24 @@
     <a class="nav-item ${mode eq 'likes' ? 'is-active' : ''}" href="/likes"><span>❤</span><em>좋아요</em></a>
     <a class="nav-item ${mode eq 'mypage' ? 'is-active' : ''}" href="/mypage"><span>👤</span><em>마이</em></a>
 </nav>
+
+<div id="commentSheetBackdrop" class="comment-sheet-backdrop" hidden>
+    <section class="comment-sheet" role="dialog" aria-modal="true" aria-labelledby="commentSheetTitle">
+        <header class="comment-sheet-header">
+            <h2 id="commentSheetTitle">댓글</h2>
+            <button type="button" class="modal-close-btn" id="commentSheetCloseBtn" aria-label="닫기">✕</button>
+        </header>
+        <div id="commentSheetBody" class="comment-sheet-body"></div>
+        <form id="commentSheetForm" class="comment-sheet-form">
+            <input type="hidden" id="commentParentId" name="parentId" value="">
+            <textarea id="commentSheetInput" name="content" maxlength="3000" placeholder="댓글을 입력해 주세요" required></textarea>
+            <div class="comment-sheet-actions">
+                <button type="button" class="btn btn-secondary" id="commentReplyCancelBtn" hidden>답글 취소</button>
+                <button type="submit" class="btn btn-primary">등록</button>
+            </div>
+        </form>
+    </section>
+</div>
 
 <div id="passwordModalBackdrop" class="modal-backdrop" hidden>
     <section class="password-modal" role="dialog" aria-modal="true" aria-labelledby="passwordModalTitle">
