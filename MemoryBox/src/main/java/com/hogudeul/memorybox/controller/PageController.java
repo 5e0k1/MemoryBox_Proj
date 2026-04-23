@@ -35,6 +35,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -475,7 +477,18 @@ public class PageController {
                 + URLEncoder.encode(normalizedFileName, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
-    private boolean isClientAbortIOException(IOException e) {
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    @ResponseBody
+    public ResponseEntity<Void> handleAsyncRequestNotUsable(AsyncRequestNotUsableException ex) {
+        if (isClientAbortIOException(ex)) {
+            log.debug("Client aborted async response. msg={}", ex.getMessage());
+            return ResponseEntity.noContent().build();
+        }
+        log.warn("Unhandled async response error. msg={}", ex.getMessage());
+        return ResponseEntity.internalServerError().build();
+    }
+
+    private boolean isClientAbortIOException(Throwable e) {
         Throwable current = e;
         while (current != null) {
             String message = current.getMessage();
