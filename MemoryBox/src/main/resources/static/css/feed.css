@@ -619,3 +619,33 @@ body.modal-open {
 .fab-upload {
     bottom: 84px;
 }
+
+.brand-wrap {
+    display: grid;
+    gap: 4px;
+}
+
+.brand-title {
+    color: #0f172a;
+    text-decoration: none;
+    font-size: 1.18rem;
+    font-weight: 800;
+}
+
+.page-chip {
+    display: inline-block;
+    font-size: 0.72rem;
+    color: #64748b;
+    background: #f1f5f9;
+    border-radius: 999px;
+    padding: 2px 8px;
+    width: fit-content;
+}
+
+.compact-control-panel {
+    padding-bottom: 8px;
+}
+
+.control-panel .inline-filter select {
+    margin-top: 4px;
+}

@@ -77,6 +77,14 @@ public class FeedService {
         return options;
     }
 
+    public List<String> getTagFilterOptionsWithoutAll(List<FeedItemView> feedItems) {
+        Set<String> tags = new LinkedHashSet<>();
+        for (FeedItemView item : feedItems) {
+            tags.addAll(Arrays.asList(item.getTags()));
+        }
+        return new ArrayList<>(tags);
+    }
+
     private List<FeedItemView> toView(List<FeedRow> rows) {
         List<FeedItemView> items = new ArrayList<>();
 

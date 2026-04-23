@@ -61,10 +61,25 @@ public class PageController {
         model.addAttribute("loginUser", loginUser);
         model.addAttribute("pwdError", pwdError);
         model.addAttribute("pwdChanged", "true".equals(pwdChanged));
+        model.addAttribute("pageTitle", "피드");
+        model.addAttribute("feedItems", feedItems);
+        return "feed";
+    }
+
+    @GetMapping("/search")
+    public String searchPage(Model model, HttpSession session) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        List<FeedItemView> feedItems = feedService.getFeedItems(null, null, null, null,
+                "uploaded_desc", null, false, false, 1, FEED_PAGE_SIZE);
+        List<FeedItemView> optionSource = feedService.getImageFeedItems();
+
+        model.addAttribute("loginUser", loginUser);
+        model.addAttribute("mode", "search");
+        model.addAttribute("pageTitle", "검색");
         model.addAttribute("feedItems", feedItems);
         model.addAttribute("authors", feedService.getAuthorFilterOptions(optionSource));
-        model.addAttribute("tags", feedService.getTagFilterOptions(optionSource));
-        model.addAttribute("years", feedService.getAlbumFilterOptions(optionSource));
+        model.addAttribute("albums", feedService.getAlbumFilterOptions(optionSource));
+        model.addAttribute("tags", feedService.getTagFilterOptionsWithoutAll(optionSource));
         return "feed";
     }
 
