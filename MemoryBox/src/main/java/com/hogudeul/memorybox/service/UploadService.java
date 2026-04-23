@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import javax.imageio.ImageIO;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -45,12 +46,21 @@ public class UploadService {
     private final AlbumMapper albumMapper;
     private final StorageService storageService;
     private final NotificationService notificationService;
+    private final VideoProcessingService videoProcessingService;
+    private final long maxVideoFileSizeBytes;
 
-    public UploadService(UploadMapper uploadMapper, AlbumMapper albumMapper, StorageService storageService, NotificationService notificationService) {
+    public UploadService(UploadMapper uploadMapper,
+                         AlbumMapper albumMapper,
+                         StorageService storageService,
+                         NotificationService notificationService,
+                         VideoProcessingService videoProcessingService,
+                         @Value("${app.video.max-file-size-bytes:314572800}") long maxVideoFileSizeBytes) {
         this.uploadMapper = uploadMapper;
         this.albumMapper = albumMapper;
         this.storageService = storageService;
         this.notificationService = notificationService;
+        this.videoProcessingService = videoProcessingService;
+        this.maxVideoFileSizeBytes = maxVideoFileSizeBytes;
     }
 
     public List<AlbumOption> getActiveAlbums(Long userId) {
@@ -159,6 +169,7 @@ public class UploadService {
         }
         requireAlbum(form.getAlbumId());
         validateMimeType(form.getVideoFile(), "video/");
+        validateVideoFileSize(form.getVideoFile());
 
         List<String> savedKeys = new ArrayList<>();
         try {
@@ -169,14 +180,13 @@ public class UploadService {
             savedKeys.add(original.getStorageKey());
             uploadMapper.insertMediaVariant(buildVariant(mediaItem.getMediaId(), "ORIGINAL", original, null, null, null));
 
-            // TODO: ffmpeg 도입 후 첫 프레임 썸네일 생성으로 교체 예정.
-            // TODO: 추후 S3 direct upload 적용 시 영상 원본/썸네일 처리를 비동기 파이프라인으로 분리 예정.
             StoredFile thumb = createVideoPlaceholderThumb(form.getVideoFile().getOriginalFilename());
             savedKeys.add(thumb.getStorageKey());
             uploadMapper.insertMediaVariant(buildVariant(mediaItem.getMediaId(), "THUMB", thumb, 320, 180, null));
 
             bindTags(userId, mediaItem.getMediaId(), form.getSelectedTagIds(), form.getNewTags());
             notificationService.notifyUpload(userId, mediaItem.getMediaId(), 1);
+            videoProcessingService.generateVideoVariantsAsync(mediaItem.getMediaId(), original.getStorageKey(), original.getOriginalName());
         } catch (Exception e) {
             rollbackFiles(savedKeys);
             if (e instanceof UploadException) {
@@ -382,6 +392,13 @@ public class UploadService {
         String contentType = file.getContentType();
         if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith(expectedPrefix)) {
             throw new UploadException("허용되지 않는 파일 형식입니다.");
+        }
+    }
+
+    private void validateVideoFileSize(MultipartFile file) {
+        if (file.getSize() > maxVideoFileSizeBytes) {
+            long maxMb = maxVideoFileSizeBytes / (1024 * 1024);
+            throw new UploadException("영상 파일은 최대 " + maxMb + "MB까지 업로드할 수 있습니다.");
         }
     }
 

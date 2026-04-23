@@ -52,12 +52,58 @@ document.addEventListener('DOMContentLoaded', () => {
     let page = 2;
     const pageSize = 24;
     let activeCommentMediaId = null;
+    let activePreviewVideo = null;
+    let previewObserver = null;
 
     const state = {
         type: 'all',
         columns: isSearchMode ? '3' : '1',
         sort: 'uploaded_desc',
         scrollTop: 0
+    };
+
+    const stopVideo = (video, reset = false) => {
+        if (!video) return;
+        video.pause();
+        if (reset) {
+            video.currentTime = 0;
+        }
+    };
+
+    const playVideo = (video) => {
+        if (!video) return;
+        if (activePreviewVideo && activePreviewVideo !== video) {
+            stopVideo(activePreviewVideo, true);
+        }
+        activePreviewVideo = video;
+        video.play().catch(() => {});
+    };
+
+    const initPreviewAutoplay = () => {
+        const videos = Array.from(grid.querySelectorAll('.feed-preview-video[data-has-preview="true"]'));
+        if (videos.length === 0) return;
+
+        if (!previewObserver) {
+            previewObserver = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    const video = entry.target;
+                    if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+                        playVideo(video);
+                        return;
+                    }
+                    if (video === activePreviewVideo) {
+                        activePreviewVideo = null;
+                    }
+                    stopVideo(video, true);
+                });
+            }, { threshold: [0.6] });
+        }
+
+        videos.forEach((video) => {
+            if (video.dataset.previewObserved === 'true') return;
+            video.dataset.previewObserved = 'true';
+            previewObserver.observe(video);
+        });
     };
 
     const updateTagSummary = () => {
@@ -221,9 +267,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const likedClass = item.likedByMe ? 'is-liked' : '';
         const likedIcon = item.likedByMe ? '❤' : '♡';
 
+        const mediaHtml = item.mediaType === 'video'
+            ? `<video class="feed-preview-video" src="${item.previewUrl || ''}" poster="${item.thumbnailUrl || ''}" muted playsinline loop preload="none" data-has-preview="${item.previewUrl ? 'true' : 'false'}"></video>`
+            : `<img src="${item.thumbnailUrl}" alt="${escapeHtml(title)} 썸네일" loading="lazy">`;
+
         return `<article class="feed-card" data-media-type="${item.mediaType}" data-item-id="${item.id}" data-detail-url="/feed/${item.id}">
             <a class="thumb-link" href="/feed/${item.id}" aria-label="${escapeHtml(title)} 상세보기">
-                <img src="${item.thumbnailUrl}" alt="${escapeHtml(title)} 썸네일" loading="lazy">
+                ${mediaHtml}
                 <span class="media-badge ${item.mediaType}" data-full-text="${mediaLabel}" data-short-text="${item.mediaType === 'video' ? 'V' : 'P'}">${mediaLabel}</span>
                 ${item.recent ? `<span class="new-badge" data-full-text="New" data-short-text="N">New</span>` : ""}
                 <span class="select-check" aria-hidden="true">✔</span>
@@ -405,6 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 grid.insertAdjacentHTML('beforeend', items.map(buildCardHtml).join(''));
                 Array.from(grid.querySelectorAll('.feed-card')).slice(-items.length).forEach(bindCardEvents);
                 updateBadgeLabels(state.columns);
+                initPreviewAutoplay();
                 page += 1;
             }
         } finally {
@@ -675,5 +726,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sortOption) sortOption.value = state.sort;
     if (isFeedMode) restoreFeedState();
     initInfiniteObserver();
+    initPreviewAutoplay();
     if (isFeedMode) window.addEventListener('beforeunload', saveFeedState);
 });

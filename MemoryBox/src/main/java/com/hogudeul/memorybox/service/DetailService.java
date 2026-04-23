@@ -61,9 +61,13 @@ public class DetailService {
             return null;
         }
 
+        boolean isVideo = "VIDEO".equalsIgnoreCase(row.getMediaType());
         String displayStorageKey = row.getMediumStorageKey();
         if (isBlank(displayStorageKey)) {
             displayStorageKey = row.getSmallStorageKey();
+        }
+        if (isVideo && isBlank(displayStorageKey)) {
+            displayStorageKey = row.getThumbStorageKey();
         }
 
         return new MediaDetailView(
@@ -76,7 +80,9 @@ public class DetailService {
                 timeDisplayService.formatRelativeUploadedAt(row.getUploadedAt()),
                 defaultText(row.getAlbumName(), "미분류"),
                 defaultText(row.getDisplayName(), "알 수 없음"),
-                toPublicFileUrl(displayStorageKey),
+                isVideo ? "" : toPublicFileUrl(displayStorageKey),
+                isVideo ? toPublicFileUrl(row.getOriginalStorageKey()) : "",
+                isVideo ? toPublicFileUrl(row.getThumbStorageKey()) : "",
                 "",
                 "/feed/" + mediaId + "/download",
                 parseTags(row.getTagsCsv()),

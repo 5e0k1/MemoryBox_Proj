@@ -11,7 +11,8 @@
         <result column="taken_at" property="takenAt"/>
         <result column="album_name" property="albumName"/>
         <result column="display_name" property="displayName"/>
-        <result column="storage_key" property="storageKey"/>
+        <result column="thumbnail_storage_key" property="thumbnailStorageKey"/>
+        <result column="preview_storage_key" property="previewStorageKey"/>
         <result column="like_count" property="likeCount"/>
         <result column="comment_count" property="commentCount"/>
         <result column="liked_by_me" property="likedByMe"/>
@@ -20,11 +21,16 @@
 
     <sql id="FeedBaseFrom">
         FROM MEDIA_ITEMS mi
-            JOIN MEDIA_VARIANT mv ON mi.media_id = mv.media_id
+            LEFT JOIN MEDIA_VARIANT image_mv ON mi.media_id = image_mv.media_id AND image_mv.variant_type = 'SMALL'
+            LEFT JOIN MEDIA_VARIANT video_thumb_mv ON mi.media_id = video_thumb_mv.media_id AND video_thumb_mv.variant_type = 'THUMB'
+            LEFT JOIN MEDIA_VARIANT video_preview_mv ON mi.media_id = video_preview_mv.media_id AND video_preview_mv.variant_type = 'PREVIEW'
             LEFT JOIN USER u ON mi.user_id = u.user_id
             LEFT JOIN ALBUM a ON mi.album_id = a.album_id
         WHERE mi.del_yn = 'N'
-          AND mv.variant_type = 'SMALL'
+          AND (
+            (mi.media_type = 'IMAGE' AND image_mv.variant_id IS NOT NULL)
+            OR (mi.media_type = 'VIDEO' AND video_thumb_mv.variant_id IS NOT NULL)
+          )
           AND u.del_yn = 'N'
           AND a.del_yn = 'N'
     </sql>
@@ -71,7 +77,10 @@
                mi.taken_at,
                a.album_name,
                u.display_name,
-               mv.storage_key,
+               CASE WHEN mi.media_type = 'VIDEO'
+                   THEN video_thumb_mv.storage_key
+                   ELSE image_mv.storage_key END AS thumbnail_storage_key,
+               video_preview_mv.storage_key AS preview_storage_key,
                (
                    SELECT COUNT(*)
                    FROM MEDIA_LIKE ml
@@ -134,7 +143,8 @@
                mi.taken_at,
                a.album_name,
                u.display_name,
-               mv.storage_key,
+               image_mv.storage_key AS thumbnail_storage_key,
+               NULL AS preview_storage_key,
                (
                    SELECT COUNT(*)
                    FROM MEDIA_LIKE ml

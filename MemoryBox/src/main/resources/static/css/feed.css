@@ -215,6 +215,14 @@
     display: block;
 }
 
+.thumb-link video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    background: #0f172a;
+}
+
 .media-badge {
     position: absolute;
     right: 8px;

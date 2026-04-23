@@ -22,6 +22,9 @@ public interface UploadMapper {
 
     int insertMediaVariant(MediaVariant mediaVariant);
 
+    int deleteMediaVariantByType(@Param("mediaId") Long mediaId,
+                                 @Param("variantType") String variantType);
+
     Tag findTagByNormalizedName(@Param("normalizedName") String normalizedName);
 
     List<Tag> findActiveTagsByUserId(@Param("userId") Long userId);

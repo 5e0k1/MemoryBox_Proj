@@ -14,6 +14,8 @@
         <result column="display_name" property="displayName"/>
         <result column="medium_storage_key" property="mediumStorageKey"/>
         <result column="small_storage_key" property="smallStorageKey"/>
+        <result column="thumb_storage_key" property="thumbStorageKey"/>
+        <result column="preview_storage_key" property="previewStorageKey"/>
         <result column="original_storage_key" property="originalStorageKey"/>
         <result column="original_file_name" property="originalFileName"/>
         <result column="original_mime_type" property="originalMimeType"/>
@@ -45,6 +47,8 @@
                u.display_name,
                medium_mv.storage_key AS medium_storage_key,
                small_mv.storage_key AS small_storage_key,
+               thumb_mv.storage_key AS thumb_storage_key,
+               preview_mv.storage_key AS preview_storage_key,
                original_mv.storage_key AS original_storage_key,
                original_mv.file_org_name AS original_file_name,
                original_mv.mime_type AS original_mime_type,
@@ -64,6 +68,8 @@
                  JOIN ALBUM a ON mi.album_id = a.album_id
                  LEFT JOIN MEDIA_VARIANT medium_mv ON mi.media_id = medium_mv.media_id AND medium_mv.variant_type = 'MEDIUM'
                  LEFT JOIN MEDIA_VARIANT small_mv ON mi.media_id = small_mv.media_id AND small_mv.variant_type = 'SMALL'
+                 LEFT JOIN MEDIA_VARIANT thumb_mv ON mi.media_id = thumb_mv.media_id AND thumb_mv.variant_type = 'THUMB'
+                 LEFT JOIN MEDIA_VARIANT preview_mv ON mi.media_id = preview_mv.media_id AND preview_mv.variant_type = 'PREVIEW'
                  LEFT JOIN MEDIA_VARIANT original_mv ON mi.media_id = original_mv.media_id AND original_mv.variant_type = 'ORIGINAL'
         WHERE mi.media_id = #{mediaId}
           AND mi.del_yn = 'N'
@@ -83,6 +89,8 @@
                u.display_name,
                medium_mv.storage_key AS medium_storage_key,
                small_mv.storage_key AS small_storage_key,
+               thumb_mv.storage_key AS thumb_storage_key,
+               preview_mv.storage_key AS preview_storage_key,
                original_mv.storage_key AS original_storage_key,
                original_mv.file_org_name AS original_file_name,
                original_mv.mime_type AS original_mime_type,
@@ -102,6 +110,8 @@
                  JOIN ALBUM a ON mi.album_id = a.album_id
                  LEFT JOIN MEDIA_VARIANT medium_mv ON mi.media_id = medium_mv.media_id AND medium_mv.variant_type = 'MEDIUM'
                  LEFT JOIN MEDIA_VARIANT small_mv ON mi.media_id = small_mv.media_id AND small_mv.variant_type = 'SMALL'
+                 LEFT JOIN MEDIA_VARIANT thumb_mv ON mi.media_id = thumb_mv.media_id AND thumb_mv.variant_type = 'THUMB'
+                 LEFT JOIN MEDIA_VARIANT preview_mv ON mi.media_id = preview_mv.media_id AND preview_mv.variant_type = 'PREVIEW'
                  LEFT JOIN MEDIA_VARIANT original_mv ON mi.media_id = original_mv.media_id AND original_mv.variant_type = 'ORIGINAL'
         WHERE mi.media_id IN
               <foreach item="mediaId" collection="mediaIds" open="(" separator="," close=")">

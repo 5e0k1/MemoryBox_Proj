@@ -36,6 +36,11 @@
 
         <article class="detail-panel media-panel">
             <c:choose>
+                <c:when test="${detail.mediaType eq 'VIDEO' and not empty detail.originalVideoUrl}">
+                    <video controls playsinline preload="metadata" poster="${detail.videoThumbnailUrl}" class="detail-image">
+                        <source src="${detail.originalVideoUrl}" type="video/mp4">
+                    </video>
+                </c:when>
                 <c:when test="${not empty detail.displayImageUrl}">
                     <img src="${detail.displayImageUrl}" alt="${detail.title}" class="detail-image" loading="eager">
                 </c:when>
