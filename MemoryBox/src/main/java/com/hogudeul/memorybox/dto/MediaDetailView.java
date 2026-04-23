@@ -7,6 +7,7 @@ public class MediaDetailView {
     private final String mediaType;
     private final String uploadedAt;
     private final String takenAt;
+    private final String relativeUploadedAt;
     private final String albumName;
     private final String authorName;
     private final String displayImageUrl;
@@ -23,6 +24,7 @@ public class MediaDetailView {
                            String mediaType,
                            String uploadedAt,
                            String takenAt,
+                           String relativeUploadedAt,
                            String albumName,
                            String authorName,
                            String displayImageUrl,
@@ -38,6 +40,7 @@ public class MediaDetailView {
         this.mediaType = mediaType;
         this.uploadedAt = uploadedAt;
         this.takenAt = takenAt;
+        this.relativeUploadedAt = relativeUploadedAt;
         this.albumName = albumName;
         this.authorName = authorName;
         this.displayImageUrl = displayImageUrl;
@@ -55,6 +58,7 @@ public class MediaDetailView {
     public String getMediaType() { return mediaType; }
     public String getUploadedAt() { return uploadedAt; }
     public String getTakenAt() { return takenAt; }
+    public String getRelativeUploadedAt() { return relativeUploadedAt; }
     public String getAlbumName() { return albumName; }
     public String getAuthorName() { return authorName; }
     public String getDisplayImageUrl() { return displayImageUrl; }

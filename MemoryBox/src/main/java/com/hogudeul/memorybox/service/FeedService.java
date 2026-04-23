@@ -18,9 +18,11 @@ public class FeedService {
     private static final DateTimeFormatter DATETIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final FeedMapper feedMapper;
+    private final TimeDisplayService timeDisplayService;
 
-    public FeedService(FeedMapper feedMapper) {
+    public FeedService(FeedMapper feedMapper, TimeDisplayService timeDisplayService) {
         this.feedMapper = feedMapper;
+        this.timeDisplayService = timeDisplayService;
     }
 
     public List<FeedItemView> getImageFeedItems() {
@@ -120,8 +122,10 @@ public class FeedService {
                     safeInt(row.getLikedByMe()) > 0,
                     tags,
                     defaultText(row.getAlbumName(), "미분류"),
-                    formatDateTime(row.getTakenAt()),
-                    formatDateTime(displayAt)
+                    timeDisplayService.formatTakenDate(row.getTakenAt()),
+                    formatDateTime(displayAt),
+                    timeDisplayService.formatRelativeUploadedAt(row.getUploadedAt()),
+                    timeDisplayService.isNew(row.getUploadedAt())
             ));
         }
 

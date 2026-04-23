@@ -19,6 +19,11 @@
         </div>
         <div class="header-actions">
             <span class="login-user">${loginUser.displayName}</span>
+            <button type="button" class="icon-btn icon-notification" id="notificationToggleBtn" aria-label="알림 열기">
+                🔔
+                <c:if test="${notificationPanel.unreadCount > 0}"><span class="notification-badge" id="notificationUnreadBadge">${notificationPanel.unreadCount}</span></c:if>
+                <c:if test="${notificationPanel.unreadCount == 0}"><span class="notification-badge" id="notificationUnreadBadge" hidden>0</span></c:if>
+            </button>
             <form action="/logout" method="post">
                 <button class="icon-btn icon-logout" type="submit" aria-label="로그아웃">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -29,6 +34,22 @@
             </form>
         </div>
     </header>
+
+
+    <div class="notification-dropdown" id="notificationDropdown" hidden>
+        <header>알림</header>
+        <ul id="notificationList" class="notification-list">
+            <c:forEach var="noti" items="${notificationPanel.items}">
+                <li class="${noti.isRead ? '' : 'is-unread'}">
+                    <a href="/notifications/${noti.notificationId}/open">
+                        <p>${noti.message}</p>
+                        <small>${noti.relativeCreatedAt}</small>
+                    </a>
+                </li>
+            </c:forEach>
+            <c:if test="${empty notificationPanel.items}"><li class="empty">새 알림이 없습니다.</li></c:if>
+        </ul>
+    </div>
 
     <c:if test="${mode eq 'mypage'}">
         <section class="mypage-panel">
@@ -124,6 +145,7 @@
                 <a class="thumb-link" href="/feed/${item.id}" aria-label="${item.title} 상세보기">
                     <img src="${item.thumbnailUrl}" alt="${item.title} 썸네일" loading="lazy">
                     <span class="media-badge ${item.mediaType}" data-full-text="${item.mediaType eq 'video' ? 'Video' : 'Photo'}" data-short-text="${item.mediaType eq 'video' ? 'V' : 'P'}">${item.mediaType eq 'video' ? 'Video' : 'Photo'}</span>
+                    <c:if test="${item.new}"><span class="new-badge" data-full-text="New" data-short-text="N">New</span></c:if>
                     <span class="select-check" aria-hidden="true">✔</span>
                     <div class="overlay-meta overlay-bottom"><p>${item.author}</p></div>
                 </a>
@@ -132,7 +154,7 @@
                 </button>
                 <div class="feed-meta">
                     <h2>${item.title}</h2>
-                    <p>${item.author} · 촬영 ${empty item.takenAt ? "-" : item.takenAt} · 업로드 ${item.uploadedAt}</p>
+                    <p>${item.author} · 촬영 ${empty item.takenAt ? "-" : item.takenAt} · 업로드 ${item.relativeUploadedAt}</p>
                     <ul class="tag-list">
                         <c:forEach var="tag" items="${item.tags}">
                             <li class="${fn:startsWith(tag, '@') ? 'person-tag' : ''}">${tag}</li>
@@ -162,6 +184,7 @@
     <a class="nav-item ${empty mode or mode eq 'feed' ? 'is-active' : ''}" href="/feed"><span>🏠</span><em>피드</em></a>
     <a class="nav-item ${mode eq 'search' ? 'is-active' : ''}" href="/search"><span>🔎</span><em>검색</em></a>
     <a class="nav-item ${mode eq 'likes' ? 'is-active' : ''}" href="/likes"><span>❤</span><em>좋아요</em></a>
+    <a class="nav-item ${mode eq 'requests' ? 'is-active' : ''}" href="/requests"><span>📝</span><em>요청</em></a>
     <a class="nav-item ${mode eq 'mypage' ? 'is-active' : ''}" href="/mypage"><span>👤</span><em>마이</em></a>
 </nav>
 

@@ -1,6 +1,7 @@
 package com.hogudeul.memorybox.controller;
 
 import com.hogudeul.memorybox.auth.LoginUserSession;
+import com.hogudeul.memorybox.model.AlbumOption;
 import com.hogudeul.memorybox.model.Tag;
 import com.hogudeul.memorybox.service.UploadService;
 import com.hogudeul.memorybox.upload.MultiPhotoUploadForm;
@@ -142,6 +143,31 @@ public class UploadController {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             redirectAttributes.addFlashAttribute("form", form);
             return "redirect:/upload/video";
+        }
+    }
+
+
+    @PostMapping("/upload/album")
+    @ResponseBody
+    public Map<String, Object> createAlbum(@RequestParam("albumName") String albumName, HttpSession session) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        if (loginUser == null) {
+            result.put("success", false);
+            result.put("message", "로그인이 필요합니다.");
+            return result;
+        }
+
+        try {
+            AlbumOption album = uploadService.createAlbum(albumName);
+            result.put("success", true);
+            result.put("albumId", album.getAlbumId());
+            result.put("albumName", album.getAlbumName());
+            return result;
+        } catch (UploadException e) {
+            result.put("success", false);
+            result.put("message", e.getMessage());
+            return result;
         }
     }
 

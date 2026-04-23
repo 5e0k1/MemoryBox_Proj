@@ -26,6 +26,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const feedEndMessage = document.getElementById('feedEndMessage');
     const loadedCountText = document.getElementById('loadedCountText');
     const totalCountText = document.getElementById('totalCountText');
+    const notificationToggleBtn = document.getElementById('notificationToggleBtn');
+    const notificationDropdown = document.getElementById('notificationDropdown');
+    const notificationList = document.getElementById('notificationList');
+    const notificationUnreadBadge = document.getElementById('notificationUnreadBadge');
 
     const passwordModalBackdrop = document.getElementById('passwordModalBackdrop');
     const openPasswordModalBtn = document.getElementById('openPasswordModalBtn');
@@ -72,6 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const getCards = () => grid.querySelectorAll('.feed-card');
     const getMediaBadges = () => grid.querySelectorAll('.media-badge');
+    const getNewBadges = () => grid.querySelectorAll('.new-badge');
 
     const updateSelectionUI = () => {
         selectedCountText.textContent = String(selectedIds.size);
@@ -81,6 +86,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateBadgeLabels = (columns) => {
         const shortMode = columns === '3' || columns === '5';
         getMediaBadges().forEach((badge) => {
+            badge.textContent = shortMode ? badge.dataset.shortText : badge.dataset.fullText;
+        });
+        getNewBadges().forEach((badge) => {
             badge.textContent = shortMode ? badge.dataset.shortText : badge.dataset.fullText;
         });
     };
@@ -217,13 +225,14 @@ document.addEventListener('DOMContentLoaded', () => {
             <a class="thumb-link" href="/feed/${item.id}" aria-label="${escapeHtml(title)} 상세보기">
                 <img src="${item.thumbnailUrl}" alt="${escapeHtml(title)} 썸네일" loading="lazy">
                 <span class="media-badge ${item.mediaType}" data-full-text="${mediaLabel}" data-short-text="${item.mediaType === 'video' ? 'V' : 'P'}">${mediaLabel}</span>
+                ${item.new ? `<span class="new-badge" data-full-text="New" data-short-text="N">New</span>` : ""}
                 <span class="select-check" aria-hidden="true">✔</span>
                 <div class="overlay-meta overlay-bottom"><p>${escapeHtml(item.author || '')}</p></div>
             </a>
             <button type="button" class="like-toggle-btn ${likedClass}" data-action="like-toggle" aria-label="좋아요 토글" aria-pressed="${item.likedByMe}"><span class="heart">${likedIcon}</span></button>
             <div class="feed-meta">
                 <h2>${escapeHtml(title)}</h2>
-                <p>${escapeHtml(item.author || '')} · 촬영 ${escapeHtml(item.takenAt || '-')} · 업로드 ${escapeHtml(item.uploadedAt || '')}</p>
+                <p>${escapeHtml(item.author || '')} · 촬영 ${escapeHtml(item.takenAt || '-')} · 업로드 ${escapeHtml(item.relativeUploadedAt || item.uploadedAt || '')}</p>
                 <ul class="tag-list">${tagHtml}</ul>
                 <div class="engagement" data-action="meta-actions">
                     <button type="button" class="meta-btn like-meta-btn ${likedClass}" data-action="like-toggle" aria-label="좋아요 토글">❤ <span class="like-count">${item.likeCount || 0}</span></button>
@@ -582,6 +591,52 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (_) {
             window.alert('댓글 처리 중 오류가 발생했습니다.');
         }
+    });
+
+
+
+    const refreshNotifications = async () => {
+        if (!notificationList) return;
+        try {
+            const response = await fetch('/api/notifications');
+            if (!response.ok) return;
+            const payload = await response.json();
+            const items = payload.items || [];
+            if (notificationUnreadBadge) {
+                const unread = Number(payload.unreadCount || 0);
+                notificationUnreadBadge.textContent = String(unread);
+                notificationUnreadBadge.hidden = unread <= 0;
+            }
+            if (items.length === 0) {
+                notificationList.innerHTML = '<li class="empty">새 알림이 없습니다.</li>';
+                return;
+            }
+            notificationList.innerHTML = items.map((item) => `
+                <li class="${item.isRead ? '' : 'is-unread'}">
+                    <a href="/notifications/${item.notificationId}/open">
+                        <p>${escapeHtml(item.message || '')}</p>
+                        <small>${escapeHtml(item.relativeCreatedAt || '')}</small>
+                    </a>
+                </li>
+            `).join('');
+        } catch (_) {
+            // noop
+        }
+    };
+
+    notificationToggleBtn?.addEventListener('click', () => {
+        if (!notificationDropdown) return;
+        const next = !notificationDropdown.hidden;
+        notificationDropdown.hidden = next;
+        if (!next) {
+            refreshNotifications();
+        }
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!notificationDropdown || notificationDropdown.hidden) return;
+        if (event.target.closest('#notificationDropdown, #notificationToggleBtn')) return;
+        notificationDropdown.hidden = true;
     });
 
     getCards().forEach(bindCardEvents);

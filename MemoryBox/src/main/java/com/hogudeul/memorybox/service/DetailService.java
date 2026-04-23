@@ -35,10 +35,16 @@ public class DetailService {
 
     private final DetailMapper detailMapper;
     private final Path storageRoot;
+    private final TimeDisplayService timeDisplayService;
+    private final NotificationService notificationService;
 
     public DetailService(DetailMapper detailMapper,
+                         TimeDisplayService timeDisplayService,
+                         NotificationService notificationService,
                          @Value("${app.storage.local-root:D:/memorybox/upload/}") String storageRoot) {
         this.detailMapper = detailMapper;
+        this.timeDisplayService = timeDisplayService;
+        this.notificationService = notificationService;
         this.storageRoot = Paths.get(storageRoot).toAbsolutePath().normalize();
     }
 
@@ -58,7 +64,8 @@ public class DetailService {
                 defaultText(row.getTitle(), "(제목 없음)"),
                 defaultText(row.getMediaType(), "UNKNOWN"),
                 formatDateTime(row.getUploadedAt()),
-                formatDateTime(row.getTakenAt()),
+                timeDisplayService.formatTakenDate(row.getTakenAt()),
+                timeDisplayService.formatRelativeUploadedAt(row.getUploadedAt()),
                 defaultText(row.getAlbumName(), "미분류"),
                 defaultText(row.getDisplayName(), "알 수 없음"),
                 toPublicFileUrl(displayStorageKey),
@@ -274,6 +281,12 @@ public class DetailService {
 
         Long commentId = detailMapper.selectNextCommentId();
         detailMapper.insertComment(commentId, mediaId, normalizedParentId, userId, normalized);
+
+        if (normalizedParentId == null) {
+            notificationService.notifyComment(userId, mediaId, commentId, normalized);
+        } else {
+            notificationService.notifyReply(userId, normalizedParentId, commentId);
+        }
         return true;
     }
 

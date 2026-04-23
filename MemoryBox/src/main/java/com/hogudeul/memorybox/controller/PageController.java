@@ -6,6 +6,7 @@ import com.hogudeul.memorybox.dto.FeedItemView;
 import com.hogudeul.memorybox.dto.MediaDetailView;
 import com.hogudeul.memorybox.service.DetailService;
 import com.hogudeul.memorybox.service.FeedService;
+import com.hogudeul.memorybox.service.NotificationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
@@ -42,10 +43,12 @@ public class PageController {
     private static final int FEED_PAGE_SIZE = 24;
     private final FeedService feedService;
     private final DetailService detailService;
+    private final NotificationService notificationService;
 
-    public PageController(FeedService feedService, DetailService detailService) {
+    public PageController(FeedService feedService, DetailService detailService, NotificationService notificationService) {
         this.feedService = feedService;
         this.detailService = detailService;
+        this.notificationService = notificationService;
     }
 
     @GetMapping("/feed")
@@ -61,6 +64,7 @@ public class PageController {
         List<FeedItemView> optionSource = feedService.getImageFeedItems();
 
         model.addAttribute("loginUser", loginUser);
+        addNotificationModel(model, userId);
         model.addAttribute("pwdError", pwdError);
         model.addAttribute("pwdChanged", "true".equals(pwdChanged));
         model.addAttribute("pageTitle", "피드");
@@ -79,6 +83,7 @@ public class PageController {
         List<FeedItemView> optionSource = feedService.getImageFeedItems();
 
         model.addAttribute("loginUser", loginUser);
+        addNotificationModel(model, userId);
         model.addAttribute("mode", "search");
         model.addAttribute("pageTitle", "검색");
         model.addAttribute("feedItems", feedItems);
@@ -98,6 +103,7 @@ public class PageController {
         int totalCount = feedService.getFeedItemCount(null, null, null, null, userId, true, false);
 
         model.addAttribute("loginUser", loginUser);
+        addNotificationModel(model, userId);
         model.addAttribute("pageTitle", "좋아요 누른 항목");
         model.addAttribute("mode", "likes");
         model.addAttribute("feedItems", feedItems);
@@ -114,6 +120,7 @@ public class PageController {
         int totalCount = feedService.getFeedItemCount(null, null, null, null, userId, false, true);
 
         model.addAttribute("loginUser", loginUser);
+        addNotificationModel(model, userId);
         model.addAttribute("pageTitle", "마이페이지 & 업로드한 게시물");
         model.addAttribute("mode", "mypage");
         model.addAttribute("feedItems", feedItems);
@@ -160,6 +167,7 @@ public class PageController {
 
         MediaDetailView detail = detailService.getMediaDetail(itemId, userId);
         model.addAttribute("loginUser", loginUser);
+        addNotificationModel(model, userId);
         model.addAttribute("info", info);
         model.addAttribute("error", error);
 
@@ -431,6 +439,10 @@ public class PageController {
         return false;
     }
 
+
+    private void addNotificationModel(Model model, Long userId) {
+        model.addAttribute("notificationPanel", notificationService.getNotificationPanel(userId));
+    }
     private Map<String, Object> buildInteractionResponse(boolean success, String message, Long itemId, Long userId) {
         Map<String, Object> response = new HashMap<>();
         response.put("success", success);

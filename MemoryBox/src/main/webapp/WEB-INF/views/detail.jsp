@@ -45,7 +45,7 @@
 
         <section class="detail-panel meta-panel">
             <h1 class="detail-title">${detail.title}</h1>
-            <p class="meta-line">업로드 ${detail.uploadedAt}</p>
+            <p class="meta-line">업로드 ${detail.relativeUploadedAt}</p>
             <c:if test="${not empty detail.takenAt}">
                 <p class="meta-line">촬영 ${detail.takenAt}</p>
             </c:if>
@@ -88,7 +88,7 @@
             <h2>댓글</h2>
             <ul class="comment-list">
                 <c:forEach var="comment" items="${comments}">
-                    <li class="comment-item">
+                    <li class="comment-item" id="comment-${comment.commentId}">
                         <div class="comment-head">
                             <strong>${comment.authorName}</strong>
                             <span>${comment.createdAt}</span>
@@ -98,7 +98,7 @@
                         <c:if test="${not empty comment.replies}">
                             <ul class="reply-list">
                                 <c:forEach var="reply" items="${comment.replies}">
-                                    <li class="reply-item">
+                                    <li class="reply-item" id="comment-${reply.commentId}">
                                         <div class="comment-head">
                                             <strong>${reply.authorName}</strong>
                                             <span>${reply.createdAt}</span>

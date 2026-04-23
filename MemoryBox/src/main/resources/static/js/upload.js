@@ -1,6 +1,7 @@
 (function () {
     initPreview();
     initTagWidgets();
+    initAlbumWidgets();
     initTakenAtDefault();
     initUploadSubmission();
 
@@ -176,6 +177,104 @@
         });
     }
 
+
+
+    function initAlbumWidgets() {
+        const widgets = document.querySelectorAll('[data-widget="album-picker"]');
+        widgets.forEach(function (widget) {
+            const select = widget.querySelector('.album-select');
+            const openBtn = widget.querySelector('.album-add-btn');
+            const form = widget.closest('form');
+            if (!select || !openBtn || !form) return;
+
+            const modal = form.querySelector('.album-modal-backdrop');
+            const input = modal?.querySelector('.album-add-input');
+            const createBtn = modal?.querySelector('.album-create-btn');
+            const cancelBtn = modal?.querySelector('.album-cancel-btn');
+            const errorBox = modal?.querySelector('.album-modal-error');
+            const createUrl = widget.dataset.createUrl || '';
+            if (!modal || !input || !createBtn || !cancelBtn || !errorBox || !createUrl) return;
+
+            let modalOpen = false;
+
+            const showError = function (message) {
+                errorBox.textContent = message || '앨범 생성 중 오류가 발생했습니다.';
+                errorBox.hidden = false;
+            };
+
+            const openModal = function () {
+                if (modalOpen) return;
+                modal.hidden = false;
+                modalOpen = true;
+                errorBox.hidden = true;
+                history.pushState({ albumModal: true }, '', location.href);
+                setTimeout(function () { input.focus(); }, 0);
+            };
+
+            const closeModal = function (consumeHistory) {
+                if (!modalOpen) return;
+                modal.hidden = true;
+                modalOpen = false;
+                input.value = '';
+                errorBox.hidden = true;
+                if (consumeHistory) {
+                    history.back();
+                }
+            };
+
+            openBtn.addEventListener('click', openModal);
+
+            cancelBtn.addEventListener('click', function () {
+                closeModal(true);
+            });
+
+            createBtn.addEventListener('click', async function () {
+                const albumName = (input.value || '').trim();
+                if (!albumName) {
+                    showError('앨범명을 입력해 주세요.');
+                    input.focus();
+                    return;
+                }
+
+                try {
+                    createBtn.disabled = true;
+                    errorBox.hidden = true;
+                    const response = await fetch(createUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                        },
+                        body: 'albumName=' + encodeURIComponent(albumName)
+                    });
+
+                    const data = await response.json();
+                    if (!response.ok || !data.success) {
+                        showError(data.message || '앨범 생성에 실패했습니다.');
+                        return;
+                    }
+
+                    const option = document.createElement('option');
+                    option.value = String(data.albumId);
+                    option.textContent = data.albumName;
+                    select.appendChild(option);
+                    select.value = option.value;
+                    closeModal(true);
+                } catch (error) {
+                    showError('앨범 생성 중 오류가 발생했습니다.');
+                } finally {
+                    createBtn.disabled = false;
+                }
+            });
+
+            window.addEventListener('popstate', function () {
+                if (!modalOpen) return;
+                modal.hidden = true;
+                modalOpen = false;
+                input.value = '';
+                errorBox.hidden = true;
+            });
+        });
+    }
     function initTakenAtDefault() {
         const inputs = document.querySelectorAll('.taken-at-input');
         if (!inputs.length) return;
