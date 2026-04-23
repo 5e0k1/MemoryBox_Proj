@@ -42,4 +42,17 @@ public interface DetailMapper {
                           @Param("userAgent") String userAgent,
                           @Param("successYn") String successYn,
                           @Param("failReason") String failReason);
+
+    int updateMediaMeta(@Param("mediaId") Long mediaId,
+                        @Param("userId") Long userId,
+                        @Param("title") String title,
+                        @Param("albumId") Long albumId);
+
+    int deleteMediaTags(@Param("mediaId") Long mediaId);
+
+    Long selectNextMediaTagId();
+
+    int insertMediaTag(@Param("mdId") Long mdId,
+                       @Param("mediaId") Long mediaId,
+                       @Param("tagId") Long tagId);
 }

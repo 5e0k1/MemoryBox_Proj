@@ -136,7 +136,7 @@ public class UploadService {
             }
             Long mediaId = processPhoto(userId,
                     form.getAlbumId(),
-                    null,
+                    form.getTitle(),
                     form.getTakenAt(),
                     form.getSelectedTagIds(),
                     form.getNewTags(),

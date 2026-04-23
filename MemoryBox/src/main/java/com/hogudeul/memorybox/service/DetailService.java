@@ -3,8 +3,10 @@ package com.hogudeul.memorybox.service;
 import com.hogudeul.memorybox.dto.CommentView;
 import com.hogudeul.memorybox.dto.MediaDetailView;
 import com.hogudeul.memorybox.mapper.DetailMapper;
+import com.hogudeul.memorybox.mapper.UploadMapper;
 import com.hogudeul.memorybox.model.CommentRow;
 import com.hogudeul.memorybox.model.MediaDetailRow;
+import com.hogudeul.memorybox.model.Tag;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,7 +21,9 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,14 +41,17 @@ public class DetailService {
     private final Path storageRoot;
     private final TimeDisplayService timeDisplayService;
     private final NotificationService notificationService;
+    private final UploadMapper uploadMapper;
 
     public DetailService(DetailMapper detailMapper,
                          TimeDisplayService timeDisplayService,
                          NotificationService notificationService,
+                         UploadMapper uploadMapper,
                          @Value("${app.storage.local-root:D:/memorybox/upload/}") String storageRoot) {
         this.detailMapper = detailMapper;
         this.timeDisplayService = timeDisplayService;
         this.notificationService = notificationService;
+        this.uploadMapper = uploadMapper;
         this.storageRoot = Paths.get(storageRoot).toAbsolutePath().normalize();
     }
 
@@ -61,6 +68,7 @@ public class DetailService {
 
         return new MediaDetailView(
                 row.getMediaId(),
+                row.getAlbumId(),
                 defaultText(row.getTitle(), "(제목 없음)"),
                 defaultText(row.getMediaType(), "UNKNOWN"),
                 formatDateTime(row.getUploadedAt()),
@@ -75,7 +83,8 @@ public class DetailService {
                 safeInt(row.getLikeCount()),
                 safeInt(row.getCommentCount()),
                 safeInt(row.getLikedByMe()) > 0,
-                !isBlank(row.getOriginalStorageKey())
+                !isBlank(row.getOriginalStorageKey()),
+                userId != null && userId.equals(row.getUserId())
         );
     }
 
@@ -290,6 +299,49 @@ public class DetailService {
         return true;
     }
 
+    @Transactional
+    public boolean updateMediaMeta(Long mediaId, Long userId, String title, Long albumId) {
+        if (mediaId == null || userId == null || albumId == null) {
+            return false;
+        }
+        String normalizedTitle = title == null ? "" : title.trim();
+        return detailMapper.updateMediaMeta(mediaId, userId, normalizedTitle, albumId) > 0;
+    }
+
+    @Transactional
+    public boolean updateMediaTags(Long mediaId, Long userId, List<Long> selectedTagIds, String newTagsRaw) {
+        if (mediaId == null || userId == null) {
+            return false;
+        }
+        if (detailMapper.findDetailByMediaId(mediaId, userId) == null) {
+            return false;
+        }
+
+        Set<Long> finalTagIds = resolveSelectedTagIds(selectedTagIds);
+        Set<String> newTagNames = parseTagInput(newTagsRaw);
+
+        for (String tagName : newTagNames) {
+            String normalized = normalizeTag(tagName);
+            Tag tag = uploadMapper.findTagByNormalizedName(normalized);
+            if (tag == null) {
+                tag = new Tag();
+                tag.setTagId(uploadMapper.selectNextTagId());
+                tag.setUserId(userId);
+                tag.setTagName(tagName);
+                tag.setNormalizedName(normalized);
+                uploadMapper.insertTag(tag);
+            }
+            finalTagIds.add(tag.getTagId());
+        }
+
+        detailMapper.deleteMediaTags(mediaId);
+        for (Long tagId : finalTagIds) {
+            Long mdId = detailMapper.selectNextMediaTagId();
+            detailMapper.insertMediaTag(mdId, mediaId, tagId);
+        }
+        return true;
+    }
+
     private CommentView toCommentView(CommentRow row, Long viewerUserId) {
         boolean mine = viewerUserId != null && viewerUserId.equals(row.getUserId());
         return new CommentView(
@@ -332,6 +384,48 @@ public class DetailService {
             return "@" + name;
         }
         return "#" + name;
+    }
+
+    private Set<Long> resolveSelectedTagIds(List<Long> selectedTagIds) {
+        Set<Long> sanitized = new LinkedHashSet<>();
+        if (selectedTagIds == null || selectedTagIds.isEmpty()) {
+            return sanitized;
+        }
+        for (Long tagId : selectedTagIds) {
+            if (tagId != null) {
+                sanitized.add(tagId);
+            }
+        }
+        if (sanitized.isEmpty()) {
+            return sanitized;
+        }
+        List<Tag> validTags = uploadMapper.findActiveTagsByIds(new ArrayList<>(sanitized));
+        Set<Long> validTagIds = new LinkedHashSet<>();
+        for (Tag tag : validTags) {
+            validTagIds.add(tag.getTagId());
+        }
+        if (!validTagIds.containsAll(sanitized)) {
+            throw new DownloadException("선택할 수 없는 태그가 포함되어 있습니다.");
+        }
+        return sanitized;
+    }
+
+    private Set<String> parseTagInput(String rawTags) {
+        Set<String> tags = new LinkedHashSet<>();
+        if (rawTags == null || rawTags.isBlank()) {
+            return tags;
+        }
+        for (String token : rawTags.split(",")) {
+            String tag = token == null ? "" : token.trim();
+            if (!tag.isBlank()) {
+                tags.add(tag);
+            }
+        }
+        return tags;
+    }
+
+    private String normalizeTag(String tagName) {
+        return tagName.trim().toLowerCase(java.util.Locale.ROOT).replaceAll("\\s+", " ");
     }
 
     private String toPublicFileUrl(String storageKey) {

@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 public class MediaDetailRow {
 
     private Long mediaId;
+    private Long userId;
+    private Long albumId;
     private String title;
     private String mediaType;
     private LocalDateTime uploadedAt;
@@ -27,6 +29,22 @@ public class MediaDetailRow {
 
     public void setMediaId(Long mediaId) {
         this.mediaId = mediaId;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public Long getAlbumId() {
+        return albumId;
+    }
+
+    public void setAlbumId(Long albumId) {
+        this.albumId = albumId;
     }
 
     public String getTitle() {

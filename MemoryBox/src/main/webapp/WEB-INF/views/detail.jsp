@@ -64,6 +64,41 @@
                     <li><span class="tag-chip is-empty">태그 없음</span></li>
                 </c:if>
             </ul>
+
+            <section class="meta-edit-panel">
+                <c:if test="${detail.editableByMe}">
+                    <form method="post" action="/feed/${detail.mediaId}/edit-meta" class="meta-edit-form">
+                        <h2>제목 / 앨범 수정 (작성자)</h2>
+                        <label for="editTitle-${detail.mediaId}">제목</label>
+                        <input id="editTitle-${detail.mediaId}" name="title" value="${detail.title}" maxlength="200">
+                        <label for="editAlbum-${detail.mediaId}">앨범</label>
+                        <select id="editAlbum-${detail.mediaId}" name="albumId" required>
+                            <c:forEach var="album" items="${albums}">
+                                <option value="${album.albumId}" ${album.albumId == detail.albumId ? 'selected' : ''}>${album.albumName}</option>
+                            </c:forEach>
+                        </select>
+                        <button type="submit" class="btn btn-secondary">제목/앨범 저장</button>
+                    </form>
+                </c:if>
+
+                <form method="post" action="/feed/${detail.mediaId}/edit-tags" class="meta-edit-form">
+                    <h2>태그 수정 (모든 사용자)</h2>
+                    <div class="tag-edit-list">
+                        <c:forEach var="tagOption" items="${tags}">
+                            <label class="tag-edit-option ${tagOption.tagScope == 'P' ? 'is-person' : ''}">
+                                <input type="checkbox"
+                                       name="selectedTagIds"
+                                       value="${tagOption.tagId}"
+                                       ${fn:contains(fn:join(detail.tags, ','), tagOption.tagScope == 'P' ? fn:concat('@', tagOption.tagName) : fn:concat('#', tagOption.tagName)) ? 'checked' : ''}>
+                                <span>${tagOption.tagScope == 'P' ? fn:concat('@', tagOption.tagName) : fn:concat('#', tagOption.tagName)}</span>
+                            </label>
+                        </c:forEach>
+                    </div>
+                    <label for="newTags-${detail.mediaId}">새 태그 (쉼표 구분)</label>
+                    <input id="newTags-${detail.mediaId}" name="newTags" placeholder="@친구,#장소">
+                    <button type="submit" class="btn btn-secondary">태그 저장</button>
+                </form>
+            </section>
         </section>
 
         <section class="detail-panel action-panel">
