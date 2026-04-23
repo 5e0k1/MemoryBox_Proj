@@ -88,6 +88,10 @@ body.download-lock-active {
     padding: 20px;
 }
 
+.download-lock-overlay[hidden] {
+    display: none;
+}
+
 .download-lock-panel {
     width: min(360px, 100%);
     background: #fff;
