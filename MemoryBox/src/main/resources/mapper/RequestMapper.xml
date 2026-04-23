@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hogudeul.memorybox.mapper.RequestMapper">
+
+    <resultMap id="RequestPostRowMap" type="com.hogudeul.memorybox.model.RequestPostRow">
+        <id column="request_id" property="requestId"/>
+        <result column="user_id" property="userId"/>
+        <result column="title" property="title"/>
+        <result column="content" property="content"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="author_name" property="authorName"/>
+        <result column="comment_count" property="commentCount"/>
+    </resultMap>
+
+    <resultMap id="RequestCommentRowMap" type="com.hogudeul.memorybox.model.RequestCommentRow">
+        <id column="request_comment_id" property="requestCommentId"/>
+        <result column="request_id" property="requestId"/>
+        <result column="user_id" property="userId"/>
+        <result column="content" property="content"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="author_name" property="authorName"/>
+    </resultMap>
+
+    <select id="findRequestPosts" resultMap="RequestPostRowMap">
+        SELECT rp.request_id,
+               rp.user_id,
+               rp.title,
+               rp.content,
+               rp.created_at,
+               u.display_name AS author_name,
+               (
+                   SELECT COUNT(*)
+                   FROM REQUEST_COMMENT rc
+                   WHERE rc.request_id = rp.request_id
+                     AND rc.del_yn = 'N'
+               ) AS comment_count
+        FROM REQUEST_POST rp
+                 JOIN USER u ON rp.user_id = u.user_id
+        WHERE rp.del_yn = 'N'
+          AND u.del_yn = 'N'
+        ORDER BY rp.created_at DESC, rp.request_id DESC
+    </select>
+
+    <select id="findRequestPostById" resultMap="RequestPostRowMap">
+        SELECT rp.request_id,
+               rp.user_id,
+               rp.title,
+               rp.content,
+               rp.created_at,
+               u.display_name AS author_name,
+               (
+                   SELECT COUNT(*)
+                   FROM REQUEST_COMMENT rc
+                   WHERE rc.request_id = rp.request_id
+                     AND rc.del_yn = 'N'
+               ) AS comment_count
+        FROM REQUEST_POST rp
+                 JOIN USER u ON rp.user_id = u.user_id
+        WHERE rp.request_id = #{requestId}
+          AND rp.del_yn = 'N'
+          AND u.del_yn = 'N'
+        LIMIT 1
+    </select>
+
+    <select id="findCommentsByRequestId" resultMap="RequestCommentRowMap">
+        SELECT rc.request_comment_id,
+               rc.request_id,
+               rc.user_id,
+               rc.content,
+               rc.created_at,
+               u.display_name AS author_name
+        FROM REQUEST_COMMENT rc
+                 JOIN USER u ON rc.user_id = u.user_id
+        WHERE rc.request_id = #{requestId}
+          AND rc.del_yn = 'N'
+          AND u.del_yn = 'N'
+        ORDER BY rc.created_at ASC, rc.request_comment_id ASC
+    </select>
+
+    <insert id="insertRequestPost">
+        INSERT INTO REQUEST_POST (
+            user_id,
+            title,
+            content,
+            created_at,
+            updated_at,
+            del_yn
+        ) VALUES (
+            #{userId},
+            #{title},
+            #{content},
+            NOW(),
+            NOW(),
+            'N'
+        )
+    </insert>
+
+    <insert id="insertRequestComment">
+        INSERT INTO REQUEST_COMMENT (
+            request_id,
+            user_id,
+            content,
+            created_at,
+            updated_at,
+            del_yn
+        ) VALUES (
+            #{requestId},
+            #{userId},
+            #{content},
+            NOW(),
+            NOW(),
+            'N'
+        )
+    </insert>
+
+</mapper>

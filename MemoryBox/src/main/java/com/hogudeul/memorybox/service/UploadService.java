@@ -44,11 +44,13 @@ public class UploadService {
     private final UploadMapper uploadMapper;
     private final AlbumMapper albumMapper;
     private final StorageService storageService;
+    private final NotificationService notificationService;
 
-    public UploadService(UploadMapper uploadMapper, AlbumMapper albumMapper, StorageService storageService) {
+    public UploadService(UploadMapper uploadMapper, AlbumMapper albumMapper, StorageService storageService, NotificationService notificationService) {
         this.uploadMapper = uploadMapper;
         this.albumMapper = albumMapper;
         this.storageService = storageService;
+        this.notificationService = notificationService;
     }
 
     public List<AlbumOption> getActiveAlbums(Long userId) {
@@ -81,18 +83,42 @@ public class UploadService {
         return tag;
     }
 
+
+    @Transactional
+    public AlbumOption createAlbum(String rawAlbumName) {
+        String albumName = rawAlbumName == null ? "" : rawAlbumName.trim();
+        if (albumName.isBlank()) {
+            throw new UploadException("앨범명을 입력해 주세요.");
+        }
+
+        AlbumOption existing = albumMapper.findActiveAlbumByName(albumName);
+        if (existing != null) {
+            throw new UploadException("이미 존재하는 앨범명입니다.");
+        }
+
+        Long albumId = albumMapper.selectNextAlbumId();
+        Integer sortOrder = albumMapper.selectNextSortOrder();
+        albumMapper.insertAlbum(albumId, albumName, sortOrder == null ? 1 : sortOrder);
+
+        AlbumOption created = new AlbumOption();
+        created.setAlbumId(albumId);
+        created.setAlbumName(albumName);
+        return created;
+    }
+
     @Transactional
     public void uploadSinglePhoto(Long userId, SinglePhotoUploadForm form) {
         if (form.getImageFile() == null || form.getImageFile().isEmpty()) {
             throw new UploadException("업로드할 이미지 파일을 선택해 주세요.");
         }
-        processPhoto(userId,
+        Long mediaId = processPhoto(userId,
                 form.getAlbumId(),
                 form.getTitle(),
                 form.getTakenAt(),
                 form.getSelectedTagIds(),
                 form.getNewTags(),
                 form.getImageFile());
+        notificationService.notifyUpload(userId, mediaId, 1);
     }
 
     @Transactional
@@ -102,23 +128,28 @@ public class UploadService {
         }
 
         int created = 0;
+        Long sampleMediaId = null;
         for (int i = 0; i < form.getImageFiles().size(); i++) {
             MultipartFile file = form.getImageFiles().get(i);
             if (file == null || file.isEmpty()) {
                 continue;
             }
-            processPhoto(userId,
+            Long mediaId = processPhoto(userId,
                     form.getAlbumId(),
-                    null,
+                    form.getTitle(),
                     form.getTakenAt(),
                     form.getSelectedTagIds(),
                     form.getNewTags(),
                     file);
+            if (sampleMediaId == null) {
+                sampleMediaId = mediaId;
+            }
             created++;
         }
         if (created == 0) {
             throw new UploadException("유효한 이미지 파일이 없습니다.");
         }
+        notificationService.notifyUpload(userId, sampleMediaId, created);
     }
 
     @Transactional
@@ -145,6 +176,7 @@ public class UploadService {
             uploadMapper.insertMediaVariant(buildVariant(mediaItem.getMediaId(), "THUMB", thumb, 320, 180, null));
 
             bindTags(userId, mediaItem.getMediaId(), form.getSelectedTagIds(), form.getNewTags());
+            notificationService.notifyUpload(userId, mediaItem.getMediaId(), 1);
         } catch (Exception e) {
             rollbackFiles(savedKeys);
             if (e instanceof UploadException) {
@@ -154,7 +186,7 @@ public class UploadService {
         }
     }
 
-    private void processPhoto(Long userId,
+    private Long processPhoto(Long userId,
                               Long albumId,
                               String title,
                               String takenAtRaw,
@@ -187,6 +219,7 @@ public class UploadService {
             uploadMapper.insertMediaVariant(buildVariant(mediaItem.getMediaId(), "MEDIUM", medium, smallImageWidth(source, 1280), smallImageHeight(source, 1280), null));
 
             bindTags(userId, mediaItem.getMediaId(), selectedTagIds, newTags);
+            return mediaItem.getMediaId();
         } catch (Exception e) {
             rollbackFiles(savedKeys);
             if (e instanceof UploadException) {

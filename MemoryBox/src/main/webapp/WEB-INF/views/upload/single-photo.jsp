@@ -19,12 +19,15 @@
         <label>제목<input type="text" name="title" value="${form.title}" maxlength="100"></label>
         <label>촬영일시<input type="datetime-local" class="taken-at-input" name="takenAt" value="${form.takenAt}"></label>
         <label>앨범
-            <select name="albumId" required>
+            <div class="album-select-row" data-widget="album-picker" data-create-url="${pageContext.request.contextPath}/upload/album">
+                <select name="albumId" required class="album-select">
                 <option value="">선택</option>
                 <c:forEach items="${albums}" var="album">
                     <option value="${album.albumId}" <c:if test="${form.albumId == album.albumId}">selected</c:if>>${album.albumName}</option>
                 </c:forEach>
             </select>
+                <button type="button" class="album-add-btn">+ 새 앨범</button>
+            </div>
         </label>
 
         <section>
@@ -57,6 +60,20 @@
             </div>
             <input type="hidden" name="newTags" class="new-tags-hidden" value="${form.newTags}">
         </section>
+
+        
+
+        <div class="album-modal-backdrop" hidden>
+            <section class="album-modal" role="dialog" aria-modal="true" aria-labelledby="albumModalTitle">
+                <h2 id="albumModalTitle">새 앨범 만들기</h2>
+                <input type="text" class="album-add-input" maxlength="50" placeholder="앨범명을 입력하세요">
+                <p class="album-modal-error" hidden></p>
+                <div class="album-modal-actions">
+                    <button type="button" class="btn btn-secondary album-cancel-btn">취소</button>
+                    <button type="button" class="btn btn-primary album-create-btn">생성</button>
+                </div>
+            </section>
+        </div>
 
         <button type="submit">업로드</button>
     </form>

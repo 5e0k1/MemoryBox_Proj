@@ -6,6 +6,8 @@ import com.hogudeul.memorybox.dto.FeedItemView;
 import com.hogudeul.memorybox.dto.MediaDetailView;
 import com.hogudeul.memorybox.service.DetailService;
 import com.hogudeul.memorybox.service.FeedService;
+import com.hogudeul.memorybox.service.NotificationService;
+import com.hogudeul.memorybox.service.UploadService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
@@ -42,10 +44,17 @@ public class PageController {
     private static final int FEED_PAGE_SIZE = 24;
     private final FeedService feedService;
     private final DetailService detailService;
+    private final NotificationService notificationService;
+    private final UploadService uploadService;
 
-    public PageController(FeedService feedService, DetailService detailService) {
+    public PageController(FeedService feedService,
+                          DetailService detailService,
+                          NotificationService notificationService,
+                          UploadService uploadService) {
         this.feedService = feedService;
         this.detailService = detailService;
+        this.notificationService = notificationService;
+        this.uploadService = uploadService;
     }
 
     @GetMapping("/feed")
@@ -61,6 +70,7 @@ public class PageController {
         List<FeedItemView> optionSource = feedService.getImageFeedItems();
 
         model.addAttribute("loginUser", loginUser);
+        addNotificationModel(model, userId);
         model.addAttribute("pwdError", pwdError);
         model.addAttribute("pwdChanged", "true".equals(pwdChanged));
         model.addAttribute("pageTitle", "피드");
@@ -79,6 +89,7 @@ public class PageController {
         List<FeedItemView> optionSource = feedService.getImageFeedItems();
 
         model.addAttribute("loginUser", loginUser);
+        addNotificationModel(model, userId);
         model.addAttribute("mode", "search");
         model.addAttribute("pageTitle", "검색");
         model.addAttribute("feedItems", feedItems);
@@ -98,6 +109,7 @@ public class PageController {
         int totalCount = feedService.getFeedItemCount(null, null, null, null, userId, true, false);
 
         model.addAttribute("loginUser", loginUser);
+        addNotificationModel(model, userId);
         model.addAttribute("pageTitle", "좋아요 누른 항목");
         model.addAttribute("mode", "likes");
         model.addAttribute("feedItems", feedItems);
@@ -114,6 +126,7 @@ public class PageController {
         int totalCount = feedService.getFeedItemCount(null, null, null, null, userId, false, true);
 
         model.addAttribute("loginUser", loginUser);
+        addNotificationModel(model, userId);
         model.addAttribute("pageTitle", "마이페이지 & 업로드한 게시물");
         model.addAttribute("mode", "mypage");
         model.addAttribute("feedItems", feedItems);
@@ -160,6 +173,7 @@ public class PageController {
 
         MediaDetailView detail = detailService.getMediaDetail(itemId, userId);
         model.addAttribute("loginUser", loginUser);
+        addNotificationModel(model, userId);
         model.addAttribute("info", info);
         model.addAttribute("error", error);
 
@@ -171,7 +185,51 @@ public class PageController {
         List<CommentView> comments = detailService.getComments(itemId, userId);
         model.addAttribute("detail", detail);
         model.addAttribute("comments", comments);
+        model.addAttribute("albums", uploadService.getActiveAlbums(userId));
+        model.addAttribute("tags", uploadService.getActiveTags(userId));
         return "detail";
+    }
+
+    @PostMapping("/feed/{itemId}/edit-meta")
+    public String editMeta(@PathVariable Long itemId,
+                           @RequestParam("title") String title,
+                           @RequestParam("albumId") Long albumId,
+                           HttpSession session,
+                           RedirectAttributes redirectAttributes) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        if (loginUser == null) {
+            return "redirect:/login";
+        }
+
+        try {
+            boolean ok = detailService.updateMediaMeta(itemId, loginUser.getUserId(), title, albumId);
+            redirectAttributes.addAttribute(ok ? "info" : "error",
+                    ok ? "제목/앨범이 수정되었습니다." : "작성자만 제목/앨범을 수정할 수 있습니다.");
+        } catch (Exception e) {
+            redirectAttributes.addAttribute("error", "제목/앨범 수정 중 오류가 발생했습니다.");
+        }
+        return "redirect:/feed/" + itemId;
+    }
+
+    @PostMapping("/feed/{itemId}/edit-tags")
+    public String editTags(@PathVariable Long itemId,
+                           @RequestParam(required = false) List<Long> selectedTagIds,
+                           @RequestParam(required = false) String newTags,
+                           HttpSession session,
+                           RedirectAttributes redirectAttributes) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        if (loginUser == null) {
+            return "redirect:/login";
+        }
+
+        try {
+            boolean ok = detailService.updateMediaTags(itemId, loginUser.getUserId(), selectedTagIds, newTags);
+            redirectAttributes.addAttribute(ok ? "info" : "error",
+                    ok ? "태그가 수정되었습니다." : "태그 수정에 실패했습니다.");
+        } catch (Exception e) {
+            redirectAttributes.addAttribute("error", "태그 수정 중 오류가 발생했습니다.");
+        }
+        return "redirect:/feed/" + itemId;
     }
 
     @PostMapping("/feed/{itemId}/like")
@@ -431,6 +489,10 @@ public class PageController {
         return false;
     }
 
+
+    private void addNotificationModel(Model model, Long userId) {
+        model.addAttribute("notificationPanel", notificationService.getNotificationPanel(userId));
+    }
     private Map<String, Object> buildInteractionResponse(boolean success, String message, Long itemId, Long userId) {
         Map<String, Object> response = new HashMap<>();
         response.put("success", success);

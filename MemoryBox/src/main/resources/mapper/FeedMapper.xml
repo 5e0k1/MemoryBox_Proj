@@ -90,7 +90,8 @@
                      AND mlm.user_id = #{userId}
                ) AS liked_by_me,
                (
-                   SELECT GROUP_CONCAT(CONCAT(COALESCE(t.tag_scope, 'N'), '|', t.tag_name) ORDER BY t.tag_name SEPARATOR ',')
+                   SELECT GROUP_CONCAT(CONCAT(COALESCE(t.tag_scope, 'N'), '|', t.tag_name)
+                                       ORDER BY CASE WHEN t.tag_scope = 'P' THEN 0 ELSE 1 END, t.tag_name SEPARATOR ',')
                    FROM MEDIA_TAG mt
                        JOIN TAG t ON mt.tag_id = t.tag_id
                    WHERE mt.media_id = mi.media_id
@@ -147,7 +148,8 @@
                ) AS comment_count,
                0 AS liked_by_me,
                (
-                   SELECT GROUP_CONCAT(CONCAT(COALESCE(t.tag_scope, 'N'), '|', t.tag_name) ORDER BY t.tag_name SEPARATOR ',')
+                   SELECT GROUP_CONCAT(CONCAT(COALESCE(t.tag_scope, 'N'), '|', t.tag_name)
+                                       ORDER BY CASE WHEN t.tag_scope = 'P' THEN 0 ELSE 1 END, t.tag_name SEPARATOR ',')
                    FROM MEDIA_TAG mt
                        JOIN TAG t ON mt.tag_id = t.tag_id
                    WHERE mt.media_id = mi.media_id

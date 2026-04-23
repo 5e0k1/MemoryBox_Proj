@@ -18,9 +18,11 @@ public class FeedService {
     private static final DateTimeFormatter DATETIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final FeedMapper feedMapper;
+    private final TimeDisplayService timeDisplayService;
 
-    public FeedService(FeedMapper feedMapper) {
+    public FeedService(FeedMapper feedMapper, TimeDisplayService timeDisplayService) {
         this.feedMapper = feedMapper;
+        this.timeDisplayService = timeDisplayService;
     }
 
     public List<FeedItemView> getImageFeedItems() {
@@ -96,7 +98,16 @@ public class FeedService {
         for (FeedItemView item : feedItems) {
             tags.addAll(Arrays.asList(item.getTags()));
         }
-        return new ArrayList<>(tags);
+        List<String> sortedTags = new ArrayList<>(tags);
+        sortedTags.sort((left, right) -> {
+            boolean leftPerson = left.startsWith("@");
+            boolean rightPerson = right.startsWith("@");
+            if (leftPerson == rightPerson) {
+                return left.compareToIgnoreCase(right);
+            }
+            return leftPerson ? -1 : 1;
+        });
+        return sortedTags;
     }
 
     private List<FeedItemView> toView(List<FeedRow> rows) {
@@ -120,8 +131,10 @@ public class FeedService {
                     safeInt(row.getLikedByMe()) > 0,
                     tags,
                     defaultText(row.getAlbumName(), "미분류"),
-                    formatDateTime(row.getTakenAt()),
-                    formatDateTime(displayAt)
+                    timeDisplayService.formatTakenDate(row.getTakenAt()),
+                    formatDateTime(displayAt),
+                    timeDisplayService.formatRelativeUploadedAt(row.getUploadedAt()),
+                    timeDisplayService.isNew(row.getUploadedAt())
             ));
         }
 
