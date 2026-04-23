@@ -20,11 +20,11 @@ public class FeedItemView {
     private String takenAt;
     private String displayAt;
     private String relativeUploadedAt;
-    private boolean isNew;
+    private boolean recent;
 
     public FeedItemView(Long id, String mediaType, String thumbnailUrl, String title, String author,
                         int shotYear, String uploadedAt, int likeCount, int commentCount, boolean likedByMe, String[] tags,
-                        String albumName, String takenAt, String displayAt, String relativeUploadedAt, boolean isNew) {
+                        String albumName, String takenAt, String displayAt, String relativeUploadedAt, boolean recent) {
         this.id = id;
         this.mediaType = mediaType;
         this.thumbnailUrl = thumbnailUrl;
@@ -40,7 +40,7 @@ public class FeedItemView {
         this.takenAt = takenAt;
         this.displayAt = displayAt;
         this.relativeUploadedAt = relativeUploadedAt;
-        this.isNew = isNew;
+        this.recent = recent;
     }
 
     public Long getId() {
@@ -163,12 +163,12 @@ public class FeedItemView {
         this.relativeUploadedAt = relativeUploadedAt;
     }
 
-    public boolean isNew() {
-        return isNew;
+    public boolean isRecent() {
+        return recent;
     }
 
-    public void setNew(boolean aNew) {
-        isNew = aNew;
+    public void setRecent(boolean recent) {
+        this.recent = recent;
     }
 }
 

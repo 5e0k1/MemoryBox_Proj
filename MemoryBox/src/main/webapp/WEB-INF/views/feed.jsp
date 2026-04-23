@@ -145,7 +145,7 @@
                 <a class="thumb-link" href="/feed/${item.id}" aria-label="${item.title} 상세보기">
                     <img src="${item.thumbnailUrl}" alt="${item.title} 썸네일" loading="lazy">
                     <span class="media-badge ${item.mediaType}" data-full-text="${item.mediaType eq 'video' ? 'Video' : 'Photo'}" data-short-text="${item.mediaType eq 'video' ? 'V' : 'P'}">${item.mediaType eq 'video' ? 'Video' : 'Photo'}</span>
-                    <c:if test="${item.new}"><span class="new-badge" data-full-text="New" data-short-text="N">New</span></c:if>
+                    <c:if test="${item.recent}"><span class="new-badge" data-full-text="New" data-short-text="N">New</span></c:if>
                     <span class="select-check" aria-hidden="true">✔</span>
                     <div class="overlay-meta overlay-bottom"><p>${item.author}</p></div>
                 </a>

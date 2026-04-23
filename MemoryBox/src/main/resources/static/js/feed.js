@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <a class="thumb-link" href="/feed/${item.id}" aria-label="${escapeHtml(title)} 상세보기">
                 <img src="${item.thumbnailUrl}" alt="${escapeHtml(title)} 썸네일" loading="lazy">
                 <span class="media-badge ${item.mediaType}" data-full-text="${mediaLabel}" data-short-text="${item.mediaType === 'video' ? 'V' : 'P'}">${mediaLabel}</span>
-                ${item.new ? `<span class="new-badge" data-full-text="New" data-short-text="N">New</span>` : ""}
+                ${item.recent ? `<span class="new-badge" data-full-text="New" data-short-text="N">New</span>` : ""}
                 <span class="select-check" aria-hidden="true">✔</span>
                 <div class="overlay-meta overlay-bottom"><p>${escapeHtml(item.author || '')}</p></div>
             </a>
