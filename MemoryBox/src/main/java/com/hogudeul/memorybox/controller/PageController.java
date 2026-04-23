@@ -10,6 +10,7 @@ import com.hogudeul.memorybox.service.NotificationService;
 import com.hogudeul.memorybox.service.UploadService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import java.io.InputStream;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -25,6 +26,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -345,9 +348,9 @@ public class PageController {
     }
 
     @GetMapping("/feed/{itemId}/download")
-    public ResponseEntity<StreamingResponseBody> downloadOriginal(@PathVariable Long itemId,
-                                                                  HttpServletRequest request,
-                                                                  HttpSession session) {
+    public ResponseEntity<Resource> downloadOriginal(@PathVariable Long itemId,
+                                                     HttpServletRequest request,
+                                                     HttpSession session) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         if (loginUser == null) {
             return ResponseEntity.status(302).header(HttpHeaders.LOCATION, "/login").build();
@@ -402,18 +405,14 @@ public class PageController {
             responseBuilder.contentLength(contentLength);
         }
 
-        return responseBuilder.body((StreamingResponseBody) outputStream -> {
-            try (var inputStream = fileInfo.openInputStream()) {
-                inputStream.transferTo(outputStream);
-            } catch (IOException e) {
-                if (isClientAbortIOException(e)) {
-                    log.debug("Client aborted single download. mediaId={}, userId={}, msg={}",
-                            itemId, loginUser.getUserId(), e.getMessage());
-                    return;
-                }
-                throw e;
-            }
-        });
+        try {
+            InputStream inputStream = fileInfo.openInputStream();
+            return responseBuilder.body(new InputStreamResource(inputStream));
+        } catch (IOException e) {
+            log.warn("Failed to open download stream. mediaId={}, userId={}, msg={}",
+                    itemId, loginUser.getUserId(), e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     @PostMapping(value = "/feed/download-zip", consumes = MediaType.APPLICATION_JSON_VALUE)
