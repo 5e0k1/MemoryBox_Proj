@@ -10,7 +10,6 @@ import com.hogudeul.memorybox.service.NotificationService;
 import com.hogudeul.memorybox.service.UploadService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
-import java.io.InputStream;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -26,7 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -405,14 +404,8 @@ public class PageController {
             responseBuilder.contentLength(contentLength);
         }
 
-        try {
-            InputStream inputStream = fileInfo.openInputStream();
-            return responseBuilder.body(new InputStreamResource(inputStream));
-        } catch (IOException e) {
-            log.warn("Failed to open download stream. mediaId={}, userId={}, msg={}",
-                    itemId, loginUser.getUserId(), e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+        Resource resource = new FileSystemResource(fileInfo.getFilePath());
+        return responseBuilder.body(resource);
     }
 
     @PostMapping(value = "/feed/download-zip", consumes = MediaType.APPLICATION_JSON_VALUE)
