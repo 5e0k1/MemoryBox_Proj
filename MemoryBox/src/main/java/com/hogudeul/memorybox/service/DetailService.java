@@ -175,7 +175,8 @@ public class DetailService {
 
     public void streamZip(List<DownloadFileInfo> files, OutputStream outputStream) throws IOException {
         Map<String, Integer> nameCounter = new HashMap<>();
-        try (ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
+        ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream);
+        try {
             for (DownloadFileInfo file : files) {
                 if (!file.existsReadable()) {
                     throw new DownloadException("원본 파일을 찾을 수 없습니다.");
@@ -189,6 +190,7 @@ public class DetailService {
                 zipOutputStream.closeEntry();
             }
             zipOutputStream.finish();
+            zipOutputStream.flush();
         } catch (DownloadException e) {
             throw e;
         } catch (IOException e) {
