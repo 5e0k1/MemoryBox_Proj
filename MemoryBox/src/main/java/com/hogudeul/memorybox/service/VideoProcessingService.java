@@ -22,7 +22,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -34,6 +36,7 @@ public class VideoProcessingService {
     private final StorageService storageService;
     private final Path storageRoot;
     private final String ffmpegCommand;
+    private volatile String resolvedFfmpegCommand;
 
     public VideoProcessingService(UploadMapper uploadMapper,
                                   StorageService storageService,
@@ -43,6 +46,7 @@ public class VideoProcessingService {
         this.storageService = storageService;
         this.storageRoot = Paths.get(storageRoot).toAbsolutePath().normalize();
         this.ffmpegCommand = ffmpegCommand == null || ffmpegCommand.isBlank() ? "ffmpeg" : ffmpegCommand.trim();
+        this.resolvedFfmpegCommand = this.ffmpegCommand;
     }
 
     @Async("mediaTaskExecutor")
@@ -51,6 +55,12 @@ public class VideoProcessingService {
         Path originalPath = storageRoot.resolve(originalStorageKey).normalize();
         if (!Files.exists(originalPath)) {
             log.error("[video-processing] 원본 파일을 찾을 수 없습니다. mediaId={}, key={}", mediaId, originalStorageKey);
+            return;
+        }
+
+        String ffmpeg = resolvedFfmpegPath();
+        if (!isExecutable(ffmpeg)) {
+            log.error("[video-processing] ffmpeg 실행 파일을 찾지 못했습니다. mediaId={}, configured='{}'. app.ffmpeg.command에 절대 경로(예: C:/ffmpeg/bin/ffmpeg.exe)를 설정해 주세요.", mediaId, ffmpegCommand);
             return;
         }
 
@@ -114,7 +124,7 @@ public class VideoProcessingService {
         Path tempPreview = tempDir.resolve("preview.mp4");
         try {
             runFfmpeg(List.of(
-                    ffmpegCommand,
+                    resolvedFfmpegPath(),
                     "-y",
                     "-ss", "00:00:01",
                     "-t", "4",
@@ -164,7 +174,7 @@ public class VideoProcessingService {
 
     private List<String> buildThumbCommand(Path originalPath, Path tempThumb, String seekTime) {
         return List.of(
-                ffmpegCommand,
+                resolvedFfmpegPath(),
                 "-y",
                 "-ss", seekTime,
                 "-i", originalPath.toString(),
@@ -198,5 +208,78 @@ public class VideoProcessingService {
         variant.setDurationSec(durationSec);
         variant.setCreatedAt(LocalDateTime.now());
         uploadMapper.insertMediaVariant(variant);
+    }
+
+    private String resolvedFfmpegPath() {
+        String cached = resolvedFfmpegCommand;
+        if (isExecutable(cached)) {
+            return cached;
+        }
+
+        synchronized (this) {
+            if (isExecutable(resolvedFfmpegCommand)) {
+                return resolvedFfmpegCommand;
+            }
+
+            String discovered = discoverFfmpegCommand();
+            if (discovered != null) {
+                resolvedFfmpegCommand = discovered;
+                log.info("[video-processing] ffmpeg 실행 경로 자동 탐지 성공: {}", discovered);
+                return discovered;
+            }
+        }
+        return ffmpegCommand;
+    }
+
+    private String discoverFfmpegCommand() {
+        List<String> candidates = new ArrayList<>();
+        candidates.add(ffmpegCommand);
+        candidates.add("ffmpeg");
+        candidates.add("ffmpeg.exe");
+
+        if (isWindows()) {
+            String localAppData = System.getenv("LOCALAPPDATA");
+            String programFiles = System.getenv("ProgramFiles");
+            String programFilesX86 = System.getenv("ProgramFiles(x86)");
+            if (localAppData != null) {
+                candidates.add(localAppData + "\\Microsoft\\WinGet\\Links\\ffmpeg.exe");
+            }
+            if (programFiles != null) {
+                candidates.add(programFiles + "\\ffmpeg\\bin\\ffmpeg.exe");
+            }
+            if (programFilesX86 != null) {
+                candidates.add(programFilesX86 + "\\ffmpeg\\bin\\ffmpeg.exe");
+            }
+        }
+
+        for (String candidate : candidates) {
+            if (candidate != null && isExecutable(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private boolean isExecutable(String command) {
+        if (command == null || command.isBlank()) {
+            return false;
+        }
+        try {
+            Process process = new ProcessBuilder(command, "-version")
+                    .redirectErrorStream(true)
+                    .start();
+            boolean finished = process.waitFor(2, TimeUnit.SECONDS);
+            if (!finished) {
+                process.destroyForcibly();
+                return false;
+            }
+            return process.exitValue() == 0;
+        } catch (Exception ignore) {
+            return false;
+        }
+    }
+
+    private boolean isWindows() {
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
     }
 }
