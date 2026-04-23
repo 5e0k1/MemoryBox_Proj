@@ -39,6 +39,11 @@ public class NotificationService {
 
     @Transactional
     public void notifyComment(Long actorUserId, Long mediaId, Long commentId, String contentPreview) {
+        notifyMediaOwnerForComment(actorUserId, mediaId, commentId, contentPreview);
+    }
+
+    @Transactional
+    public void notifyMediaOwnerForComment(Long actorUserId, Long mediaId, Long commentId, String contentPreview) {
         if (actorUserId == null || mediaId == null || commentId == null) {
             return;
         }
@@ -56,6 +61,11 @@ public class NotificationService {
 
     @Transactional
     public void notifyReply(Long actorUserId, Long parentCommentId, Long replyCommentId) {
+        notifyCommentOwnerForReply(actorUserId, parentCommentId, replyCommentId);
+    }
+
+    @Transactional
+    public void notifyCommentOwnerForReply(Long actorUserId, Long parentCommentId, Long replyCommentId) {
         if (actorUserId == null || parentCommentId == null || replyCommentId == null) {
             return;
         }

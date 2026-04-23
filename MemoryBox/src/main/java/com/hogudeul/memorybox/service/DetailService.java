@@ -292,9 +292,9 @@ public class DetailService {
         detailMapper.insertComment(commentId, mediaId, normalizedParentId, userId, normalized);
 
         if (normalizedParentId == null) {
-            notificationService.notifyComment(userId, mediaId, commentId, normalized);
+            notificationService.notifyMediaOwnerForComment(userId, mediaId, commentId, normalized);
         } else {
-            notificationService.notifyReply(userId, normalizedParentId, commentId);
+            notificationService.notifyCommentOwnerForReply(userId, normalizedParentId, commentId);
         }
         return true;
     }
