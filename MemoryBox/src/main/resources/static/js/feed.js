@@ -539,9 +539,72 @@ document.addEventListener('DOMContentLoaded', () => {
         downloadSelectedBtn.textContent = isLoading ? '다운로드 준비중...' : '다운로드';
     };
 
+    const ensureDownloadOverlay = () => {
+        let overlay = document.getElementById('downloadLockOverlay');
+        if (overlay) return overlay;
+
+        overlay = document.createElement('div');
+        overlay.id = 'downloadLockOverlay';
+        overlay.className = 'download-lock-overlay';
+        overlay.hidden = true;
+        overlay.innerHTML = `
+            <section class="download-lock-panel" role="alert" aria-live="polite">
+                <h2 class="download-lock-title">다운로드 준비중</h2>
+                <p class="download-lock-message" id="downloadLockMessage">파일을 준비하고 있습니다...</p>
+                <progress class="download-lock-progress" id="downloadLockProgress" max="100" value="0"></progress>
+            </section>
+        `;
+        document.body.appendChild(overlay);
+        return overlay;
+    };
+
+    const setDownloadLock = (active, message = '파일을 준비하고 있습니다...', progressPercent = null) => {
+        const overlay = ensureDownloadOverlay();
+        const messageEl = overlay.querySelector('#downloadLockMessage');
+        const progressEl = overlay.querySelector('#downloadLockProgress');
+
+        document.body.classList.toggle('download-lock-active', active);
+        overlay.hidden = !active;
+        if (messageEl) messageEl.textContent = message;
+
+        if (progressEl) {
+            if (typeof progressPercent === 'number') {
+                progressEl.removeAttribute('indeterminate');
+                progressEl.value = Math.max(0, Math.min(100, progressPercent));
+            } else {
+                progressEl.removeAttribute('value');
+            }
+        }
+    };
+
+    const downloadBlobWithProgress = async (response) => {
+        if (!response.body) {
+            return await response.blob();
+        }
+        const contentLength = Number(response.headers.get('Content-Length') || 0);
+        const reader = response.body.getReader();
+        const chunks = [];
+        let received = 0;
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (!value) continue;
+            chunks.push(value);
+            received += value.length;
+            if (contentLength > 0) {
+                const percent = (received / contentLength) * 100;
+                setDownloadLock(true, `다운로드 중... ${Math.floor(percent)}%`, percent);
+            } else {
+                setDownloadLock(true, `다운로드 중... ${Math.floor(received / 1024)}KB`);
+            }
+        }
+        return new Blob(chunks);
+    };
+
     downloadSelectedBtn?.addEventListener('click', async () => {
         if (selectedIds.size === 0) return window.alert('다운로드할 파일을 먼저 선택해 주세요.');
         setDownloadButtonLoading(true);
+        setDownloadLock(true, 'ZIP 파일을 준비하고 있습니다...');
         try {
             const response = await fetch(DOWNLOAD_API_URL, {
                 method: 'POST',
@@ -549,7 +612,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ mediaIds: Array.from(selectedIds, (id) => Number(id)) })
             });
             if (!response.ok) throw new Error();
-            const blob = await response.blob();
+            const blob = await downloadBlobWithProgress(response);
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
@@ -561,6 +624,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             window.alert('다중 다운로드 처리 중 오류가 발생했습니다.');
         } finally {
+            setDownloadLock(false);
             setDownloadButtonLoading(false);
         }
     });

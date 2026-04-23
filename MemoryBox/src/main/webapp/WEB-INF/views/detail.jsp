@@ -267,6 +267,108 @@
     openTagEditBtn?.addEventListener('click', () => {
         tagEditPanel.hidden = !tagEditPanel.hidden;
     });
+
+    const ensureDownloadOverlay = () => {
+        let overlay = document.getElementById('downloadLockOverlay');
+        if (overlay) return overlay;
+        overlay = document.createElement('div');
+        overlay.id = 'downloadLockOverlay';
+        overlay.className = 'download-lock-overlay';
+        overlay.hidden = true;
+        overlay.innerHTML = `
+            <section class="download-lock-panel" role="alert" aria-live="polite">
+                <h2 class="download-lock-title">다운로드 준비중</h2>
+                <p class="download-lock-message" id="downloadLockMessage">파일을 준비하고 있습니다...</p>
+                <progress class="download-lock-progress" id="downloadLockProgress" max="100" value="0"></progress>
+            </section>
+        `;
+        document.body.appendChild(overlay);
+        return overlay;
+    };
+
+    const setDownloadLock = (active, message = '파일을 준비하고 있습니다...', percent = null) => {
+        const overlay = ensureDownloadOverlay();
+        const messageEl = overlay.querySelector('#downloadLockMessage');
+        const progressEl = overlay.querySelector('#downloadLockProgress');
+        document.body.classList.toggle('download-lock-active', active);
+        overlay.hidden = !active;
+        if (messageEl) messageEl.textContent = message;
+        if (progressEl) {
+            if (typeof percent === 'number') {
+                progressEl.value = Math.max(0, Math.min(100, percent));
+            } else {
+                progressEl.removeAttribute('value');
+            }
+        }
+    };
+
+    const parseFileName = (response) => {
+        const disposition = response.headers.get('Content-Disposition') || '';
+        const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+        if (utf8Match) {
+            return decodeURIComponent(utf8Match[1]);
+        }
+        const asciiMatch = disposition.match(/filename="?([^";]+)"?/i);
+        return asciiMatch ? asciiMatch[1] : 'download';
+    };
+
+    const readBlobWithProgress = async (response) => {
+        if (!response.body) return await response.blob();
+        const contentLength = Number(response.headers.get('Content-Length') || 0);
+        const reader = response.body.getReader();
+        const chunks = [];
+        let received = 0;
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (!value) continue;
+            chunks.push(value);
+            received += value.length;
+            if (contentLength > 0) {
+                const percent = (received / contentLength) * 100;
+                setDownloadLock(true, `다운로드 중... ${Math.floor(percent)}%`, percent);
+            } else {
+                setDownloadLock(true, `다운로드 중... ${Math.floor(received / 1024)}KB`);
+            }
+        }
+        return new Blob(chunks);
+    };
+
+    const downloadBtn = document.querySelector('a.download-btn');
+    downloadBtn?.addEventListener('click', async (event) => {
+        event.preventDefault();
+        if (document.body.classList.contains('download-lock-active')) return;
+
+        const downloadUrl = downloadBtn.getAttribute('href');
+        if (!downloadUrl) return;
+        setDownloadLock(true, '원본 파일을 준비하고 있습니다...');
+        downloadBtn.classList.add('is-disabled');
+        downloadBtn.setAttribute('aria-disabled', 'true');
+
+        try {
+            const response = await fetch(downloadUrl);
+            if (!response.ok) {
+                window.location.href = downloadUrl;
+                return;
+            }
+            const blob = await readBlobWithProgress(response);
+            const fileName = parseFileName(response);
+            const objectUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(objectUrl);
+        } catch (_) {
+            window.alert('다운로드 중 오류가 발생했습니다.');
+        } finally {
+            setDownloadLock(false);
+            downloadBtn.classList.remove('is-disabled');
+            downloadBtn.removeAttribute('aria-disabled');
+        }
+    });
 </script>
 <script src="/js/upload.js"></script>
 </body>
