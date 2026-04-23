@@ -7,11 +7,14 @@ import com.hogudeul.memorybox.upload.MultiPhotoUploadForm;
 import com.hogudeul.memorybox.upload.SinglePhotoUploadForm;
 import com.hogudeul.memorybox.upload.UploadException;
 import com.hogudeul.memorybox.upload.VideoUploadForm;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,15 +50,23 @@ public class UploadController {
     }
 
     @PostMapping("/upload/photo")
-    public String uploadSinglePhoto(@ModelAttribute("form") SinglePhotoUploadForm form,
+    public Object uploadSinglePhoto(@ModelAttribute("form") SinglePhotoUploadForm form,
                                     HttpSession session,
-                                    RedirectAttributes redirectAttributes) {
+                                    RedirectAttributes redirectAttributes,
+                                    HttpServletRequest request) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        boolean ajax = isAjaxRequest(request);
         try {
             uploadService.uploadSinglePhoto(loginUser.getUserId(), form);
+            if (ajax) {
+                return uploadSuccessResponse("사진 1장 업로드가 완료되었습니다.", "/feed");
+            }
             redirectAttributes.addFlashAttribute("successMessage", "사진 1장 업로드가 완료되었습니다.");
             return "redirect:/feed";
         } catch (UploadException e) {
+            if (ajax) {
+                return uploadErrorResponse(e.getMessage(), "/upload/photo");
+            }
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             redirectAttributes.addFlashAttribute("form", form);
             return "redirect:/upload/photo";
@@ -75,15 +86,23 @@ public class UploadController {
     }
 
     @PostMapping("/upload/photos")
-    public String uploadMultiPhoto(@ModelAttribute("form") MultiPhotoUploadForm form,
+    public Object uploadMultiPhoto(@ModelAttribute("form") MultiPhotoUploadForm form,
                                    HttpSession session,
-                                   RedirectAttributes redirectAttributes) {
+                                   RedirectAttributes redirectAttributes,
+                                   HttpServletRequest request) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        boolean ajax = isAjaxRequest(request);
         try {
             uploadService.uploadMultiplePhotos(loginUser.getUserId(), form);
+            if (ajax) {
+                return uploadSuccessResponse("다중 사진 업로드가 완료되었습니다.", "/feed");
+            }
             redirectAttributes.addFlashAttribute("successMessage", "다중 사진 업로드가 완료되었습니다.");
             return "redirect:/feed";
         } catch (UploadException e) {
+            if (ajax) {
+                return uploadErrorResponse(e.getMessage(), "/upload/photos");
+            }
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             redirectAttributes.addFlashAttribute("form", form);
             return "redirect:/upload/photos";
@@ -103,15 +122,23 @@ public class UploadController {
     }
 
     @PostMapping("/upload/video")
-    public String uploadVideo(@ModelAttribute("form") VideoUploadForm form,
+    public Object uploadVideo(@ModelAttribute("form") VideoUploadForm form,
                               HttpSession session,
-                              RedirectAttributes redirectAttributes) {
+                              RedirectAttributes redirectAttributes,
+                              HttpServletRequest request) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        boolean ajax = isAjaxRequest(request);
         try {
             uploadService.uploadVideo(loginUser.getUserId(), form);
+            if (ajax) {
+                return uploadSuccessResponse("동영상 업로드가 완료되었습니다.", "/feed");
+            }
             redirectAttributes.addFlashAttribute("successMessage", "동영상 업로드가 완료되었습니다.");
             return "redirect:/feed";
         } catch (UploadException e) {
+            if (ajax) {
+                return uploadErrorResponse(e.getMessage(), "/upload/video");
+            }
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             redirectAttributes.addFlashAttribute("form", form);
             return "redirect:/upload/video";
@@ -141,5 +168,28 @@ public class UploadController {
             result.put("message", e.getMessage());
             return result;
         }
+    }
+
+    private boolean isAjaxRequest(HttpServletRequest request) {
+        String requestedWith = request.getHeader("X-Requested-With");
+        String accept = request.getHeader("Accept");
+        return "XMLHttpRequest".equalsIgnoreCase(requestedWith)
+                || (accept != null && accept.contains("application/json"));
+    }
+
+    private ResponseEntity<Map<String, Object>> uploadSuccessResponse(String message, String redirectUrl) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", true);
+        body.put("message", message);
+        body.put("redirectUrl", redirectUrl);
+        return ResponseEntity.ok(body);
+    }
+
+    private ResponseEntity<Map<String, Object>> uploadErrorResponse(String message, String redirectUrl) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", false);
+        body.put("message", message);
+        body.put("redirectUrl", redirectUrl);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 }

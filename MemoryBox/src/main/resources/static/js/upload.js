@@ -2,6 +2,7 @@
     initPreview();
     initTagWidgets();
     initTakenAtDefault();
+    initUploadSubmission();
 
     function initPreview() {
         const multiInput = document.getElementById('multiImageInput');
@@ -190,6 +191,119 @@
                 input.value = defaultValue;
             }
         });
+    }
+
+    function initUploadSubmission() {
+        const forms = document.querySelectorAll('.upload-form');
+        if (!forms.length) return;
+
+        forms.forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+                submitWithProgress(form);
+            });
+        });
+    }
+
+    function submitWithProgress(form) {
+        const overlay = createProgressOverlay();
+        lockPage(overlay);
+        updateProgress(overlay, 0, '업로드 준비 중...');
+
+        const xhr = new XMLHttpRequest();
+        xhr.open((form.method || 'POST').toUpperCase(), form.action || window.location.pathname, true);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.setRequestHeader('Accept', 'application/json');
+
+        xhr.upload.addEventListener('progress', function (event) {
+            if (!event.lengthComputable) {
+                updateProgress(overlay, 0, '업로드 중...');
+                return;
+            }
+            const percent = Math.min(99, Math.round((event.loaded / event.total) * 100));
+            updateProgress(overlay, percent, '업로드 중... ' + percent + '%');
+        });
+
+        xhr.addEventListener('load', function () {
+            let payload = {};
+            try {
+                payload = JSON.parse(xhr.responseText || '{}');
+            } catch (ignore) {
+                payload = {};
+            }
+
+            if (xhr.status >= 200 && xhr.status < 300 && payload.success) {
+                updateProgress(overlay, 100, '처리 완료');
+                showCompletionAlert(payload.message || '정상적으로 완료되었습니다');
+                setTimeout(function () {
+                    window.location.href = payload.redirectUrl || '/feed';
+                }, 1000);
+                return;
+            }
+
+            const errorMessage = payload.message || '업로드 처리 중 오류가 발생했습니다.';
+            unlockPage();
+            alert(errorMessage);
+        });
+
+        xhr.addEventListener('error', function () {
+            unlockPage();
+            alert('업로드 중 네트워크 오류가 발생했습니다.');
+        });
+
+        xhr.send(new FormData(form));
+    }
+
+    function createProgressOverlay() {
+        const overlay = document.createElement('div');
+        overlay.className = 'upload-progress-overlay';
+        overlay.innerHTML = '' +
+            '<div class="upload-progress-panel">' +
+            '<strong>업로드 진행 중</strong>' +
+            '<p class="upload-progress-text">업로드 준비 중...</p>' +
+            '<div class="upload-progress-track"><div class="upload-progress-fill" style="width:0%"></div></div>' +
+            '</div>';
+        return overlay;
+    }
+
+    function updateProgress(overlay, percent, message) {
+        const fill = overlay.querySelector('.upload-progress-fill');
+        const text = overlay.querySelector('.upload-progress-text');
+        if (fill) fill.style.width = Math.max(0, Math.min(percent, 100)) + '%';
+        if (text) text.textContent = message;
+    }
+
+    function lockPage(overlay) {
+        document.body.classList.add('upload-busy');
+        document.body.appendChild(overlay);
+    }
+
+    function unlockPage() {
+        document.body.classList.remove('upload-busy');
+        const overlay = document.querySelector('.upload-progress-overlay');
+        if (overlay) overlay.remove();
+        const alert = document.querySelector('.upload-complete-alert');
+        if (alert) alert.remove();
+    }
+
+    function showCompletionAlert(message) {
+        const notice = document.createElement('div');
+        notice.className = 'upload-complete-alert';
+        notice.innerHTML = '' +
+            '<div class="upload-complete-card">' +
+            '<div class="icon">✓</div>' +
+            '<p>' + escapeHtml(message) + '</p>' +
+            '</div>';
+        document.body.appendChild(notice);
+    }
+
+    function escapeHtml(raw) {
+        return (raw || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     function normalize(value) {
