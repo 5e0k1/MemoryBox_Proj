@@ -85,6 +85,10 @@
                     <button type="button" class="album-picker-card" data-album-value="${album}" aria-label="${album} 앨범 보기">
                         <span class="album-picker-icon" aria-hidden="true">📁</span>
                         <span class="album-picker-name">${album}</span>
+                        <span class="album-picker-count">
+                            사진 ${empty albumPhotoCounts[album] ? 0 : albumPhotoCounts[album]}개
+                            영상 ${empty albumVideoCounts[album] ? 0 : albumVideoCounts[album]}개
+                        </span>
                     </button>
                 </c:forEach>
             </div>
