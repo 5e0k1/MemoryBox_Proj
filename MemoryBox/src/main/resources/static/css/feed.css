@@ -887,6 +887,7 @@ body.modal-open {
     font-size: 0.88rem;
 }
 
+<<<<<<< codex/improve-search-tab-ui/ux
 .album-picker-count {
     text-align: center;
     font-size: 0.73rem;
@@ -894,6 +895,8 @@ body.modal-open {
     font-weight: 600;
 }
 
+=======
+>>>>>>> codex/add-remember-me-functionality-to-memorybox
 .selected-album-header {
     margin-bottom: 10px;
 }
