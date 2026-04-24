@@ -915,6 +915,92 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+
+    const initCalendarWidget = () => {
+        const calendarCard = document.getElementById('sharedCalendarCard');
+        if (!calendarCard || calendarCard.dataset.calendarState !== 'READY') return;
+
+        const eventPanel = document.getElementById('calendarEventPanel');
+        const eventHeader = document.getElementById('calendarEventHeader');
+        const eventList = document.getElementById('calendarEventList');
+        const closeBtn = document.getElementById('calendarCloseBtn');
+        const dayButtons = Array.from(document.querySelectorAll('.calendar-day[data-date]'));
+
+        if (!eventPanel || !eventHeader || !eventList) return;
+
+        let monthData;
+        try {
+            monthData = JSON.parse(eventPanel.dataset.calendarMonth || '{}');
+        } catch (_) {
+            return;
+        }
+
+        const dayMap = new Map((monthData.days || []).map((day) => [day.date, day]));
+        const upcomingEvents = monthData.upcomingEvents || [];
+
+        const formatKoreanDate = (isoDate) => {
+            const [y, m, d] = isoDate.split('-').map(Number);
+            return `${m}월 ${d}일`;
+        };
+
+        const calcDday = (isoDate) => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const target = new Date(`${isoDate}T00:00:00`);
+            const diff = Math.floor((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            if (diff === 0) return 'D-Day';
+            if (diff > 0) return `D-${diff}`;
+            return `D+${Math.abs(diff)}`;
+        };
+
+        const renderUpcoming = () => {
+            eventHeader.textContent = '다가오는 일정';
+            closeBtn.hidden = true;
+            if (!upcomingEvents.length) {
+                eventList.innerHTML = '<li class="empty">다가오는 일정이 없습니다.</li>';
+                return;
+            }
+            eventList.innerHTML = upcomingEvents.map((event) => `
+                <li>
+                    <span class="event-time">${calcDday(event.date)} · ${event.timeText}</span>
+                    <span class="event-title">${escapeHtml(event.title)}</span>
+                </li>
+            `).join('');
+        };
+
+        const renderSelectedDate = (isoDate) => {
+            const dayData = dayMap.get(isoDate);
+            const events = dayData?.events || [];
+            eventHeader.textContent = `${formatKoreanDate(isoDate)} 일정`;
+            closeBtn.hidden = false;
+            if (!events.length) {
+                eventList.innerHTML = '<li class="empty">일정이 없습니다.</li>';
+                return;
+            }
+            eventList.innerHTML = events.map((event) => `
+                <li>
+                    <span class="event-time">${event.timeText}</span>
+                    <span class="event-title">${escapeHtml(event.title)}</span>
+                </li>
+            `).join('');
+        };
+
+        dayButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                dayButtons.forEach((node) => node.classList.remove('is-selected'));
+                button.classList.add('is-selected');
+                renderSelectedDate(button.dataset.date);
+            });
+        });
+
+        closeBtn?.addEventListener('click', () => {
+            dayButtons.forEach((node) => node.classList.remove('is-selected'));
+            renderUpcoming();
+        });
+
+        renderUpcoming();
+    };
+
     getCards().forEach(bindCardEvents);
     updateSelectionUI();
     updateCountUI(getCards().length, Number(totalCountText?.textContent || getCards().length));
@@ -925,5 +1011,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initInfiniteObserver();
     initPreviewAutoplay();
     if (isSearchMode) enterAlbumPicker();
+    initCalendarWidget();
     if (isFeedMode) window.addEventListener('beforeunload', saveFeedState);
 });

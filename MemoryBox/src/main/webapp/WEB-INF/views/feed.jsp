@@ -59,6 +59,63 @@
             <p><strong>${loginUser.displayName}</strong> (${loginUser.loginId})</p>
             <button class="btn btn-secondary" type="button" id="openPasswordModalBtn">비밀번호 변경</button>
         </section>
+
+        <section class="calendar-card" id="sharedCalendarCard" data-calendar-state="${calendarState}">
+            <header class="calendar-card-header">
+                <h2>우리 일정</h2>
+                <div class="calendar-month-nav">
+                    <a href="/mypage?calendarYear=${calendarPrevYear}&calendarMonth=${calendarPrevMonth}" aria-label="이전 달">&lt;</a>
+                    <strong>${calendarYear}.<c:if test="${calendarMonth lt 10}">0</c:if>${calendarMonth}</strong>
+                    <a href="/mypage?calendarYear=${calendarNextYear}&calendarMonth=${calendarNextMonth}" aria-label="다음 달">&gt;</a>
+                </div>
+            </header>
+
+            <c:choose>
+                <c:when test="${calendarState eq 'READY'}">
+                    <div class="calendar-week-head">
+                        <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+                    </div>
+                    <div class="calendar-grid" id="calendarGrid">
+                        <c:forEach var="day" items="${calendarMonthData.days}">
+                            <button type="button"
+                                    class="calendar-day ${day.currentMonth ? '' : 'is-outside'} ${day.today ? 'is-today' : ''} ${day.sunday or day.holiday ? 'is-holiday-text' : ''}"
+                                    data-date="${day.date}">
+                                <span class="day-number">${day.dayNumber}</span>
+                                <span class="event-dots">
+                                    <c:if test="${day.hasPersonalEvent}"><i class="dot dot-personal"></i></c:if>
+                                    <c:if test="${day.holiday}"><i class="dot dot-holiday"></i></c:if>
+                                </span>
+                            </button>
+                        </c:forEach>
+                    </div>
+
+                    <section class="calendar-event-panel" id="calendarEventPanel" data-calendar-month='${fn:escapeXml(calendarMonthDataJson)}'>
+                        <header class="calendar-event-header" id="calendarEventHeader">다가오는 일정</header>
+                        <button type="button" class="calendar-close-btn" id="calendarCloseBtn" hidden>닫기</button>
+                        <ul class="calendar-event-list" id="calendarEventList">
+                            <c:forEach var="event" items="${calendarMonthData.upcomingEvents}">
+                                <li>
+                                    <span class="event-time">${event.date} ${event.timeText}</span>
+                                    <span class="event-title">${event.title}</span>
+                                </li>
+                            </c:forEach>
+                            <c:if test="${empty calendarMonthData.upcomingEvents}">
+                                <li class="empty">다가오는 일정이 없습니다.</li>
+                            </c:if>
+                        </ul>
+                    </section>
+                </c:when>
+                <c:when test="${calendarState eq 'NO_SOURCES'}">
+                    <p class="calendar-empty-msg">등록된 캘린더가 없습니다.</p>
+                </c:when>
+                <c:when test="${calendarState eq 'ERROR'}">
+                    <p class="calendar-empty-msg">일정을 불러오지 못했습니다.</p>
+                </c:when>
+                <c:otherwise>
+                    <p class="calendar-empty-msg">캘린더 기능이 비활성화되어 있습니다.</p>
+                </c:otherwise>
+            </c:choose>
+        </section>
     </c:if>
 
     <c:if test="${not empty pwdError}"><div class="feedback-msg is-error">${pwdError}</div></c:if>
