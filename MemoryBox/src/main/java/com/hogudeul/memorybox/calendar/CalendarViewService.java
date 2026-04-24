@@ -152,7 +152,7 @@ public class CalendarViewService {
                 ? summary.getValue().trim() : "(제목 없음)";
 
         ZoneId zone = ZoneId.systemDefault();
-        boolean allDay = !dateStart.hasTime();
+        boolean allDay = !dateStart.getValue().hasTime();
         LocalDateTime startDateTime = allDay
                 ? LocalDateTime.ofInstant(dateStart.getValue().toInstant(), ZoneOffset.UTC).toLocalDate().atStartOfDay()
                 : LocalDateTime.ofInstant(dateStart.getValue().toInstant(), zone);
@@ -160,7 +160,7 @@ public class CalendarViewService {
         DateEnd dateEnd = event.getDateEnd();
         LocalDateTime endDateTime = null;
         if (dateEnd != null && dateEnd.getValue() != null) {
-            endDateTime = dateEnd.hasTime()
+            endDateTime = dateEnd.getValue().hasTime()
                     ? LocalDateTime.ofInstant(dateEnd.getValue().toInstant(), zone)
                     : LocalDateTime.ofInstant(dateEnd.getValue().toInstant(), ZoneOffset.UTC).toLocalDate().atStartOfDay();
         }
