@@ -31,8 +31,18 @@ public class AuthController {
     public String loginPage(@ModelAttribute("loginForm") LoginForm loginForm,
                             Model model,
                             HttpSession session,
-                            HttpServletRequest request) {
+                            HttpServletRequest request,
+                            HttpServletResponse response) {
         if (session != null && session.getAttribute("loginUser") != null) {
+            return "redirect:/feed";
+        }
+
+        LoginUserSession autoLoginUser = authService.tryAutoLogin(request, response);
+        if (autoLoginUser != null) {
+            HttpSession loginSession = request.getSession(true);
+            loginSession.setAttribute("loginUser", autoLoginUser);
+            loginSession.setMaxInactiveInterval(60 * 30);
+            authService.markSessionAccessUpdatedNow(loginSession);
             return "redirect:/feed";
         }
 
