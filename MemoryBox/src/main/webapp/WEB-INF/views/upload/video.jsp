@@ -11,19 +11,24 @@
 </head>
 <body>
 <div class="mobile-wrap">
+    <a class="upload-home" href="${pageContext.request.contextPath}/feed">MemoryBox</a>
     <h1>동영상 업로드</h1>
     <c:if test="${not empty errorMessage}"><p class="msg error">${errorMessage}</p></c:if>
     <form method="post" enctype="multipart/form-data" class="upload-form">
         <label>동영상 파일<input type="file" name="videoFile" accept="video/*" required></label>
+        <small>영상은 최대 300MB까지 업로드할 수 있으며, 업로드 후 썸네일/프리뷰가 비동기로 생성됩니다.</small>
         <label>제목<input type="text" name="title" value="${form.title}" maxlength="100"></label>
         <label>촬영일시<input type="datetime-local" class="taken-at-input" name="takenAt" value="${form.takenAt}"></label>
         <label>앨범
-            <select name="albumId" required>
+            <div class="album-select-row" data-widget="album-picker" data-create-url="${pageContext.request.contextPath}/upload/album">
+                <select name="albumId" required class="album-select">
                 <option value="">선택</option>
                 <c:forEach items="${albums}" var="album">
                     <option value="${album.albumId}" <c:if test="${form.albumId == album.albumId}">selected</c:if>>${album.albumName}</option>
                 </c:forEach>
             </select>
+                <button type="button" class="album-add-btn">+ 새 앨범</button>
+            </div>
         </label>
 
         <section class="tag-widget" data-widget="tag-picker" data-create-url="${pageContext.request.contextPath}/upload/tag">
@@ -37,7 +42,7 @@
 
             <div class="tag-option-list">
                 <c:forEach items="${tags}" var="tag">
-                    <label class="tag-option" data-normalized="${tag.normalizedName}">
+                    <label class="tag-option ${tag.tagScope == 'P' ? 'is-person' : ''}" data-normalized="${tag.normalizedName}" data-scope="${tag.tagScope}">
                         <input type="checkbox" name="selectedTagIds" value="${tag.tagId}" class="tag-check"
                                <c:forEach items="${form.selectedTagIds}" var="selectedId"><c:if test="${selectedId == tag.tagId}">checked</c:if></c:forEach>>
                         <span class="tag-label">${tag.tagName}</span>
@@ -51,6 +56,20 @@
             </div>
             <input type="hidden" name="newTags" class="new-tags-hidden" value="${form.newTags}">
         </section>
+
+        
+
+        <div class="album-modal-backdrop" hidden>
+            <section class="album-modal" role="dialog" aria-modal="true" aria-labelledby="albumModalTitle">
+                <h2 id="albumModalTitle">새 앨범 만들기</h2>
+                <input type="text" class="album-add-input" maxlength="50" placeholder="앨범명을 입력하세요">
+                <p class="album-modal-error" hidden></p>
+                <div class="album-modal-actions">
+                    <button type="button" class="btn btn-secondary album-cancel-btn">취소</button>
+                    <button type="button" class="btn btn-primary album-create-btn">생성</button>
+                </div>
+            </section>
+        </div>
 
         <button type="submit">업로드</button>
     </form>

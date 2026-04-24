@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hogudeul.memorybox.mapper.NotificationMapper">
+
+    <resultMap id="NotificationRowMap" type="com.hogudeul.memorybox.model.NotificationRow">
+        <id column="notification_id" property="notificationId"/>
+        <result column="receiver_user_id" property="receiverUserId"/>
+        <result column="actor_user_id" property="actorUserId"/>
+        <result column="actor_name" property="actorName"/>
+        <result column="notification_type" property="notificationType"/>
+        <result column="target_type" property="targetType"/>
+        <result column="target_id" property="targetId"/>
+        <result column="message" property="message"/>
+        <result column="is_read" property="isRead"/>
+        <result column="read_at" property="readAt"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <insert id="insertNotification">
+        INSERT INTO NOTIFICATION (
+            receiver_user_id,
+            actor_user_id,
+            notification_type,
+            target_type,
+            target_id,
+            message,
+            is_read,
+            created_at
+        ) VALUES (
+            #{receiverUserId},
+            #{actorUserId},
+            #{notificationType},
+            #{targetType},
+            #{targetId},
+            #{message},
+            'N',
+            NOW()
+        )
+    </insert>
+
+    <select id="findTopNotificationsByUserId" resultMap="NotificationRowMap">
+        SELECT n.notification_id,
+               n.receiver_user_id,
+               n.actor_user_id,
+               u.display_name AS actor_name,
+               n.notification_type,
+               n.target_type,
+               n.target_id,
+               n.message,
+               n.is_read,
+               n.read_at,
+               n.created_at
+        FROM NOTIFICATION n
+                 JOIN USER u ON n.actor_user_id = u.user_id
+        WHERE n.receiver_user_id = #{userId}
+        ORDER BY n.created_at DESC, n.notification_id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countUnreadByUserId" resultType="int">
+        SELECT COUNT(*)
+        FROM NOTIFICATION
+        WHERE receiver_user_id = #{userId}
+          AND is_read = 'N'
+    </select>
+
+    <select id="findById" resultMap="NotificationRowMap">
+        SELECT n.notification_id,
+               n.receiver_user_id,
+               n.actor_user_id,
+               u.display_name AS actor_name,
+               n.notification_type,
+               n.target_type,
+               n.target_id,
+               n.message,
+               n.is_read,
+               n.read_at,
+               n.created_at
+        FROM NOTIFICATION n
+                 JOIN USER u ON n.actor_user_id = u.user_id
+        WHERE n.notification_id = #{notificationId}
+          AND n.receiver_user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <update id="markAsRead">
+        UPDATE NOTIFICATION
+        SET is_read = 'Y',
+            read_at = NOW()
+        WHERE notification_id = #{notificationId}
+          AND receiver_user_id = #{userId}
+          AND is_read = 'N'
+    </update>
+
+    <delete id="deleteNotification">
+        DELETE FROM NOTIFICATION
+        WHERE notification_id = #{notificationId}
+          AND receiver_user_id = #{userId}
+    </delete>
+
+    <select id="findActiveUserIdsExcept" resultType="java.lang.Long">
+        SELECT user_id
+        FROM USER
+        WHERE del_yn = 'N'
+          AND user_id != #{excludeUserId}
+    </select>
+
+    <select id="findDisplayNameByUserId" resultType="string">
+        SELECT display_name
+        FROM USER
+        WHERE user_id = #{userId}
+          AND del_yn = 'N'
+        LIMIT 1
+    </select>
+
+    <select id="findMediaOwnerId" resultType="java.lang.Long">
+        SELECT user_id
+        FROM MEDIA_ITEMS
+        WHERE media_id = #{mediaId}
+          AND del_yn = 'N'
+        LIMIT 1
+    </select>
+
+    <select id="findCommentOwnerId" resultType="java.lang.Long">
+        SELECT user_id
+        FROM COMMENT
+        WHERE comment_id = #{commentId}
+          AND del_yn = 'N'
+        LIMIT 1
+    </select>
+
+    <select id="findMediaIdByCommentId" resultType="java.lang.Long">
+        SELECT media_id
+        FROM COMMENT
+        WHERE comment_id = #{commentId}
+          AND del_yn = 'N'
+        LIMIT 1
+    </select>
+
+</mapper>

@@ -11,4 +11,39 @@
         ORDER BY sort_order ASC, album_id DESC
     </select>
 
+    <select id="selectNextAlbumId" resultType="java.lang.Long">
+        SELECT COALESCE(MAX(album_id), 0) + 1
+        FROM ALBUM
+    </select>
+
+    <select id="selectNextSortOrder" resultType="java.lang.Integer">
+        SELECT COALESCE(MAX(sort_order), 0) + 1
+        FROM ALBUM
+        WHERE del_yn = 'N'
+    </select>
+
+    <select id="findActiveAlbumByName" resultType="com.hogudeul.memorybox.model.AlbumOption">
+        SELECT album_id, album_name
+        FROM ALBUM
+        WHERE del_yn = 'N'
+          AND album_name = #{albumName}
+        LIMIT 1
+    </select>
+
+    <insert id="insertAlbum">
+        INSERT INTO ALBUM (
+            album_id,
+            album_name,
+            created_at,
+            sort_order,
+            del_yn
+        ) VALUES (
+            #{albumId},
+            #{albumName},
+            NOW(),
+            #{sortOrder},
+            'N'
+        )
+    </insert>
+
 </mapper>

@@ -3,8 +3,10 @@ package com.hogudeul.memorybox.service;
 import com.hogudeul.memorybox.dto.CommentView;
 import com.hogudeul.memorybox.dto.MediaDetailView;
 import com.hogudeul.memorybox.mapper.DetailMapper;
+import com.hogudeul.memorybox.mapper.UploadMapper;
 import com.hogudeul.memorybox.model.CommentRow;
 import com.hogudeul.memorybox.model.MediaDetailRow;
+import com.hogudeul.memorybox.model.Tag;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,9 +21,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -30,15 +36,25 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DetailService {
 
+    private static final Logger log = LoggerFactory.getLogger(DetailService.class);
     public static final int MAX_DOWNLOAD_COUNT = 30;
     private static final DateTimeFormatter DATETIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final DetailMapper detailMapper;
     private final Path storageRoot;
+    private final TimeDisplayService timeDisplayService;
+    private final NotificationService notificationService;
+    private final UploadMapper uploadMapper;
 
     public DetailService(DetailMapper detailMapper,
+                         TimeDisplayService timeDisplayService,
+                         NotificationService notificationService,
+                         UploadMapper uploadMapper,
                          @Value("${app.storage.local-root:D:/memorybox/upload/}") String storageRoot) {
         this.detailMapper = detailMapper;
+        this.timeDisplayService = timeDisplayService;
+        this.notificationService = notificationService;
+        this.uploadMapper = uploadMapper;
         this.storageRoot = Paths.get(storageRoot).toAbsolutePath().normalize();
     }
 
@@ -48,27 +64,36 @@ public class DetailService {
             return null;
         }
 
+        boolean isVideo = "VIDEO".equalsIgnoreCase(row.getMediaType());
         String displayStorageKey = row.getMediumStorageKey();
         if (isBlank(displayStorageKey)) {
             displayStorageKey = row.getSmallStorageKey();
         }
+        if (isVideo && isBlank(displayStorageKey)) {
+            displayStorageKey = row.getThumbStorageKey();
+        }
 
         return new MediaDetailView(
                 row.getMediaId(),
+                row.getAlbumId(),
                 defaultText(row.getTitle(), "(제목 없음)"),
                 defaultText(row.getMediaType(), "UNKNOWN"),
                 formatDateTime(row.getUploadedAt()),
-                formatDateTime(row.getTakenAt()),
+                timeDisplayService.formatTakenDate(row.getTakenAt()),
+                timeDisplayService.formatRelativeUploadedAt(row.getUploadedAt()),
                 defaultText(row.getAlbumName(), "미분류"),
                 defaultText(row.getDisplayName(), "알 수 없음"),
-                toPublicFileUrl(displayStorageKey),
+                isVideo ? "" : toPublicFileUrl(displayStorageKey),
+                isVideo ? toPublicFileUrl(row.getOriginalStorageKey()) : "",
+                isVideo ? toPublicFileUrl(row.getThumbStorageKey()) : "",
                 "",
                 "/feed/" + mediaId + "/download",
                 parseTags(row.getTagsCsv()),
                 safeInt(row.getLikeCount()),
                 safeInt(row.getCommentCount()),
                 safeInt(row.getLikedByMe()) > 0,
-                !isBlank(row.getOriginalStorageKey())
+                !isBlank(row.getOriginalStorageKey()),
+                userId != null && userId.equals(row.getUserId())
         );
     }
 
@@ -153,7 +178,9 @@ public class DetailService {
 
     public void streamZip(List<DownloadFileInfo> files, OutputStream outputStream) throws IOException {
         Map<String, Integer> nameCounter = new HashMap<>();
-        try (ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
+        ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream);
+        log.debug("streamZip start. fileCount={}", files.size());
+        try {
             for (DownloadFileInfo file : files) {
                 if (!file.existsReadable()) {
                     throw new DownloadException("원본 파일을 찾을 수 없습니다.");
@@ -167,10 +194,16 @@ public class DetailService {
                 zipOutputStream.closeEntry();
             }
             zipOutputStream.finish();
+            zipOutputStream.flush();
+            log.debug("streamZip finish. fileCount={}", files.size());
         } catch (DownloadException e) {
+            log.warn("streamZip domain failure. msg={}", e.getMessage());
             throw e;
         } catch (IOException e) {
+            log.warn("streamZip io failure. msg={}", e.getMessage());
             throw new IOException("ZIP 생성 중 오류가 발생했습니다.", e);
+        } finally {
+            log.debug("streamZip finally. fileCount={}", files.size());
         }
     }
 
@@ -274,6 +307,55 @@ public class DetailService {
 
         Long commentId = detailMapper.selectNextCommentId();
         detailMapper.insertComment(commentId, mediaId, normalizedParentId, userId, normalized);
+
+        if (normalizedParentId == null) {
+            notificationService.notifyMediaOwnerForComment(userId, mediaId, commentId, normalized);
+        } else {
+            notificationService.notifyCommentOwnerForReply(userId, normalizedParentId, commentId);
+        }
+        return true;
+    }
+
+    @Transactional
+    public boolean updateMediaMeta(Long mediaId, Long userId, String title, Long albumId) {
+        if (mediaId == null || userId == null || albumId == null) {
+            return false;
+        }
+        String normalizedTitle = title == null ? "" : title.trim();
+        return detailMapper.updateMediaMeta(mediaId, userId, normalizedTitle, albumId) > 0;
+    }
+
+    @Transactional
+    public boolean updateMediaTags(Long mediaId, Long userId, List<Long> selectedTagIds, String newTagsRaw) {
+        if (mediaId == null || userId == null) {
+            return false;
+        }
+        if (detailMapper.findDetailByMediaId(mediaId, userId) == null) {
+            return false;
+        }
+
+        Set<Long> finalTagIds = resolveSelectedTagIds(selectedTagIds);
+        Set<String> newTagNames = parseTagInput(newTagsRaw);
+
+        for (String tagName : newTagNames) {
+            String normalized = normalizeTag(tagName);
+            Tag tag = uploadMapper.findTagByNormalizedName(normalized);
+            if (tag == null) {
+                tag = new Tag();
+                tag.setTagId(uploadMapper.selectNextTagId());
+                tag.setUserId(userId);
+                tag.setTagName(tagName);
+                tag.setNormalizedName(normalized);
+                uploadMapper.insertTag(tag);
+            }
+            finalTagIds.add(tag.getTagId());
+        }
+
+        detailMapper.deleteMediaTags(mediaId);
+        for (Long tagId : finalTagIds) {
+            Long mdId = detailMapper.selectNextMediaTagId();
+            detailMapper.insertMediaTag(mdId, mediaId, tagId);
+        }
         return true;
     }
 
@@ -284,7 +366,7 @@ public class DetailService {
                 row.getParentId(),
                 defaultText(row.getDisplayName(), "알 수 없음"),
                 defaultText(row.getContent(), ""),
-                formatDateTime(row.getCreatedAt()),
+                timeDisplayService.formatRelativeUploadedAt(row.getCreatedAt()),
                 mine
         );
     }
@@ -296,7 +378,71 @@ public class DetailService {
         return Arrays.stream(tagsCsv.split(","))
                 .map(String::trim)
                 .filter(tag -> !tag.isBlank())
+                .map(this::formatScopedTag)
+                .sorted((left, right) -> {
+                    boolean leftPerson = left.startsWith("@");
+                    boolean rightPerson = right.startsWith("@");
+                    if (leftPerson == rightPerson) {
+                        return left.compareToIgnoreCase(right);
+                    }
+                    return leftPerson ? -1 : 1;
+                })
                 .toArray(String[]::new);
+    }
+
+    private String formatScopedTag(String rawTag) {
+        int delimiterIndex = rawTag.indexOf("|");
+        if (delimiterIndex < 0) {
+            return "#" + rawTag;
+        }
+        String scope = rawTag.substring(0, delimiterIndex);
+        String name = rawTag.substring(delimiterIndex + 1);
+        if ("P".equalsIgnoreCase(scope)) {
+            return "@" + name;
+        }
+        return "#" + name;
+    }
+
+    private Set<Long> resolveSelectedTagIds(List<Long> selectedTagIds) {
+        Set<Long> sanitized = new LinkedHashSet<>();
+        if (selectedTagIds == null || selectedTagIds.isEmpty()) {
+            return sanitized;
+        }
+        for (Long tagId : selectedTagIds) {
+            if (tagId != null) {
+                sanitized.add(tagId);
+            }
+        }
+        if (sanitized.isEmpty()) {
+            return sanitized;
+        }
+        List<Tag> validTags = uploadMapper.findActiveTagsByIds(new ArrayList<>(sanitized));
+        Set<Long> validTagIds = new LinkedHashSet<>();
+        for (Tag tag : validTags) {
+            validTagIds.add(tag.getTagId());
+        }
+        if (!validTagIds.containsAll(sanitized)) {
+            throw new DownloadException("선택할 수 없는 태그가 포함되어 있습니다.");
+        }
+        return sanitized;
+    }
+
+    private Set<String> parseTagInput(String rawTags) {
+        Set<String> tags = new LinkedHashSet<>();
+        if (rawTags == null || rawTags.isBlank()) {
+            return tags;
+        }
+        for (String token : rawTags.split(",")) {
+            String tag = token == null ? "" : token.trim();
+            if (!tag.isBlank()) {
+                tags.add(tag);
+            }
+        }
+        return tags;
+    }
+
+    private String normalizeTag(String tagName) {
+        return tagName.trim().toLowerCase(java.util.Locale.ROOT).replaceAll("\\s+", " ");
     }
 
     private String toPublicFileUrl(String storageKey) {

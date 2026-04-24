@@ -8,33 +8,41 @@ public class FeedItemView {
     private Long id;
     private String mediaType;
     private String thumbnailUrl;
+    private String previewUrl;
     private String title;
     private String author;
     private int shotYear;
     private String uploadedAt;
     private int likeCount;
     private int commentCount;
+    private boolean likedByMe;
     private String[] tags;
     private String albumName;
     private String takenAt;
     private String displayAt;
+    private String relativeUploadedAt;
+    private boolean recent;
 
-    public FeedItemView(Long id, String mediaType, String thumbnailUrl, String title, String author,
-                        int shotYear, String uploadedAt, int likeCount, int commentCount, String[] tags,
-                        String albumName, String takenAt, String displayAt) {
+    public FeedItemView(Long id, String mediaType, String thumbnailUrl, String previewUrl, String title, String author,
+                        int shotYear, String uploadedAt, int likeCount, int commentCount, boolean likedByMe, String[] tags,
+                        String albumName, String takenAt, String displayAt, String relativeUploadedAt, boolean recent) {
         this.id = id;
         this.mediaType = mediaType;
         this.thumbnailUrl = thumbnailUrl;
+        this.previewUrl = previewUrl;
         this.title = title;
         this.author = author;
         this.shotYear = shotYear;
         this.uploadedAt = uploadedAt;
         this.likeCount = likeCount;
         this.commentCount = commentCount;
+        this.likedByMe = likedByMe;
         this.tags = tags;
         this.albumName = albumName;
         this.takenAt = takenAt;
         this.displayAt = displayAt;
+        this.relativeUploadedAt = relativeUploadedAt;
+        this.recent = recent;
     }
 
     public Long getId() {
@@ -63,6 +71,14 @@ public class FeedItemView {
 
     public String getTitle() {
         return title;
+    }
+
+    public String getPreviewUrl() {
+        return previewUrl;
+    }
+
+    public void setPreviewUrl(String previewUrl) {
+        this.previewUrl = previewUrl;
     }
 
     public void setTitle(String title) {
@@ -109,6 +125,14 @@ public class FeedItemView {
         this.commentCount = commentCount;
     }
 
+    public boolean isLikedByMe() {
+        return likedByMe;
+    }
+
+    public void setLikedByMe(boolean likedByMe) {
+        this.likedByMe = likedByMe;
+    }
+
     public String[] getTags() {
         return tags;
     }
@@ -139,5 +163,21 @@ public class FeedItemView {
 
     public void setDisplayAt(String displayAt) {
         this.displayAt = displayAt;
+    }
+
+    public String getRelativeUploadedAt() {
+        return relativeUploadedAt;
+    }
+
+    public void setRelativeUploadedAt(String relativeUploadedAt) {
+        this.relativeUploadedAt = relativeUploadedAt;
+    }
+
+    public boolean isRecent() {
+        return recent;
+    }
+
+    public void setRecent(boolean recent) {
+        this.recent = recent;
     }
 }
