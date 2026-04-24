@@ -16,7 +16,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.Duration;
@@ -58,6 +57,7 @@ public class CalendarViewService {
         this.calendarProperties = calendarProperties;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
+                .followRedirects(HttpClient.Redirect.NORMAL)
                 .build();
         this.clock = Clock.systemDefaultZone();
     }
@@ -120,15 +120,16 @@ public class CalendarViewService {
                 .uri(URI.create(source.getUrl()))
                 .timeout(Duration.ofSeconds(8))
                 .header("Accept", "text/calendar,text/plain;q=0.9,*/*;q=0.8")
+                .header("User-Agent", "MemoryBox/1.0 (+calendar-fetch)")
                 .GET()
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        if (response.statusCode() >= 400) {
+        HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
             throw new IOException("HTTP " + response.statusCode());
         }
 
-        List<ICalendar> calendars = Biweekly.parse(new ByteArrayInputStream(response.body().getBytes(StandardCharsets.UTF_8))).all();
+        List<ICalendar> calendars = Biweekly.parse(new ByteArrayInputStream(response.body())).all();
         List<RawCalendarEvent> events = new ArrayList<>();
         for (ICalendar calendar : calendars) {
             for (VEvent event : calendar.getEvents()) {
@@ -138,6 +139,7 @@ public class CalendarViewService {
                 }
             }
         }
+        log.info("ICS source 로드 완료 - name: {}, type: {}, eventCount: {}", source.getName(), source.getType(), events.size());
         return events;
     }
 
