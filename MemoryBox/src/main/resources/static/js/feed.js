@@ -598,9 +598,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (overlay) {
             overlay.hidden = true;
         }
+        const temporaryLinks = document.querySelectorAll('a[download="memorybox_download.zip"]');
+        temporaryLinks.forEach((link) => link.remove());
         document.body.classList.remove('download-lock-active');
         document.body.style.removeProperty('pointer-events');
-        debugDownloadState('multi-download-ui-reset-after', { reason });
+        debugDownloadState('multi-download-ui-reset-after', { reason, removedTempLinkCount: temporaryLinks.length });
     };
 
     const downloadBlobWithProgress = async (response) => {
@@ -627,7 +629,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return new Blob(chunks);
     };
 
-    downloadSelectedBtn?.addEventListener('click', async () => {
+    downloadSelectedBtn?.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
         if (selectedIds.size === 0) return window.alert('다운로드할 파일을 먼저 선택해 주세요.');
         debugDownloadState('multi-download-start');
         setDownloadButtonLoading(true);
