@@ -21,8 +21,11 @@ public class LoginCheckInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         HttpSession session = request.getSession(false);
         Object loginUserObj = session != null ? session.getAttribute("loginUser") : null;
+        LoginUserSession loginUser = null;
 
-        if (!(loginUserObj instanceof LoginUserSession loginUser)) {
+        if (loginUserObj instanceof LoginUserSession) {
+            loginUser = (LoginUserSession) loginUserObj;
+        } else {
             LoginUserSession autoLoginUser = authService.tryAutoLogin(request, response);
             if (autoLoginUser == null) {
                 if (session != null) {
