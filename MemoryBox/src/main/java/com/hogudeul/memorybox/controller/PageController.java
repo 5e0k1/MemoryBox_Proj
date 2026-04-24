@@ -353,6 +353,7 @@ public class PageController {
                                                      HttpServletRequest request,
                                                      HttpSession session) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        log.info("Single download request. mediaId={}, hasLogin={}", itemId, loginUser != null);
         if (loginUser == null) {
             return ResponseEntity.status(302).header(HttpHeaders.LOCATION, "/login").build();
         }
@@ -366,6 +367,8 @@ public class PageController {
         }
 
         if (!fileInfo.existsReadable()) {
+            log.warn("Single download file not found. mediaId={}, userId={}, path={}",
+                    itemId, loginUser.getUserId(), fileInfo.getFilePath());
             return ResponseEntity.status(302)
                     .header(HttpHeaders.LOCATION, "/feed/" + itemId + "?error="
                             + URLEncoder.encode("원본 파일을 찾을 수 없습니다.", StandardCharsets.UTF_8))
@@ -382,6 +385,8 @@ public class PageController {
         }
 
         String contentDisposition = buildAttachmentContentDisposition(fileInfo.getFileName(), "download");
+        log.debug("Single download headers prepared. mediaId={}, userId={}, mimeType={}, fileName={}",
+                itemId, loginUser.getUserId(), mediaType, fileInfo.getFileName());
 
         detailService.logDownloadAttempt(
                 itemId,
@@ -406,6 +411,8 @@ public class PageController {
             responseBuilder.contentLength(contentLength);
         }
 
+        log.info("Single download response ready. mediaId={}, userId={}, contentLength={}",
+                itemId, loginUser.getUserId(), contentLength);
         Resource resource = new FileSystemResource(fileInfo.getFilePath());
         return responseBuilder.body(resource);
     }
@@ -415,15 +422,19 @@ public class PageController {
                                                                        HttpServletRequest httpRequest,
                                                                        HttpSession session) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        log.info("Zip download request. hasLogin={}", loginUser != null);
         if (loginUser == null) {
             return errorStreamingResponse(401, "로그인이 필요합니다.");
         }
 
         List<Long> mediaIds = request == null ? null : request.getMediaIds();
+        log.info("Zip download request detail. userId={}, mediaCount={}, mediaIds={}",
+                loginUser.getUserId(), mediaIds == null ? 0 : mediaIds.size(), mediaIds);
         final List<DetailService.DownloadFileInfo> files;
         try {
             files = detailService.getDownloadFileInfos(mediaIds, loginUser.getUserId());
         } catch (DetailService.DownloadException e) {
+            log.warn("Zip download validation failed. userId={}, msg={}", loginUser.getUserId(), e.getMessage());
             return errorStreamingResponse(400, e.getMessage());
         }
 
@@ -438,16 +449,20 @@ public class PageController {
                 + URLEncoder.encode(zipFileName, StandardCharsets.UTF_8).replace("+", "%20");
 
         StreamingResponseBody body = outputStream -> {
+            log.info("Zip stream start. userId={}, fileCount={}", loginUser.getUserId(), files.size());
             try {
                 detailService.streamZip(files, outputStream);
+                log.info("Zip stream complete. userId={}, fileCount={}", loginUser.getUserId(), files.size());
             } catch (DetailService.DownloadException e) {
+                log.warn("Zip stream domain error. userId={}, msg={}", loginUser.getUserId(), e.getMessage());
                 throw new IOException(e.getMessage(), e);
             } catch (IOException e) {
                 if (isClientAbortIOException(e)) {
-                    log.debug("Client aborted zip download. userId={}, msg={}",
+                    log.warn("Client aborted zip download. userId={}, msg={}",
                             loginUser.getUserId(), e.getMessage());
                     return;
                 }
+                log.warn("Zip stream failed. userId={}, msg={}", loginUser.getUserId(), e.getMessage());
                 throw e;
             }
         };

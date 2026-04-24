@@ -268,6 +268,14 @@
         tagEditPanel.hidden = !tagEditPanel.hidden;
     });
 
+    const singleDownloadBtn = document.querySelector('a.download-btn');
+    singleDownloadBtn?.addEventListener('click', () => {
+        console.debug('[download-debug] single-download-click');
+        const downloadUrl = singleDownloadBtn.getAttribute('href');
+        console.debug('[download-debug] single-download-url-ready', { downloadUrl });
+        console.debug('[download-debug] single-download-trigger');
+    });
+
 </script>
 <script src="/js/upload.js"></script>
 </body>

@@ -533,6 +533,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     cancelSelectionBtn?.addEventListener('click', clearSelectionMode);
 
+    const debugDownloadState = (stage, extra = {}) => {
+        console.debug('[download-debug]', stage, {
+            selectionMode,
+            selectedCount: selectedIds.size,
+            overlayVisible: Boolean(document.getElementById('downloadLockOverlay') && !document.getElementById('downloadLockOverlay').hidden),
+            bodyDownloadLock: document.body.classList.contains('download-lock-active'),
+            buttonDisabled: Boolean(downloadSelectedBtn?.disabled),
+            ...extra
+        });
+    };
+
     const setDownloadButtonLoading = (isLoading) => {
         if (!downloadSelectedBtn) return;
         downloadSelectedBtn.disabled = isLoading;
@@ -577,6 +588,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const resetDownloadUiState = (reason) => {
+        debugDownloadState('multi-download-ui-reset-before', { reason });
+        setDownloadLock(false);
+        setDownloadButtonLoading(false);
+        clearSelectionMode();
+
+        const overlay = document.getElementById('downloadLockOverlay');
+        if (overlay) {
+            overlay.hidden = true;
+        }
+        document.body.classList.remove('download-lock-active');
+        document.body.style.removeProperty('pointer-events');
+        debugDownloadState('multi-download-ui-reset-after', { reason });
+    };
+
     const downloadBlobWithProgress = async (response) => {
         if (!response.body) {
             return await response.blob();
@@ -603,6 +629,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     downloadSelectedBtn?.addEventListener('click', async () => {
         if (selectedIds.size === 0) return window.alert('다운로드할 파일을 먼저 선택해 주세요.');
+        debugDownloadState('multi-download-start');
         setDownloadButtonLoading(true);
         setDownloadLock(true, 'ZIP 파일을 준비하고 있습니다...');
         try {
@@ -618,14 +645,17 @@ document.addEventListener('DOMContentLoaded', () => {
             link.href = url;
             link.download = 'memorybox_download.zip';
             document.body.appendChild(link);
+            debugDownloadState('multi-download-before-trigger', { downloadUrl: link.href });
             link.click();
             link.remove();
             URL.revokeObjectURL(url);
+            debugDownloadState('multi-download-success');
         } catch (e) {
+            debugDownloadState('multi-download-fail', { error: e?.message || String(e) });
             window.alert('다중 다운로드 처리 중 오류가 발생했습니다.');
         } finally {
-            setDownloadLock(false);
-            setDownloadButtonLoading(false);
+            resetDownloadUiState('finally');
+            debugDownloadState('multi-download-finally');
         }
     });
 
