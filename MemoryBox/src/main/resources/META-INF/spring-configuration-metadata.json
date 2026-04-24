@@ -17,6 +17,30 @@
       "type": "java.lang.Long",
       "description": "영상 업로드 최대 크기(byte)입니다.",
       "defaultValue": 314572800
+    },
+    {
+      "name": "app.auth.remember-days",
+      "type": "java.lang.Integer",
+      "description": "자동로그인 쿠키/토큰 유지 기간(일)입니다.",
+      "defaultValue": 30
+    },
+    {
+      "name": "app.auth.remember-cookie-name",
+      "type": "java.lang.String",
+      "description": "자동로그인 쿠키 이름입니다.",
+      "defaultValue": "remember_token"
+    },
+    {
+      "name": "app.auth.remember-secure",
+      "type": "java.lang.Boolean",
+      "description": "자동로그인 쿠키에 Secure 속성을 적용할지 여부입니다.",
+      "defaultValue": true
+    },
+    {
+      "name": "app.auth.last-access-update-minutes",
+      "type": "java.lang.Integer",
+      "description": "last_access_at을 DB에 갱신하는 최소 간격(분)입니다.",
+      "defaultValue": 10
     }
   ]
 }

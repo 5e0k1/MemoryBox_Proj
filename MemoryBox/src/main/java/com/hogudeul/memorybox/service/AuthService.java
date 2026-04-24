@@ -1,10 +1,14 @@
 package com.hogudeul.memorybox.service;
 
 import com.hogudeul.memorybox.auth.LoginResult;
+import com.hogudeul.memorybox.auth.LoginUserSession;
 import com.hogudeul.memorybox.mapper.LoginHistoryMapper;
 import com.hogudeul.memorybox.mapper.UserMapper;
 import com.hogudeul.memorybox.model.LoginHistory;
 import com.hogudeul.memorybox.model.UserAccount;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.time.LocalDateTime;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,11 +20,16 @@ public class AuthService {
     private final UserMapper userMapper;
     private final LoginHistoryMapper loginHistoryMapper;
     private final PasswordEncoder passwordEncoder;
+    private final RememberMeService rememberMeService;
 
-    public AuthService(UserMapper userMapper, LoginHistoryMapper loginHistoryMapper, PasswordEncoder passwordEncoder) {
+    public AuthService(UserMapper userMapper,
+                       LoginHistoryMapper loginHistoryMapper,
+                       PasswordEncoder passwordEncoder,
+                       RememberMeService rememberMeService) {
         this.userMapper = userMapper;
         this.loginHistoryMapper = loginHistoryMapper;
         this.passwordEncoder = passwordEncoder;
+        this.rememberMeService = rememberMeService;
     }
 
     @Transactional
@@ -45,6 +54,25 @@ public class AuthService {
         userMapper.updateLastLoginAt(user.getUserId());
         saveLoginHistory(user.getUserId(), loginId, ipAddr, userAgent, "Y");
         return LoginResult.success(user);
+    }
+
+    @Transactional
+    public LoginUserSession tryAutoLogin(HttpServletRequest request, HttpServletResponse response) {
+        return rememberMeService.tryAutoLogin(request, response);
+    }
+
+    @Transactional
+    public void handleLoginSuccess(Long userId, boolean rememberMe, HttpServletResponse response) {
+        if (rememberMe) {
+            rememberMeService.issueRememberMeToken(userId, response);
+            return;
+        }
+        rememberMeService.clearRememberMeToken(userId, response);
+    }
+
+    @Transactional
+    public void logout(Long userId, HttpServletResponse response) {
+        rememberMeService.clearRememberMeToken(userId, response);
     }
 
     @Transactional
@@ -75,7 +103,23 @@ public class AuthService {
         }
 
         userMapper.updatePasswordHash(userId, passwordEncoder.encode(newPassword));
+        userMapper.clearRememberToken(userId);
         return null;
+    }
+
+    @Transactional
+    public void clearRememberTokenForSecurityEvent(Long userId) {
+        // TODO: 관리자 비밀번호 초기화/계정 잠금 해제 플로우에서 본 메서드를 호출해 기존 자동로그인을 강제 해제하세요.
+        userMapper.clearRememberToken(userId);
+    }
+
+    @Transactional
+    public void updateLastAccessIfDue(HttpSession session, Long userId) {
+        rememberMeService.updateLastAccessIfDue(session, userId);
+    }
+
+    public void markSessionAccessUpdatedNow(HttpSession session) {
+        rememberMeService.markSessionAccessUpdatedNow(session);
     }
 
     private void saveLoginHistory(Long userId, String loginIdInput, String ipAddr, String userAgent, String successYn) {

@@ -18,6 +18,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
     const authorFilter = document.getElementById('authorFilter');
     const albumFilter = document.getElementById('albumFilter');
+    const albumPickerSection = document.getElementById('albumPickerSection');
+    const albumPickerGrid = document.getElementById('albumPickerGrid');
+    const selectedAlbumHeader = document.getElementById('selectedAlbumHeader');
+    const selectedAlbumTitle = document.getElementById('selectedAlbumTitle');
+    const floatingHead = document.getElementById('floatingHead');
+    const controlPanel = isSearchMode ? document.querySelector('.control-panel') : null;
     const sortOption = document.getElementById('sortOption');
     const tagChecks = document.querySelectorAll('.tag-check');
     const selectedTagText = document.getElementById('selectedTagText');
@@ -59,8 +65,11 @@ document.addEventListener('DOMContentLoaded', () => {
         type: 'all',
         columns: isSearchMode ? '3' : '1',
         sort: 'uploaded_desc',
-        scrollTop: 0
+        scrollTop: 0,
+        selectedAlbum: isSearchMode ? null : '전체'
     };
+
+    const isAlbumPickerMode = () => isSearchMode && state.selectedAlbum === null;
 
     const stopVideo = (video, reset = false) => {
         if (!video) return;
@@ -120,11 +129,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const selectedPrimaryTag = () => Array.from(tagChecks).find((check) => check.checked)?.value || '';
 
-    const getCards = () => grid.querySelectorAll('.feed-card');
+    const getCards = () => grid.querySelectorAll('.feed-card:not(.is-nav-card)');
     const getMediaBadges = () => grid.querySelectorAll('.media-badge');
     const getNewBadges = () => grid.querySelectorAll('.new-badge');
 
     const updateSelectionUI = () => {
+        if (!selectedCountText || !mobileSelectionBar) return;
         selectedCountText.textContent = String(selectedIds.size);
         mobileSelectionBar.hidden = !selectionMode;
     };
@@ -140,6 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const applyColumn = (columns) => {
+        if (!grid) return;
         state.columns = columns;
         grid.classList.remove('columns-1', 'columns-3', 'columns-5');
         grid.classList.add(`columns-${columns}`);
@@ -173,6 +184,66 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isFeedMode) return;
         state.scrollTop = window.scrollY;
         sessionStorage.setItem(FEED_STATE_KEY, JSON.stringify(state));
+    };
+
+    const resetSearchFilters = () => {
+        state.type = 'all';
+        tabButtons.forEach((button) => button.classList.toggle('is-active', button.dataset.filterType === 'all'));
+        if (authorFilter) authorFilter.value = '전체';
+        tagChecks.forEach((check) => { check.checked = false; });
+        updateTagSummary();
+        if (sortOption) {
+            sortOption.value = 'uploaded_desc';
+            state.sort = sortOption.value;
+        }
+    };
+
+    const buildBackCardHtml = () => `
+        <article class="feed-card is-nav-card" data-role="back-to-albums">
+            <button type="button" class="back-album-btn" aria-label="앨범 선택으로 돌아가기">
+                <span class="thumb-link back-thumb" aria-hidden="true">
+                    <span class="back-album-icon">↩</span>
+                </span>
+                <div class="feed-meta back-meta">
+                    <h2>이전</h2>
+                    <p>앨범 선택으로</p>
+                </div>
+            </button>
+        </article>
+    `;
+
+    const injectBackCard = () => {
+        if (!isSearchMode || isAlbumPickerMode() || !grid) return;
+        if (grid.querySelector('.is-nav-card')) return;
+        grid.insertAdjacentHTML('afterbegin', buildBackCardHtml());
+    };
+
+    const enterAlbumPicker = () => {
+        if (!isSearchMode) return;
+        state.selectedAlbum = null;
+        clearSelectionMode();
+        resetSearchFilters();
+        if (grid) grid.innerHTML = '';
+        updateCountUI(0, 0);
+        hasMore = false;
+        page = 1;
+        if (albumPickerSection) albumPickerSection.hidden = false;
+        if (selectedAlbumHeader) selectedAlbumHeader.hidden = true;
+        if (floatingHead) floatingHead.hidden = true;
+        if (controlPanel) controlPanel.hidden = true;
+        if (feedEndMessage) feedEndMessage.hidden = true;
+    };
+
+    const enterAlbumView = async (albumName) => {
+        if (!isSearchMode) return;
+        state.selectedAlbum = albumName || '전체';
+        if (selectedAlbumTitle) selectedAlbumTitle.textContent = state.selectedAlbum;
+        if (albumPickerSection) albumPickerSection.hidden = true;
+        if (selectedAlbumHeader) selectedAlbumHeader.hidden = false;
+        if (floatingHead) floatingHead.hidden = false;
+        if (controlPanel) controlPanel.hidden = false;
+        resetSearchFilters();
+        await reloadFromFirstPage();
     };
 
     const isActionElement = (target) => Boolean(target.closest('[data-action], button, input, textarea, select, .modal-close-btn'));
@@ -253,6 +324,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const params = new URLSearchParams();
         params.set('page', String(page));
         params.set('size', String(pageSize));
+        if (isSearchMode) {
+            if (state.selectedAlbum === null) return params;
+            if (state.selectedAlbum !== '전체') params.set('album', state.selectedAlbum);
+        }
         if (state.type !== 'all') params.set('type', state.type);
         if (authorFilter && authorFilter.value !== '전체') params.set('author', authorFilter.value);
         if (albumFilter && albumFilter.value !== '전체') params.set('album', albumFilter.value);
@@ -443,6 +518,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const loadNextPage = async () => {
+        if (!grid) return;
+        if (isAlbumPickerMode()) return;
         if (!canInfinite || loading || !hasMore) return;
         loading = true;
         if (feedEndMessage) feedEndMessage.hidden = true;
@@ -464,6 +541,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 initPreviewAutoplay();
                 page += 1;
             }
+            injectBackCard();
         } finally {
             loading = false;
             infiniteLoader.hidden = true;
@@ -474,7 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const reloadFromFirstPage = async () => {
-        if (!canInfinite) return;
+        if (!canInfinite || isAlbumPickerMode() || !grid) return;
         page = 1;
         hasMore = true;
         if (feedEndMessage) feedEndMessage.hidden = true;
@@ -512,6 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     tabButtons.forEach((button) => {
         button.addEventListener('click', () => {
+            if (isAlbumPickerMode()) return;
             tabButtons.forEach((b) => b.classList.remove('is-active'));
             button.classList.add('is-active');
             state.type = button.dataset.filterType;
@@ -661,6 +740,20 @@ document.addEventListener('DOMContentLoaded', () => {
             resetDownloadUiState('finally');
             debugDownloadState('multi-download-finally');
         }
+    });
+
+    albumPickerGrid?.addEventListener('click', (event) => {
+        const card = event.target.closest('.album-picker-card');
+        if (!card) return;
+        enterAlbumView(card.dataset.albumValue || '전체');
+    });
+
+    grid?.addEventListener('click', (event) => {
+        const backCardButton = event.target.closest('.back-album-btn');
+        if (!backCardButton) return;
+        event.preventDefault();
+        event.stopPropagation();
+        enterAlbumPicker();
     });
 
     openPasswordModalBtn?.addEventListener('click', () => {
@@ -822,6 +915,192 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+
+    const initCalendarWidget = () => {
+        const calendarCard = document.getElementById('sharedCalendarCard');
+        if (!calendarCard) return;
+
+        const monthLabel = document.getElementById('calendarMonthLabel');
+        const prevBtn = document.getElementById('calendarPrevBtn');
+        const nextBtn = document.getElementById('calendarNextBtn');
+        const contentArea = document.getElementById('calendarContentArea');
+
+        let state = calendarCard.dataset.calendarState || 'DISABLED';
+        let selectedDate = null;
+
+        const zeroPad = (num) => String(num).padStart(2, '0');
+        const formatMonth = (year, month) => `${year}.${zeroPad(month)}`;
+        const formatKoreanDate = (isoDate) => {
+            const [, m, d] = isoDate.split('-').map(Number);
+            return `${m}월 ${d}일`;
+        };
+
+        const calcDday = (isoDate) => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const target = new Date(`${isoDate}T00:00:00`);
+            const diff = Math.floor((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            if (diff === 0) return 'D-Day';
+            if (diff > 0) return `D-${diff}`;
+            return `D+${Math.abs(diff)}`;
+        };
+
+        const getStateMessage = (calendarState) => {
+            if (calendarState === 'NO_SOURCES') return '등록된 캘린더가 없습니다.';
+            if (calendarState === 'ERROR') return '일정을 불러오지 못했습니다.';
+            return '캘린더 기능이 비활성화되어 있습니다.';
+        };
+
+        const renderEventItems = (events, useDday, emptyText) => {
+            if (!events || events.length === 0) {
+                return `<li class="empty">${emptyText}</li>`;
+            }
+            return events.map((event) => `
+                <li>
+                    <span class="event-time">${useDday ? `${calcDday(event.date)} · ` : ''}${event.timeText}</span>
+                    <span class="event-title">${escapeHtml(event.title)}</span>
+                </li>
+            `).join('');
+        };
+
+        const renderCalendar = (monthData) => {
+            if (!monthData) {
+                contentArea.innerHTML = `<p class="calendar-empty-msg">${getStateMessage(state)}</p>`;
+                return;
+            }
+
+            const dayButtonsHtml = (monthData.days || []).map((day) => {
+                const dayOfWeek = new Date(`${day.date}T00:00:00`).getDay();
+                const isSaturday = dayOfWeek === 6;
+                const classes = [
+                    'calendar-day',
+                    day.currentMonth ? '' : 'is-outside',
+                    day.today ? 'is-today' : '',
+                    (day.sunday || day.holiday) ? 'is-holiday-text' : '',
+                    day.currentMonth && isSaturday && !day.holiday ? 'is-saturday-soft' : '',
+                    selectedDate === day.date ? 'is-selected' : ''
+                ].filter(Boolean).join(' ');
+
+                const personalDot = day.hasPersonalEvent ? '<i class="dot dot-personal"></i>' : '';
+                const holidayDot = day.holiday ? '<i class="dot dot-holiday"></i>' : '';
+                return `
+                    <button type="button" class="${classes}" data-date="${day.date}">
+                        <span class="day-number">${day.dayNumber}</span>
+                        <span class="event-dots">${personalDot}${holidayDot}</span>
+                    </button>
+                `;
+            }).join('');
+
+            const upcomingEvents = (monthData.upcomingEvents || []);
+            const panelTitle = selectedDate ? `${formatKoreanDate(selectedDate)} 일정` : '다가오는 일정';
+            const panelEvents = selectedDate
+                ? ((monthData.days || []).find((day) => day.date === selectedDate)?.events || [])
+                : upcomingEvents;
+            const panelList = renderEventItems(panelEvents, !selectedDate, selectedDate ? '일정이 없습니다.' : '다가오는 일정이 없습니다.');
+            const panelClass = (panelEvents.length > 3) ? 'calendar-event-list is-scrollable' : 'calendar-event-list';
+
+            contentArea.innerHTML = `
+                <div class="calendar-week-head">
+                    <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+                </div>
+                <div class="calendar-grid" id="calendarGrid">${dayButtonsHtml}</div>
+                <section class="calendar-event-panel" id="calendarEventPanel">
+                    <header class="calendar-event-header" id="calendarEventHeader">${panelTitle}</header>
+                    <button type="button" class="calendar-close-btn" id="calendarCloseBtn" ${selectedDate ? '' : 'hidden'}>닫기</button>
+                    <ul class="${panelClass}" id="calendarEventList">${panelList}</ul>
+                </section>
+            `;
+
+            contentArea.querySelectorAll('.calendar-day[data-date]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const clickedDate = button.dataset.date;
+                    if (selectedDate === clickedDate) {
+                        selectedDate = null;
+                    } else {
+                        selectedDate = clickedDate;
+                    }
+                    renderCalendar(monthData);
+                });
+            });
+
+            contentArea.querySelector('#calendarCloseBtn')?.addEventListener('click', () => {
+                selectedDate = null;
+                renderCalendar(monthData);
+            });
+        };
+
+        const renderByState = (monthData) => {
+            if (state !== 'READY') {
+                selectedDate = null;
+                contentArea.innerHTML = `<p class="calendar-empty-msg">${getStateMessage(state)}</p>`;
+                return;
+            }
+            renderCalendar(monthData);
+        };
+
+        let currentYear = Number(calendarCard.dataset.calendarYear || 0);
+        let currentMonth = Number(calendarCard.dataset.calendarMonth || 0);
+        let currentMonthData = null;
+
+        const monthDataNode = document.getElementById('calendarEventPanel');
+        if (state === 'READY' && monthDataNode?.dataset.calendarMonth) {
+            try {
+                currentMonthData = JSON.parse(monthDataNode.dataset.calendarMonth || '{}');
+            } catch (_) {
+                state = 'ERROR';
+            }
+        }
+
+        if (monthLabel && currentYear > 0 && currentMonth > 0) {
+            monthLabel.textContent = formatMonth(currentYear, currentMonth);
+        }
+        renderByState(currentMonthData);
+
+        const setNavDisabled = (disabled) => {
+            if (prevBtn) prevBtn.disabled = disabled;
+            if (nextBtn) nextBtn.disabled = disabled;
+        };
+
+        const loadMonthAsync = async (nextYear, nextMonth) => {
+            setNavDisabled(true);
+            try {
+                const params = new URLSearchParams({ year: String(nextYear), month: String(nextMonth) });
+                const response = await fetch(`/api/calendar/month?${params.toString()}`);
+                if (!response.ok) throw new Error('calendar-load-failed');
+                const payload = await response.json();
+
+                currentYear = Number(payload.year || nextYear);
+                currentMonth = Number(payload.month || nextMonth);
+                state = payload.state || 'ERROR';
+                currentMonthData = payload.monthData || null;
+                selectedDate = null;
+
+                if (monthLabel) {
+                    monthLabel.textContent = formatMonth(currentYear, currentMonth);
+                }
+                renderByState(currentMonthData);
+            } catch (_) {
+                state = 'ERROR';
+                currentMonthData = null;
+                renderByState(currentMonthData);
+            } finally {
+                setNavDisabled(false);
+            }
+        };
+
+        prevBtn?.addEventListener('click', () => {
+            const base = new Date(currentYear, currentMonth - 1, 1);
+            base.setMonth(base.getMonth() - 1);
+            loadMonthAsync(base.getFullYear(), base.getMonth() + 1);
+        });
+
+        nextBtn?.addEventListener('click', () => {
+            const base = new Date(currentYear, currentMonth - 1, 1);
+            base.setMonth(base.getMonth() + 1);
+            loadMonthAsync(base.getFullYear(), base.getMonth() + 1);
+        });
+    };
+
     getCards().forEach(bindCardEvents);
     updateSelectionUI();
     updateCountUI(getCards().length, Number(totalCountText?.textContent || getCards().length));
@@ -831,5 +1110,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isFeedMode) restoreFeedState();
     initInfiniteObserver();
     initPreviewAutoplay();
+    if (isSearchMode) enterAlbumPicker();
+    initCalendarWidget();
     if (isFeedMode) window.addEventListener('beforeunload', saveFeedState);
 });

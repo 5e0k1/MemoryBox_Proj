@@ -1,6 +1,10 @@
 package com.hogudeul.memorybox.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hogudeul.memorybox.auth.LoginUserSession;
+import com.hogudeul.memorybox.calendar.CalendarViewService;
+import com.hogudeul.memorybox.dto.calendar.CalendarMonthDto;
 import com.hogudeul.memorybox.dto.CommentView;
 import com.hogudeul.memorybox.dto.FeedItemView;
 import com.hogudeul.memorybox.dto.MediaDetailView;
@@ -14,7 +18,9 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
@@ -50,15 +56,21 @@ public class PageController {
     private final DetailService detailService;
     private final NotificationService notificationService;
     private final UploadService uploadService;
+    private final CalendarViewService calendarViewService;
+    private final ObjectMapper objectMapper;
 
     public PageController(FeedService feedService,
                           DetailService detailService,
                           NotificationService notificationService,
-                          UploadService uploadService) {
+                          UploadService uploadService,
+                          CalendarViewService calendarViewService,
+                          ObjectMapper objectMapper) {
         this.feedService = feedService;
         this.detailService = detailService;
         this.notificationService = notificationService;
         this.uploadService = uploadService;
+        this.calendarViewService = calendarViewService;
+        this.objectMapper = objectMapper;
     }
 
     @GetMapping("/feed")
@@ -91,6 +103,16 @@ public class PageController {
                 "uploaded_desc", userId, false, false, 1, FEED_PAGE_SIZE);
         int totalCount = feedService.getFeedItemCount(null, null, null, null, userId, false, false);
         List<FeedItemView> optionSource = feedService.getImageFeedItems();
+        List<String> albums = feedService.getAlbumFilterOptions(optionSource);
+        Map<String, Integer> albumPhotoCounts = new HashMap<>();
+        Map<String, Integer> albumVideoCounts = new HashMap<>();
+        for (String album : albums) {
+            String albumFilter = "전체".equals(album) ? null : album;
+            int photoCount = feedService.getFeedItemCount("photo", null, albumFilter, null, userId, false, false);
+            int videoCount = feedService.getFeedItemCount("video", null, albumFilter, null, userId, false, false);
+            albumPhotoCounts.put(album, photoCount);
+            albumVideoCounts.put(album, videoCount);
+        }
 
         model.addAttribute("loginUser", loginUser);
         addNotificationModel(model, userId);
@@ -99,7 +121,9 @@ public class PageController {
         model.addAttribute("feedItems", feedItems);
         model.addAttribute("totalCount", totalCount);
         model.addAttribute("authors", feedService.getAuthorFilterOptions(optionSource));
-        model.addAttribute("albums", feedService.getAlbumFilterOptions(optionSource));
+        model.addAttribute("albums", albums);
+        model.addAttribute("albumPhotoCounts", albumPhotoCounts);
+        model.addAttribute("albumVideoCounts", albumVideoCounts);
         model.addAttribute("tags", feedService.getTagFilterOptionsWithoutAll(optionSource));
         return "feed";
     }
@@ -122,12 +146,21 @@ public class PageController {
     }
 
     @GetMapping("/mypage")
-    public String myPage(Model model, HttpSession session) {
+    public String myPage(@RequestParam(required = false) Integer calendarYear,
+                         @RequestParam(required = false) Integer calendarMonth,
+                         Model model,
+                         HttpSession session) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         Long userId = loginUser != null ? loginUser.getUserId() : null;
         List<FeedItemView> feedItems = feedService.getFeedItems(null, null, null, null,
                 "uploaded_desc", userId, false, true, 1, FEED_PAGE_SIZE);
         int totalCount = feedService.getFeedItemCount(null, null, null, null, userId, false, true);
+
+        YearMonth targetMonth = resolveTargetMonth(calendarYear, calendarMonth);
+        YearMonth prevMonth = targetMonth.minusMonths(1);
+        YearMonth nextMonth = targetMonth.plusMonths(1);
+
+        CalendarViewService.CalendarLoadResult calendarLoadResult = calendarViewService.loadCalendarMonth(targetMonth);
 
         model.addAttribute("loginUser", loginUser);
         addNotificationModel(model, userId);
@@ -135,7 +168,66 @@ public class PageController {
         model.addAttribute("mode", "mypage");
         model.addAttribute("feedItems", feedItems);
         model.addAttribute("totalCount", totalCount);
+        model.addAttribute("calendarState", calendarLoadResult.getStatus().name());
+        model.addAttribute("calendarYear", targetMonth.getYear());
+        model.addAttribute("calendarMonth", targetMonth.getMonthValue());
+        model.addAttribute("calendarPrevYear", prevMonth.getYear());
+        model.addAttribute("calendarPrevMonth", prevMonth.getMonthValue());
+        model.addAttribute("calendarNextYear", nextMonth.getYear());
+        model.addAttribute("calendarNextMonth", nextMonth.getMonthValue());
+
+        if (calendarLoadResult.getStatus() == CalendarViewService.CalendarLoadResult.Status.READY) {
+            CalendarMonthDto monthDto = calendarLoadResult.getMonthDto();
+            model.addAttribute("calendarMonthData", monthDto);
+            model.addAttribute("calendarMonthDataJson", toJson(monthDto));
+        }
         return "feed";
+    }
+
+
+    private YearMonth resolveTargetMonth(Integer year, Integer month) {
+        LocalDate now = LocalDate.now();
+        int safeYear = year != null ? year : now.getYear();
+        int safeMonth = month != null ? month : now.getMonthValue();
+
+        if (safeMonth < 1 || safeMonth > 12) {
+            safeMonth = now.getMonthValue();
+        }
+        if (safeYear < 2000 || safeYear > 2100) {
+            safeYear = now.getYear();
+        }
+        return YearMonth.of(safeYear, safeMonth);
+    }
+
+    private String toJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            log.warn("캘린더 JSON 직렬화 실패", e);
+            return "{}";
+        }
+    }
+
+    @GetMapping("/api/calendar/month")
+    @ResponseBody
+    public Map<String, Object> calendarMonthApi(@RequestParam int year,
+                                                 @RequestParam int month) {
+        YearMonth targetMonth = resolveTargetMonth(year, month);
+        YearMonth prevMonth = targetMonth.minusMonths(1);
+        YearMonth nextMonth = targetMonth.plusMonths(1);
+
+        CalendarViewService.CalendarLoadResult loadResult = calendarViewService.loadCalendarMonth(targetMonth);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("state", loadResult.getStatus().name());
+        response.put("year", targetMonth.getYear());
+        response.put("month", targetMonth.getMonthValue());
+        response.put("prevYear", prevMonth.getYear());
+        response.put("prevMonth", prevMonth.getMonthValue());
+        response.put("nextYear", nextMonth.getYear());
+        response.put("nextMonth", nextMonth.getMonthValue());
+        response.put("monthData", loadResult.getMonthDto());
+        return response;
     }
 
     @GetMapping("/api/feed/items")

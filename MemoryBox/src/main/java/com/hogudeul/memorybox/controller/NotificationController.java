@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @Controller
 public class NotificationController {
 
+    // TODO: 현재 /notifications/{notificationId}/open 는 GET 요청으로 읽음 상태 변경이 발생합니다.
+    //       상태 변경 작업은 POST/PUT 전환 검토가 필요합니다.
+    // TODO: Spring Security 미사용 구조이므로 상태 변경 API(읽음/삭제/비밀번호 변경 등)에 대한 CSRF 보호 전략을 적용해야 합니다.
     private final NotificationService notificationService;
 
     public NotificationController(NotificationService notificationService) {
