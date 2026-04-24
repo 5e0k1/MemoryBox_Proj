@@ -14,7 +14,7 @@
 <body class="page page-detail">
 <main class="detail-layout">
     <header class="detail-header">
-        <a href="javascript:history.back()" class="back-link" aria-label="피드로 돌아가기">← 피드</a>
+        <a href="/feed" class="back-link" aria-label="피드로 돌아가기">← 피드</a>
         <div class="login-chip">${loginUser.displayName}</div>
     </header>
 
@@ -254,6 +254,15 @@
                 }
             }
         });
+    });
+
+    const FEED_URL = '/feed';
+    window.addEventListener('pageshow', (event) => {
+        const navigationEntries = performance.getEntriesByType ? performance.getEntriesByType('navigation') : [];
+        const navigationType = navigationEntries.length > 0 ? navigationEntries[0].type : '';
+        if (event.persisted || navigationType === 'back_forward') {
+            window.location.replace(FEED_URL);
+        }
     });
 
     const openOwnerEditBtn = document.getElementById('openOwnerEditBtn');
