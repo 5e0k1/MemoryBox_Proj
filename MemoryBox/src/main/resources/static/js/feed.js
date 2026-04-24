@@ -201,9 +201,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const buildBackCardHtml = () => `
         <article class="feed-card is-nav-card" data-role="back-to-albums">
             <button type="button" class="back-album-btn" aria-label="앨범 선택으로 돌아가기">
-                <span class="back-album-icon" aria-hidden="true">↩</span>
-                <strong>이전</strong>
-                <small>앨범 선택으로</small>
+                <span class="thumb-link back-thumb" aria-hidden="true">
+                    <span class="back-album-icon">↩</span>
+                </span>
+                <div class="feed-meta back-meta">
+                    <h2>이전</h2>
+                    <p>앨범 선택으로</p>
+                </div>
             </button>
         </article>
     `;

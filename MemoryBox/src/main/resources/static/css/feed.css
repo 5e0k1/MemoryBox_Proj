@@ -956,31 +956,64 @@ body.modal-open {
 
 .back-album-btn {
     width: 100%;
-    height: 100%;
-    min-height: 210px;
     border: 0;
     background: transparent;
+    display: block;
+    text-align: left;
+    padding: 0;
+}
+
+.back-thumb {
     display: grid;
-    place-content: center;
-    gap: 6px;
+    place-items: center;
+    background: linear-gradient(180deg, #eaf2ff 0%, #e0edff 100%);
+}
+
+.back-meta {
     color: #1e3a8a;
-    cursor: pointer;
+}
+
+.back-meta h2 {
+    color: #1e3a8a;
+}
+
+.back-meta p {
+    color: #475569;
+}
+
+.back-album-btn:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: -2px;
+}
+
+.feed-grid.columns-5 .feed-card.is-nav-card .back-thumb {
+    border-radius: 0;
+}
+
+.feed-grid.columns-5 .feed-card.is-nav-card .back-album-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 0.95rem;
+}
+
+.feed-grid.columns-3 .feed-card.is-nav-card .back-meta p {
+    display: none;
+}
+
+.feed-grid.columns-5 .feed-card.is-nav-card .back-meta {
+    display: none;
 }
 
 .back-album-icon {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: 999px;
     border: 1px solid #93c5fd;
     display: grid;
     place-items: center;
-    font-size: 1.15rem;
-    margin: 0 auto;
+    font-size: 1.2rem;
     background: #fff;
-}
-
-.back-album-btn small {
-    color: #475569;
+    cursor: pointer;
 }
 
 .nav-item em {
