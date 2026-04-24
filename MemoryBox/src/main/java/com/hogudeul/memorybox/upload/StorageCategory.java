@@ -5,7 +5,8 @@ public enum StorageCategory {
     SMALL("small"),
     MEDIUM("medium"),
     VIDEO("video"),
-    THUMB("thumb");
+    THUMB("thumb"),
+    PREVIEW("preview");
 
     private final String dir;
 

@@ -5,14 +5,18 @@ import java.time.LocalDateTime;
 public class FeedRow {
 
     private Long mediaId;
+    private String mediaType;
+    private Long userId;
     private String title;
     private LocalDateTime uploadedAt;
     private LocalDateTime takenAt;
     private String albumName;
     private String displayName;
-    private String storageKey;
+    private String thumbnailStorageKey;
+    private String previewStorageKey;
     private Integer likeCount;
     private Integer commentCount;
+    private Integer likedByMe;
     private String tagsCsv;
 
     public Long getMediaId() {
@@ -21,6 +25,22 @@ public class FeedRow {
 
     public void setMediaId(Long mediaId) {
         this.mediaId = mediaId;
+    }
+
+    public String getMediaType() {
+        return mediaType;
+    }
+
+    public void setMediaType(String mediaType) {
+        this.mediaType = mediaType;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public String getTitle() {
@@ -63,12 +83,20 @@ public class FeedRow {
         this.displayName = displayName;
     }
 
-    public String getStorageKey() {
-        return storageKey;
+    public String getThumbnailStorageKey() {
+        return thumbnailStorageKey;
     }
 
-    public void setStorageKey(String storageKey) {
-        this.storageKey = storageKey;
+    public void setThumbnailStorageKey(String thumbnailStorageKey) {
+        this.thumbnailStorageKey = thumbnailStorageKey;
+    }
+
+    public String getPreviewStorageKey() {
+        return previewStorageKey;
+    }
+
+    public void setPreviewStorageKey(String previewStorageKey) {
+        this.previewStorageKey = previewStorageKey;
     }
 
     public Integer getLikeCount() {
@@ -85,6 +113,14 @@ public class FeedRow {
 
     public void setCommentCount(Integer commentCount) {
         this.commentCount = commentCount;
+    }
+
+    public Integer getLikedByMe() {
+        return likedByMe;
+    }
+
+    public void setLikedByMe(Integer likedByMe) {
+        this.likedByMe = likedByMe;
     }
 
     public String getTagsCsv() {

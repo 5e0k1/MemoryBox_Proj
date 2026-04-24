@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 public class MediaDetailRow {
 
     private Long mediaId;
+    private Long userId;
+    private Long albumId;
     private String title;
     private String mediaType;
     private LocalDateTime uploadedAt;
@@ -13,6 +15,8 @@ public class MediaDetailRow {
     private String displayName;
     private String mediumStorageKey;
     private String smallStorageKey;
+    private String thumbStorageKey;
+    private String previewStorageKey;
     private String originalStorageKey;
     private String originalFileName;
     private String originalMimeType;
@@ -27,6 +31,22 @@ public class MediaDetailRow {
 
     public void setMediaId(Long mediaId) {
         this.mediaId = mediaId;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public Long getAlbumId() {
+        return albumId;
+    }
+
+    public void setAlbumId(Long albumId) {
+        this.albumId = albumId;
     }
 
     public String getTitle() {
@@ -99,6 +119,22 @@ public class MediaDetailRow {
 
     public void setOriginalStorageKey(String originalStorageKey) {
         this.originalStorageKey = originalStorageKey;
+    }
+
+    public String getThumbStorageKey() {
+        return thumbStorageKey;
+    }
+
+    public void setThumbStorageKey(String thumbStorageKey) {
+        this.thumbStorageKey = thumbStorageKey;
+    }
+
+    public String getPreviewStorageKey() {
+        return previewStorageKey;
+    }
+
+    public void setPreviewStorageKey(String previewStorageKey) {
+        this.previewStorageKey = previewStorageKey;
     }
 
     public String getOriginalFileName() {

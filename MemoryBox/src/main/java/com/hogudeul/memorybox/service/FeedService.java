@@ -18,38 +18,49 @@ public class FeedService {
     private static final DateTimeFormatter DATETIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final FeedMapper feedMapper;
+    private final TimeDisplayService timeDisplayService;
 
-    public FeedService(FeedMapper feedMapper) {
+    public FeedService(FeedMapper feedMapper, TimeDisplayService timeDisplayService) {
         this.feedMapper = feedMapper;
+        this.timeDisplayService = timeDisplayService;
     }
 
     public List<FeedItemView> getImageFeedItems() {
-        List<FeedRow> rows = feedMapper.findImageFeedRows();
-        List<FeedItemView> items = new ArrayList<>();
+        return toView(feedMapper.findImageFeedRows());
+    }
 
-        for (FeedRow row : rows) {
-            String[] tags = parseTags(row.getTagsCsv());
-            LocalDateTime displayAt = row.getTakenAt() != null ? row.getTakenAt() : row.getUploadedAt();
-            int shotYear = displayAt != null ? displayAt.getYear() : 0;
+    public List<FeedItemView> getFeedItems(String mediaType, String author, String album, String tag,
+                                           String sort, Long userId, boolean likedOnly, boolean mineOnly,
+                                           int page, int size) {
+        int safeSize = Math.max(1, Math.min(size, 60));
+        int safePage = Math.max(1, page);
+        int offset = (safePage - 1) * safeSize;
 
-            items.add(new FeedItemView(
-                    row.getMediaId(),
-                    "photo",
-                    toPublicFileUrl(row.getStorageKey()),
-                    defaultText(row.getTitle(), "(제목 없음)"),
-                    defaultText(row.getDisplayName(), "알 수 없음"),
-                    shotYear,
-                    formatDateTime(row.getUploadedAt()),
-                    safeInt(row.getLikeCount()),
-                    safeInt(row.getCommentCount()),
-                    tags,
-                    defaultText(row.getAlbumName(), "미분류"),
-                    formatDateTime(row.getTakenAt()),
-                    formatDateTime(displayAt)
-            ));
-        }
+        return toView(feedMapper.findFeedRows(
+                normalizeFilter(mediaType),
+                normalizeFilter(author),
+                normalizeFilter(album),
+                normalizeFilter(tag),
+                normalizeSort(sort),
+                userId,
+                likedOnly,
+                mineOnly,
+                safeSize,
+                offset));
+    }
 
-        return items;
+
+    public int getFeedItemCount(String mediaType, String author, String album, String tag,
+                                Long userId, boolean likedOnly, boolean mineOnly) {
+        return feedMapper.countFeedRows(
+                normalizeFilter(mediaType),
+                normalizeFilter(author),
+                normalizeFilter(album),
+                normalizeFilter(tag),
+                userId,
+                likedOnly,
+                mineOnly
+        );
     }
 
     public List<String> getAuthorFilterOptions(List<FeedItemView> feedItems) {
@@ -82,6 +93,88 @@ public class FeedService {
         return options;
     }
 
+    public List<String> getTagFilterOptionsWithoutAll(List<FeedItemView> feedItems) {
+        Set<String> tags = new LinkedHashSet<>();
+        for (FeedItemView item : feedItems) {
+            tags.addAll(Arrays.asList(item.getTags()));
+        }
+        List<String> sortedTags = new ArrayList<>(tags);
+        sortedTags.sort((left, right) -> {
+            boolean leftPerson = left.startsWith("@");
+            boolean rightPerson = right.startsWith("@");
+            if (leftPerson == rightPerson) {
+                return left.compareToIgnoreCase(right);
+            }
+            return leftPerson ? -1 : 1;
+        });
+        return sortedTags;
+    }
+
+    private List<FeedItemView> toView(List<FeedRow> rows) {
+        List<FeedItemView> items = new ArrayList<>();
+
+        for (FeedRow row : rows) {
+            String[] tags = parseTags(row.getTagsCsv());
+            LocalDateTime displayAt = row.getTakenAt() != null ? row.getTakenAt() : row.getUploadedAt();
+            int shotYear = displayAt != null ? displayAt.getYear() : 0;
+
+            items.add(new FeedItemView(
+                    row.getMediaId(),
+                    toUiMediaType(row.getMediaType()),
+                    toPublicFileUrl(row.getThumbnailStorageKey()),
+                    toPublicFileUrl(row.getPreviewStorageKey()),
+                    defaultText(row.getTitle(), "(제목 없음)"),
+                    defaultText(row.getDisplayName(), "알 수 없음"),
+                    shotYear,
+                    formatDateTime(row.getUploadedAt()),
+                    safeInt(row.getLikeCount()),
+                    safeInt(row.getCommentCount()),
+                    safeInt(row.getLikedByMe()) > 0,
+                    tags,
+                    defaultText(row.getAlbumName(), "미분류"),
+                    timeDisplayService.formatTakenDate(row.getTakenAt()),
+                    formatDateTime(displayAt),
+                    timeDisplayService.formatRelativeUploadedAt(row.getUploadedAt()),
+                    timeDisplayService.isNew(row.getUploadedAt())
+            ));
+        }
+
+        return items;
+    }
+
+    private String normalizeFilter(String value) {
+        if (value == null || value.isBlank() || "전체".equals(value) || "all".equalsIgnoreCase(value)) {
+            return null;
+        }
+        if ("photo".equalsIgnoreCase(value)) {
+            return "IMAGE";
+        }
+        if ("video".equalsIgnoreCase(value)) {
+            return "VIDEO";
+        }
+        if (value.startsWith("#") || value.startsWith("@")) {
+            return value.substring(1);
+        }
+        return value;
+    }
+
+    private String normalizeSort(String value) {
+        if (value == null || value.isBlank()) {
+            return "uploaded_desc";
+        }
+        return switch (value) {
+            case "uploaded_asc", "taken_desc", "taken_asc", "likes_desc" -> value;
+            default -> "uploaded_desc";
+        };
+    }
+
+    private String toUiMediaType(String mediaType) {
+        if (mediaType == null) {
+            return "photo";
+        }
+        return "VIDEO".equalsIgnoreCase(mediaType) ? "video" : "photo";
+    }
+
     private String toPublicFileUrl(String storageKey) {
         if (storageKey == null || storageKey.isBlank()) {
             return "";
@@ -97,7 +190,23 @@ public class FeedService {
         return Arrays.stream(tagsCsv.split(","))
                 .map(String::trim)
                 .filter(tag -> !tag.isBlank())
+                .map(this::formatScopedTag)
                 .toArray(String[]::new);
+    }
+
+
+    private String formatScopedTag(String rawTag) {
+        int delimiterIndex = rawTag.indexOf("|");
+        if (delimiterIndex < 0) {
+            return "#" + rawTag;
+        }
+
+        String scope = rawTag.substring(0, delimiterIndex);
+        String name = rawTag.substring(delimiterIndex + 1);
+        if ("P".equalsIgnoreCase(scope)) {
+            return "@" + name;
+        }
+        return "#" + name;
     }
 
     private String formatDateTime(LocalDateTime time) {

@@ -7,6 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class MultiPhotoUploadForm {
 
     private List<MultipartFile> imageFiles = new ArrayList<>();
+    private String title;
     private String takenAt;
     private Long albumId;
     private List<Long> selectedTagIds = new ArrayList<>();
@@ -26,6 +27,14 @@ public class MultiPhotoUploadForm {
 
     public void setTakenAt(String takenAt) {
         this.takenAt = takenAt;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
     }
 
     public Long getAlbumId() {

@@ -7,6 +7,7 @@
         <result column="user_id" property="userId"/>
         <result column="tag_name" property="tagName"/>
         <result column="normalized_name" property="normalizedName"/>
+        <result column="tag_scope" property="tagScope"/>
     </resultMap>
 
     <select id="selectNextMediaItemId" resultType="java.lang.Long">
@@ -83,32 +84,38 @@
         )
     </insert>
 
-    <select id="findTagByUserAndNormalizedName" resultMap="TagMap">
-        SELECT tag_id, user_id, tag_name, normalized_name
+    <delete id="deleteMediaVariantByType">
+        DELETE FROM MEDIA_VARIANT
+        WHERE media_id = #{mediaId}
+          AND variant_type = #{variantType}
+    </delete>
+
+    <select id="findTagByNormalizedName" resultMap="TagMap">
+        SELECT tag_id, user_id, tag_name, normalized_name, tag_scope
         FROM TAG
-        WHERE user_id = #{userId}
-          AND normalized_name = #{normalizedName}
+        WHERE normalized_name = #{normalizedName}
           AND del_yn = 'N'
         LIMIT 1
     </select>
 
     <select id="findActiveTagsByUserId" resultMap="TagMap">
-        SELECT tag_id, user_id, tag_name, normalized_name
+        SELECT tag_id, user_id, tag_name, normalized_name, tag_scope
         FROM TAG
-        WHERE user_id = #{userId}
-          AND del_yn = 'N'
-        ORDER BY tag_name ASC
+        WHERE del_yn = 'N'
+        ORDER BY CASE WHEN tag_scope = 'P' THEN 0 ELSE 1 END,
+                 tag_name ASC
     </select>
 
     <select id="findActiveTagsByIds" resultMap="TagMap">
-        SELECT tag_id, user_id, tag_name, normalized_name
+        SELECT tag_id, user_id, tag_name, normalized_name, tag_scope
         FROM TAG
-        WHERE user_id = #{userId}
-          AND del_yn = 'N'
+        WHERE del_yn = 'N'
           AND tag_id IN
           <foreach collection="tagIds" item="tagId" open="(" separator="," close=")">
               #{tagId}
           </foreach>
+        ORDER BY CASE WHEN tag_scope = 'P' THEN 0 ELSE 1 END,
+                 tag_name ASC
     </select>
 
     <insert id="insertTag" parameterType="com.hogudeul.memorybox.model.Tag">

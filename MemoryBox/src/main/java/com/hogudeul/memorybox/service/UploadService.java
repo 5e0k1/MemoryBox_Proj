@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import javax.imageio.ImageIO;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -44,11 +45,22 @@ public class UploadService {
     private final UploadMapper uploadMapper;
     private final AlbumMapper albumMapper;
     private final StorageService storageService;
+    private final NotificationService notificationService;
+    private final VideoProcessingService videoProcessingService;
+    private final long maxVideoFileSizeBytes;
 
-    public UploadService(UploadMapper uploadMapper, AlbumMapper albumMapper, StorageService storageService) {
+    public UploadService(UploadMapper uploadMapper,
+                         AlbumMapper albumMapper,
+                         StorageService storageService,
+                         NotificationService notificationService,
+                         VideoProcessingService videoProcessingService,
+                         @Value("${app.video.max-file-size-bytes:314572800}") long maxVideoFileSizeBytes) {
         this.uploadMapper = uploadMapper;
         this.albumMapper = albumMapper;
         this.storageService = storageService;
+        this.notificationService = notificationService;
+        this.videoProcessingService = videoProcessingService;
+        this.maxVideoFileSizeBytes = maxVideoFileSizeBytes;
     }
 
     public List<AlbumOption> getActiveAlbums(Long userId) {
@@ -67,7 +79,7 @@ public class UploadService {
         }
 
         String normalized = normalizeTag(tagName);
-        Tag existing = uploadMapper.findTagByUserAndNormalizedName(userId, normalized);
+        Tag existing = uploadMapper.findTagByNormalizedName(normalized);
         if (existing != null) {
             return existing;
         }
@@ -81,18 +93,42 @@ public class UploadService {
         return tag;
     }
 
+
+    @Transactional
+    public AlbumOption createAlbum(String rawAlbumName) {
+        String albumName = rawAlbumName == null ? "" : rawAlbumName.trim();
+        if (albumName.isBlank()) {
+            throw new UploadException("앨범명을 입력해 주세요.");
+        }
+
+        AlbumOption existing = albumMapper.findActiveAlbumByName(albumName);
+        if (existing != null) {
+            throw new UploadException("이미 존재하는 앨범명입니다.");
+        }
+
+        Long albumId = albumMapper.selectNextAlbumId();
+        Integer sortOrder = albumMapper.selectNextSortOrder();
+        albumMapper.insertAlbum(albumId, albumName, sortOrder == null ? 1 : sortOrder);
+
+        AlbumOption created = new AlbumOption();
+        created.setAlbumId(albumId);
+        created.setAlbumName(albumName);
+        return created;
+    }
+
     @Transactional
     public void uploadSinglePhoto(Long userId, SinglePhotoUploadForm form) {
         if (form.getImageFile() == null || form.getImageFile().isEmpty()) {
             throw new UploadException("업로드할 이미지 파일을 선택해 주세요.");
         }
-        processPhoto(userId,
+        Long mediaId = processPhoto(userId,
                 form.getAlbumId(),
                 form.getTitle(),
                 form.getTakenAt(),
                 form.getSelectedTagIds(),
                 form.getNewTags(),
                 form.getImageFile());
+        notificationService.notifyUpload(userId, mediaId, 1);
     }
 
     @Transactional
@@ -102,23 +138,28 @@ public class UploadService {
         }
 
         int created = 0;
+        Long sampleMediaId = null;
         for (int i = 0; i < form.getImageFiles().size(); i++) {
             MultipartFile file = form.getImageFiles().get(i);
             if (file == null || file.isEmpty()) {
                 continue;
             }
-            processPhoto(userId,
+            Long mediaId = processPhoto(userId,
                     form.getAlbumId(),
-                    null,
+                    form.getTitle(),
                     form.getTakenAt(),
                     form.getSelectedTagIds(),
                     form.getNewTags(),
                     file);
+            if (sampleMediaId == null) {
+                sampleMediaId = mediaId;
+            }
             created++;
         }
         if (created == 0) {
             throw new UploadException("유효한 이미지 파일이 없습니다.");
         }
+        notificationService.notifyUpload(userId, sampleMediaId, created);
     }
 
     @Transactional
@@ -128,6 +169,7 @@ public class UploadService {
         }
         requireAlbum(form.getAlbumId());
         validateMimeType(form.getVideoFile(), "video/");
+        validateVideoFileSize(form.getVideoFile());
 
         List<String> savedKeys = new ArrayList<>();
         try {
@@ -138,13 +180,13 @@ public class UploadService {
             savedKeys.add(original.getStorageKey());
             uploadMapper.insertMediaVariant(buildVariant(mediaItem.getMediaId(), "ORIGINAL", original, null, null, null));
 
-            // TODO: ffmpeg 도입 후 첫 프레임 썸네일 생성으로 교체 예정.
-            // TODO: 추후 S3 direct upload 적용 시 영상 원본/썸네일 처리를 비동기 파이프라인으로 분리 예정.
             StoredFile thumb = createVideoPlaceholderThumb(form.getVideoFile().getOriginalFilename());
             savedKeys.add(thumb.getStorageKey());
             uploadMapper.insertMediaVariant(buildVariant(mediaItem.getMediaId(), "THUMB", thumb, 320, 180, null));
 
             bindTags(userId, mediaItem.getMediaId(), form.getSelectedTagIds(), form.getNewTags());
+            notificationService.notifyUpload(userId, mediaItem.getMediaId(), 1);
+            videoProcessingService.generateVideoVariantsAsync(mediaItem.getMediaId(), original.getStorageKey(), original.getOriginalName());
         } catch (Exception e) {
             rollbackFiles(savedKeys);
             if (e instanceof UploadException) {
@@ -154,7 +196,7 @@ public class UploadService {
         }
     }
 
-    private void processPhoto(Long userId,
+    private Long processPhoto(Long userId,
                               Long albumId,
                               String title,
                               String takenAtRaw,
@@ -187,6 +229,7 @@ public class UploadService {
             uploadMapper.insertMediaVariant(buildVariant(mediaItem.getMediaId(), "MEDIUM", medium, smallImageWidth(source, 1280), smallImageHeight(source, 1280), null));
 
             bindTags(userId, mediaItem.getMediaId(), selectedTagIds, newTags);
+            return mediaItem.getMediaId();
         } catch (Exception e) {
             rollbackFiles(savedKeys);
             if (e instanceof UploadException) {
@@ -263,7 +306,7 @@ public class UploadService {
 
         for (String tagName : newTagNames) {
             String normalized = normalizeTag(tagName);
-            Tag tag = uploadMapper.findTagByUserAndNormalizedName(userId, normalized);
+            Tag tag = uploadMapper.findTagByNormalizedName(normalized);
             if (tag == null) {
                 tag = new Tag();
                 tag.setTagId(uploadMapper.selectNextTagId());
@@ -296,7 +339,7 @@ public class UploadService {
             return sanitized;
         }
 
-        List<Tag> validTags = uploadMapper.findActiveTagsByIds(userId, new ArrayList<>(sanitized));
+        List<Tag> validTags = uploadMapper.findActiveTagsByIds(new ArrayList<>(sanitized));
         Set<Long> validTagIds = new HashSet<>();
         for (Tag validTag : validTags) {
             validTagIds.add(validTag.getTagId());
@@ -349,6 +392,13 @@ public class UploadService {
         String contentType = file.getContentType();
         if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith(expectedPrefix)) {
             throw new UploadException("허용되지 않는 파일 형식입니다.");
+        }
+    }
+
+    private void validateVideoFileSize(MultipartFile file) {
+        if (file.getSize() > maxVideoFileSizeBytes) {
+            long maxMb = maxVideoFileSizeBytes / (1024 * 1024);
+            throw new UploadException("영상 파일은 최대 " + maxMb + "MB까지 업로드할 수 있습니다.");
         }
     }
 
