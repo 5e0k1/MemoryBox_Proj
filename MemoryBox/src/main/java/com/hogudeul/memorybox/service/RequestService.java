@@ -18,10 +18,14 @@ public class RequestService {
 
     private final RequestMapper requestMapper;
     private final TimeDisplayService timeDisplayService;
+    private final NotificationService notificationService;
 
-    public RequestService(RequestMapper requestMapper, TimeDisplayService timeDisplayService) {
+    public RequestService(RequestMapper requestMapper,
+                          TimeDisplayService timeDisplayService,
+                          NotificationService notificationService) {
         this.requestMapper = requestMapper;
         this.timeDisplayService = timeDisplayService;
+        this.notificationService = notificationService;
     }
 
     public List<Map<String, Object>> getRequestPosts() {
@@ -60,7 +64,16 @@ public class RequestService {
         if (userId == null || normalizedTitle.isBlank() || normalizedContent.isBlank()) {
             return false;
         }
-        return requestMapper.insertRequestPost(userId, normalizedTitle, normalizedContent) > 0;
+        boolean created = requestMapper.insertRequestPost(userId, normalizedTitle, normalizedContent) > 0;
+        if (!created) {
+            return false;
+        }
+
+        RequestPostRow createdPost = requestMapper.findLatestRequestPostByUserId(userId);
+        if (createdPost != null) {
+            notificationService.notifyAdminsForRequestPost(userId, createdPost.getRequestId());
+        }
+        return true;
     }
 
     @Transactional
@@ -69,7 +82,19 @@ public class RequestService {
         if (requestId == null || userId == null || normalizedContent.isBlank()) {
             return false;
         }
-        return requestMapper.insertRequestComment(requestId, userId, normalizedContent) > 0;
+        RequestPostRow post = requestMapper.findRequestPostById(requestId);
+        if (post == null) {
+            return false;
+        }
+        boolean created = requestMapper.insertRequestComment(requestId, userId, normalizedContent) > 0;
+        if (created) {
+            RequestCommentRow createdComment = requestMapper.findLatestRequestCommentByUserId(requestId, userId);
+            if (createdComment != null) {
+                notificationService.notifyRequestAuthorForComment(
+                        userId, requestId, createdComment.getRequestCommentId(), post.getTitle());
+            }
+        }
+        return created;
     }
 
     private Map<String, Object> toPostMap(RequestPostRow row) {

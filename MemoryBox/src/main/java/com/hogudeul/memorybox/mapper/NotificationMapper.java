@@ -35,7 +35,17 @@ public interface NotificationMapper {
 
     Long findMediaOwnerId(@Param("mediaId") Long mediaId);
 
+    String findMediaTitleByMediaId(@Param("mediaId") Long mediaId);
+
     Long findCommentOwnerId(@Param("commentId") Long commentId);
 
+    String findCommentContentByCommentId(@Param("commentId") Long commentId);
+
     Long findMediaIdByCommentId(@Param("commentId") Long commentId);
+
+    List<Long> findActiveAdminUserIdsExcept(@Param("excludeUserId") Long excludeUserId);
+
+    Long findRequestOwnerId(@Param("requestId") Long requestId);
+
+    Long findRequestIdByRequestCommentId(@Param("requestCommentId") Long requestCommentId);
 }
