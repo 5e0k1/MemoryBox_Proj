@@ -121,8 +121,24 @@
         LIMIT 1
     </select>
 
+    <select id="findMediaTitleByMediaId" resultType="string">
+        SELECT title
+        FROM MEDIA_ITEMS
+        WHERE media_id = #{mediaId}
+          AND del_yn = 'N'
+        LIMIT 1
+    </select>
+
     <select id="findCommentOwnerId" resultType="java.lang.Long">
         SELECT user_id
+        FROM COMMENT
+        WHERE comment_id = #{commentId}
+          AND del_yn = 'N'
+        LIMIT 1
+    </select>
+
+    <select id="findCommentContentByCommentId" resultType="string">
+        SELECT content
         FROM COMMENT
         WHERE comment_id = #{commentId}
           AND del_yn = 'N'
@@ -133,6 +149,30 @@
         SELECT media_id
         FROM COMMENT
         WHERE comment_id = #{commentId}
+          AND del_yn = 'N'
+        LIMIT 1
+    </select>
+
+    <select id="findActiveAdminUserIdsExcept" resultType="java.lang.Long">
+        SELECT user_id
+        FROM USER
+        WHERE del_yn = 'N'
+          AND role = 'ADMIN'
+          AND user_id != #{excludeUserId}
+    </select>
+
+    <select id="findRequestOwnerId" resultType="java.lang.Long">
+        SELECT user_id
+        FROM REQUEST_POST
+        WHERE request_id = #{requestId}
+          AND del_yn = 'N'
+        LIMIT 1
+    </select>
+
+    <select id="findRequestIdByRequestCommentId" resultType="java.lang.Long">
+        SELECT request_id
+        FROM REQUEST_COMMENT
+        WHERE request_comment_id = #{requestCommentId}
           AND del_yn = 'N'
         LIMIT 1
     </select>

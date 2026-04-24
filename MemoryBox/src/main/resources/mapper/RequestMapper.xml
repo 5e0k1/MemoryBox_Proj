@@ -113,4 +113,43 @@
         )
     </insert>
 
+    <select id="findLatestRequestPostByUserId" resultMap="RequestPostRowMap">
+        SELECT rp.request_id,
+               rp.user_id,
+               rp.title,
+               rp.content,
+               rp.created_at,
+               u.display_name AS author_name,
+               (
+                   SELECT COUNT(*)
+                   FROM REQUEST_COMMENT rc
+                   WHERE rc.request_id = rp.request_id
+                     AND rc.del_yn = 'N'
+               ) AS comment_count
+        FROM REQUEST_POST rp
+                 JOIN USER u ON rp.user_id = u.user_id
+        WHERE rp.user_id = #{userId}
+          AND rp.del_yn = 'N'
+          AND u.del_yn = 'N'
+        ORDER BY rp.request_id DESC
+        LIMIT 1
+    </select>
+
+    <select id="findLatestRequestCommentByUserId" resultMap="RequestCommentRowMap">
+        SELECT rc.request_comment_id,
+               rc.request_id,
+               rc.user_id,
+               rc.content,
+               rc.created_at,
+               u.display_name AS author_name
+        FROM REQUEST_COMMENT rc
+                 JOIN USER u ON rc.user_id = u.user_id
+        WHERE rc.request_id = #{requestId}
+          AND rc.user_id = #{userId}
+          AND rc.del_yn = 'N'
+          AND u.del_yn = 'N'
+        ORDER BY rc.request_comment_id DESC
+        LIMIT 1
+    </select>
+
 </mapper>
