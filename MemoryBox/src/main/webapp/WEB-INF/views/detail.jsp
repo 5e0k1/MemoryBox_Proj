@@ -36,6 +36,11 @@
 
         <article class="detail-panel media-panel">
             <c:choose>
+                <c:when test="${detail.mediaType eq 'VIDEO' and not empty detail.originalVideoUrl}">
+                    <video controls playsinline preload="metadata" poster="${detail.videoThumbnailUrl}" class="detail-image">
+                        <source src="${detail.originalVideoUrl}" type="video/mp4">
+                    </video>
+                </c:when>
                 <c:when test="${not empty detail.displayImageUrl}">
                     <img src="${detail.displayImageUrl}" alt="${detail.title}" class="detail-image" loading="eager">
                 </c:when>
@@ -262,6 +267,48 @@
     openTagEditBtn?.addEventListener('click', () => {
         tagEditPanel.hidden = !tagEditPanel.hidden;
     });
+
+    const singleDownloadBtn = document.querySelector('a.download-btn');
+    let singleDownloadTraceActive = false;
+    singleDownloadBtn?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        console.debug('[download-debug] single-download-click');
+        const downloadUrl = singleDownloadBtn.getAttribute('href');
+        console.debug('[download-debug] single-download-url-ready', { downloadUrl });
+        singleDownloadTraceActive = true;
+        console.debug('[download-debug] single-download-trigger');
+    });
+
+    window.addEventListener('beforeunload', () => {
+        if (!singleDownloadTraceActive) return;
+        console.debug('[download-debug] single-download-after-beforeunload');
+    });
+    window.addEventListener('pagehide', () => {
+        if (!singleDownloadTraceActive) return;
+        console.debug('[download-debug] single-download-after-pagehide');
+    });
+    window.addEventListener('popstate', () => {
+        if (!singleDownloadTraceActive) return;
+        console.debug('[download-debug] single-download-after-popstate');
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (!singleDownloadTraceActive) return;
+        console.debug('[download-debug] single-download-after-visibilitychange', { visibilityState: document.visibilityState });
+    });
+    document.addEventListener('submit', (event) => {
+        if (!singleDownloadTraceActive) return;
+        const form = event.target;
+        if (!(form instanceof HTMLFormElement)) return;
+        console.debug('[download-debug] single-download-after-form-submit', { action: form.action, method: form.method });
+    }, true);
+    document.addEventListener('click', (event) => {
+        if (!singleDownloadTraceActive) return;
+        const anchor = event.target.closest('a[href]');
+        if (anchor && anchor !== singleDownloadBtn) {
+            console.debug('[download-debug] single-download-after-anchor-click', { href: anchor.getAttribute('href') });
+        }
+    }, true);
+
 </script>
 <script src="/js/upload.js"></script>
 </body>

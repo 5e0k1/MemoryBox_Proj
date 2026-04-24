@@ -16,6 +16,7 @@
     <c:if test="${not empty errorMessage}"><p class="msg error">${errorMessage}</p></c:if>
     <form method="post" enctype="multipart/form-data" class="upload-form">
         <label>동영상 파일<input type="file" name="videoFile" accept="video/*" required></label>
+        <small>영상은 최대 300MB까지 업로드할 수 있으며, 업로드 후 썸네일/프리뷰가 비동기로 생성됩니다.</small>
         <label>제목<input type="text" name="title" value="${form.title}" maxlength="100"></label>
         <label>촬영일시<input type="datetime-local" class="taken-at-input" name="takenAt" value="${form.takenAt}"></label>
         <label>앨범

@@ -121,7 +121,8 @@ public class FeedService {
             items.add(new FeedItemView(
                     row.getMediaId(),
                     toUiMediaType(row.getMediaType()),
-                    toPublicFileUrl(row.getStorageKey()),
+                    toPublicFileUrl(row.getThumbnailStorageKey()),
+                    toPublicFileUrl(row.getPreviewStorageKey()),
                     defaultText(row.getTitle(), "(제목 없음)"),
                     defaultText(row.getDisplayName(), "알 수 없음"),
                     shotYear,

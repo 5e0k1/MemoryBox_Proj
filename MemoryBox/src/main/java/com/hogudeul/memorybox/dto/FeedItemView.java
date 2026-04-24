@@ -8,6 +8,7 @@ public class FeedItemView {
     private Long id;
     private String mediaType;
     private String thumbnailUrl;
+    private String previewUrl;
     private String title;
     private String author;
     private int shotYear;
@@ -22,12 +23,13 @@ public class FeedItemView {
     private String relativeUploadedAt;
     private boolean recent;
 
-    public FeedItemView(Long id, String mediaType, String thumbnailUrl, String title, String author,
+    public FeedItemView(Long id, String mediaType, String thumbnailUrl, String previewUrl, String title, String author,
                         int shotYear, String uploadedAt, int likeCount, int commentCount, boolean likedByMe, String[] tags,
                         String albumName, String takenAt, String displayAt, String relativeUploadedAt, boolean recent) {
         this.id = id;
         this.mediaType = mediaType;
         this.thumbnailUrl = thumbnailUrl;
+        this.previewUrl = previewUrl;
         this.title = title;
         this.author = author;
         this.shotYear = shotYear;
@@ -69,6 +71,14 @@ public class FeedItemView {
 
     public String getTitle() {
         return title;
+    }
+
+    public String getPreviewUrl() {
+        return previewUrl;
+    }
+
+    public void setPreviewUrl(String previewUrl) {
+        this.previewUrl = previewUrl;
     }
 
     public void setTitle(String title) {
@@ -171,4 +181,3 @@ public class FeedItemView {
         this.recent = recent;
     }
 }
-

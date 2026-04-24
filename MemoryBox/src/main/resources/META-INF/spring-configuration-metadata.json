@@ -5,6 +5,18 @@
       "type": "java.lang.String",
       "description": "MemoryBox 로컬 업로드 파일 저장 루트 경로입니다.",
       "defaultValue": "D:/memorybox/upload/"
+    },
+    {
+      "name": "app.ffmpeg.command",
+      "type": "java.lang.String",
+      "description": "ffmpeg 실행 명령어 또는 절대 경로입니다.",
+      "defaultValue": "ffmpeg"
+    },
+    {
+      "name": "app.video.max-file-size-bytes",
+      "type": "java.lang.Long",
+      "description": "영상 업로드 최대 크기(byte)입니다.",
+      "defaultValue": 314572800
     }
   ]
 }

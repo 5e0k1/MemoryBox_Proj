@@ -52,12 +52,58 @@ document.addEventListener('DOMContentLoaded', () => {
     let page = 2;
     const pageSize = 24;
     let activeCommentMediaId = null;
+    let activePreviewVideo = null;
+    let previewObserver = null;
 
     const state = {
         type: 'all',
         columns: isSearchMode ? '3' : '1',
         sort: 'uploaded_desc',
         scrollTop: 0
+    };
+
+    const stopVideo = (video, reset = false) => {
+        if (!video) return;
+        video.pause();
+        if (reset) {
+            video.currentTime = 0;
+        }
+    };
+
+    const playVideo = (video) => {
+        if (!video) return;
+        if (activePreviewVideo && activePreviewVideo !== video) {
+            stopVideo(activePreviewVideo, true);
+        }
+        activePreviewVideo = video;
+        video.play().catch(() => {});
+    };
+
+    const initPreviewAutoplay = () => {
+        const videos = Array.from(grid.querySelectorAll('.feed-preview-video[data-has-preview="true"]'));
+        if (videos.length === 0) return;
+
+        if (!previewObserver) {
+            previewObserver = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    const video = entry.target;
+                    if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+                        playVideo(video);
+                        return;
+                    }
+                    if (video === activePreviewVideo) {
+                        activePreviewVideo = null;
+                    }
+                    stopVideo(video, true);
+                });
+            }, { threshold: [0.6] });
+        }
+
+        videos.forEach((video) => {
+            if (video.dataset.previewObserved === 'true') return;
+            video.dataset.previewObserved = 'true';
+            previewObserver.observe(video);
+        });
     };
 
     const updateTagSummary = () => {
@@ -149,9 +195,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const bindCardEvents = (card) => {
         let longPressTimer;
         let longPressTriggered = false;
+        let suppressContextMenuUntil = 0;
 
         card.addEventListener('contextmenu', (event) => {
             if (isActionElement(event.target)) return;
+            if (Date.now() < suppressContextMenuUntil) {
+                event.preventDefault();
+                return;
+            }
             event.preventDefault();
             toggleCardSelection(card);
         });
@@ -161,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
             longPressTriggered = false;
             longPressTimer = setTimeout(() => {
                 longPressTriggered = true;
+                suppressContextMenuUntil = Date.now() + 800;
                 toggleCardSelection(card);
             }, 500);
         }, { passive: true });
@@ -221,9 +273,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const likedClass = item.likedByMe ? 'is-liked' : '';
         const likedIcon = item.likedByMe ? '❤' : '♡';
 
+        const mediaHtml = item.mediaType === 'video'
+            ? `<video class="feed-preview-video" src="${item.previewUrl || ''}" poster="${item.thumbnailUrl || ''}" muted playsinline loop preload="none" data-has-preview="${item.previewUrl ? 'true' : 'false'}"></video>`
+            : `<img src="${item.thumbnailUrl}" alt="${escapeHtml(title)} 썸네일" loading="lazy">`;
+
         return `<article class="feed-card" data-media-type="${item.mediaType}" data-item-id="${item.id}" data-detail-url="/feed/${item.id}">
             <a class="thumb-link" href="/feed/${item.id}" aria-label="${escapeHtml(title)} 상세보기">
-                <img src="${item.thumbnailUrl}" alt="${escapeHtml(title)} 썸네일" loading="lazy">
+                ${mediaHtml}
                 <span class="media-badge ${item.mediaType}" data-full-text="${mediaLabel}" data-short-text="${item.mediaType === 'video' ? 'V' : 'P'}">${mediaLabel}</span>
                 ${item.recent ? `<span class="new-badge" data-full-text="New" data-short-text="N">New</span>` : ""}
                 <span class="select-check" aria-hidden="true">✔</span>
@@ -405,6 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 grid.insertAdjacentHTML('beforeend', items.map(buildCardHtml).join(''));
                 Array.from(grid.querySelectorAll('.feed-card')).slice(-items.length).forEach(bindCardEvents);
                 updateBadgeLabels(state.columns);
+                initPreviewAutoplay();
                 page += 1;
             }
         } finally {
@@ -476,15 +533,109 @@ document.addEventListener('DOMContentLoaded', () => {
 
     cancelSelectionBtn?.addEventListener('click', clearSelectionMode);
 
+    const debugDownloadState = (stage, extra = {}) => {
+        console.debug('[download-debug]', stage, {
+            selectionMode,
+            selectedCount: selectedIds.size,
+            overlayVisible: Boolean(document.getElementById('downloadLockOverlay') && !document.getElementById('downloadLockOverlay').hidden),
+            bodyDownloadLock: document.body.classList.contains('download-lock-active'),
+            buttonDisabled: Boolean(downloadSelectedBtn?.disabled),
+            ...extra
+        });
+    };
+
     const setDownloadButtonLoading = (isLoading) => {
         if (!downloadSelectedBtn) return;
         downloadSelectedBtn.disabled = isLoading;
         downloadSelectedBtn.textContent = isLoading ? '다운로드 준비중...' : '다운로드';
     };
 
-    downloadSelectedBtn?.addEventListener('click', async () => {
+    const ensureDownloadOverlay = () => {
+        let overlay = document.getElementById('downloadLockOverlay');
+        if (overlay) return overlay;
+
+        overlay = document.createElement('div');
+        overlay.id = 'downloadLockOverlay';
+        overlay.className = 'download-lock-overlay';
+        overlay.hidden = true;
+        overlay.innerHTML = `
+            <section class="download-lock-panel" role="alert" aria-live="polite">
+                <h2 class="download-lock-title">다운로드 준비중</h2>
+                <p class="download-lock-message" id="downloadLockMessage">파일을 준비하고 있습니다...</p>
+                <progress class="download-lock-progress" id="downloadLockProgress" max="100" value="0"></progress>
+            </section>
+        `;
+        document.body.appendChild(overlay);
+        return overlay;
+    };
+
+    const setDownloadLock = (active, message = '파일을 준비하고 있습니다...', progressPercent = null) => {
+        const overlay = ensureDownloadOverlay();
+        const messageEl = overlay.querySelector('#downloadLockMessage');
+        const progressEl = overlay.querySelector('#downloadLockProgress');
+
+        document.body.classList.toggle('download-lock-active', active);
+        overlay.hidden = !active;
+        if (messageEl) messageEl.textContent = message;
+
+        if (progressEl) {
+            if (typeof progressPercent === 'number') {
+                progressEl.removeAttribute('indeterminate');
+                progressEl.value = Math.max(0, Math.min(100, progressPercent));
+            } else {
+                progressEl.removeAttribute('value');
+            }
+        }
+    };
+
+    const resetDownloadUiState = (reason) => {
+        debugDownloadState('multi-download-ui-reset-before', { reason });
+        setDownloadLock(false);
+        setDownloadButtonLoading(false);
+        clearSelectionMode();
+
+        const overlay = document.getElementById('downloadLockOverlay');
+        if (overlay) {
+            overlay.hidden = true;
+        }
+        const temporaryLinks = document.querySelectorAll('a[download="memorybox_download.zip"]');
+        temporaryLinks.forEach((link) => link.remove());
+        document.body.classList.remove('download-lock-active');
+        document.body.style.removeProperty('pointer-events');
+        debugDownloadState('multi-download-ui-reset-after', { reason, removedTempLinkCount: temporaryLinks.length });
+    };
+
+    const downloadBlobWithProgress = async (response) => {
+        if (!response.body) {
+            return await response.blob();
+        }
+        const contentLength = Number(response.headers.get('Content-Length') || 0);
+        const reader = response.body.getReader();
+        const chunks = [];
+        let received = 0;
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (!value) continue;
+            chunks.push(value);
+            received += value.length;
+            if (contentLength > 0) {
+                const percent = (received / contentLength) * 100;
+                setDownloadLock(true, `다운로드 중... ${Math.floor(percent)}%`, percent);
+            } else {
+                setDownloadLock(true, `다운로드 중... ${Math.floor(received / 1024)}KB`);
+            }
+        }
+        return new Blob(chunks);
+    };
+
+    downloadSelectedBtn?.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
         if (selectedIds.size === 0) return window.alert('다운로드할 파일을 먼저 선택해 주세요.');
+        debugDownloadState('multi-download-start');
         setDownloadButtonLoading(true);
+        setDownloadLock(true, 'ZIP 파일을 준비하고 있습니다...');
         try {
             const response = await fetch(DOWNLOAD_API_URL, {
                 method: 'POST',
@@ -492,19 +643,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ mediaIds: Array.from(selectedIds, (id) => Number(id)) })
             });
             if (!response.ok) throw new Error();
-            const blob = await response.blob();
+            const blob = await downloadBlobWithProgress(response);
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
             link.download = 'memorybox_download.zip';
             document.body.appendChild(link);
+            debugDownloadState('multi-download-before-trigger', { downloadUrl: link.href });
             link.click();
             link.remove();
             URL.revokeObjectURL(url);
+            debugDownloadState('multi-download-success');
         } catch (e) {
+            debugDownloadState('multi-download-fail', { error: e?.message || String(e) });
             window.alert('다중 다운로드 처리 중 오류가 발생했습니다.');
         } finally {
-            setDownloadButtonLoading(false);
+            resetDownloadUiState('finally');
+            debugDownloadState('multi-download-finally');
         }
     });
 
@@ -675,5 +830,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sortOption) sortOption.value = state.sort;
     if (isFeedMode) restoreFeedState();
     initInfiniteObserver();
+    initPreviewAutoplay();
     if (isFeedMode) window.addEventListener('beforeunload', saveFeedState);
 });

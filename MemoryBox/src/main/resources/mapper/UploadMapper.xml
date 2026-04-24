@@ -84,6 +84,12 @@
         )
     </insert>
 
+    <delete id="deleteMediaVariantByType">
+        DELETE FROM MEDIA_VARIANT
+        WHERE media_id = #{mediaId}
+          AND variant_type = #{variantType}
+    </delete>
+
     <select id="findTagByNormalizedName" resultMap="TagMap">
         SELECT tag_id, user_id, tag_name, normalized_name, tag_scope
         FROM TAG

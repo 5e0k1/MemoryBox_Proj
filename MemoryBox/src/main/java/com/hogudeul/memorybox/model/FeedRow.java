@@ -12,7 +12,8 @@ public class FeedRow {
     private LocalDateTime takenAt;
     private String albumName;
     private String displayName;
-    private String storageKey;
+    private String thumbnailStorageKey;
+    private String previewStorageKey;
     private Integer likeCount;
     private Integer commentCount;
     private Integer likedByMe;
@@ -82,12 +83,20 @@ public class FeedRow {
         this.displayName = displayName;
     }
 
-    public String getStorageKey() {
-        return storageKey;
+    public String getThumbnailStorageKey() {
+        return thumbnailStorageKey;
     }
 
-    public void setStorageKey(String storageKey) {
-        this.storageKey = storageKey;
+    public void setThumbnailStorageKey(String thumbnailStorageKey) {
+        this.thumbnailStorageKey = thumbnailStorageKey;
+    }
+
+    public String getPreviewStorageKey() {
+        return previewStorageKey;
+    }
+
+    public void setPreviewStorageKey(String previewStorageKey) {
+        this.previewStorageKey = previewStorageKey;
     }
 
     public Integer getLikeCount() {

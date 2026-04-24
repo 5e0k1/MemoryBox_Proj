@@ -26,6 +26,8 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DetailService {
 
+    private static final Logger log = LoggerFactory.getLogger(DetailService.class);
     public static final int MAX_DOWNLOAD_COUNT = 30;
     private static final DateTimeFormatter DATETIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
@@ -61,9 +64,13 @@ public class DetailService {
             return null;
         }
 
+        boolean isVideo = "VIDEO".equalsIgnoreCase(row.getMediaType());
         String displayStorageKey = row.getMediumStorageKey();
         if (isBlank(displayStorageKey)) {
             displayStorageKey = row.getSmallStorageKey();
+        }
+        if (isVideo && isBlank(displayStorageKey)) {
+            displayStorageKey = row.getThumbStorageKey();
         }
 
         return new MediaDetailView(
@@ -76,7 +83,9 @@ public class DetailService {
                 timeDisplayService.formatRelativeUploadedAt(row.getUploadedAt()),
                 defaultText(row.getAlbumName(), "미분류"),
                 defaultText(row.getDisplayName(), "알 수 없음"),
-                toPublicFileUrl(displayStorageKey),
+                isVideo ? "" : toPublicFileUrl(displayStorageKey),
+                isVideo ? toPublicFileUrl(row.getOriginalStorageKey()) : "",
+                isVideo ? toPublicFileUrl(row.getThumbStorageKey()) : "",
                 "",
                 "/feed/" + mediaId + "/download",
                 parseTags(row.getTagsCsv()),
@@ -169,7 +178,9 @@ public class DetailService {
 
     public void streamZip(List<DownloadFileInfo> files, OutputStream outputStream) throws IOException {
         Map<String, Integer> nameCounter = new HashMap<>();
-        try (ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
+        ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream);
+        log.debug("streamZip start. fileCount={}", files.size());
+        try {
             for (DownloadFileInfo file : files) {
                 if (!file.existsReadable()) {
                     throw new DownloadException("원본 파일을 찾을 수 없습니다.");
@@ -183,10 +194,16 @@ public class DetailService {
                 zipOutputStream.closeEntry();
             }
             zipOutputStream.finish();
+            zipOutputStream.flush();
+            log.debug("streamZip finish. fileCount={}", files.size());
         } catch (DownloadException e) {
+            log.warn("streamZip domain failure. msg={}", e.getMessage());
             throw e;
         } catch (IOException e) {
+            log.warn("streamZip io failure. msg={}", e.getMessage());
             throw new IOException("ZIP 생성 중 오류가 발생했습니다.", e);
+        } finally {
+            log.debug("streamZip finally. fileCount={}", files.size());
         }
     }
 

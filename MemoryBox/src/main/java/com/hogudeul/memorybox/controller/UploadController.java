@@ -132,9 +132,9 @@ public class UploadController {
         try {
             uploadService.uploadVideo(loginUser.getUserId(), form);
             if (ajax) {
-                return uploadSuccessResponse("동영상 업로드가 완료되었습니다.", "/feed");
+                return uploadSuccessResponse("동영상 원본 업로드가 완료되었습니다. 미리보기 생성은 잠시 후 반영됩니다.", "/feed");
             }
-            redirectAttributes.addFlashAttribute("successMessage", "동영상 업로드가 완료되었습니다.");
+            redirectAttributes.addFlashAttribute("successMessage", "동영상 원본 업로드가 완료되었습니다. 미리보기 생성은 잠시 후 반영됩니다.");
             return "redirect:/feed";
         } catch (UploadException e) {
             if (ajax) {

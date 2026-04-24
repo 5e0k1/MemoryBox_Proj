@@ -146,7 +146,21 @@
         <c:forEach var="item" items="${feedItems}">
             <article class="feed-card" data-media-type="${item.mediaType}" data-item-id="${item.id}" data-detail-url="/feed/${item.id}">
                 <a class="thumb-link" href="/feed/${item.id}" aria-label="${item.title} 상세보기">
-                    <img src="${item.thumbnailUrl}" alt="${item.title} 썸네일" loading="lazy">
+                    <c:choose>
+                        <c:when test="${item.mediaType eq 'video'}">
+                            <video class="feed-preview-video"
+                                   src="${item.previewUrl}"
+                                   poster="${item.thumbnailUrl}"
+                                   muted
+                                   playsinline
+                                   loop
+                                   preload="none"
+                                   data-has-preview="${not empty item.previewUrl}"></video>
+                        </c:when>
+                        <c:otherwise>
+                            <img src="${item.thumbnailUrl}" alt="${item.title} 썸네일" loading="lazy">
+                        </c:otherwise>
+                    </c:choose>
                     <span class="media-badge ${item.mediaType}" data-full-text="${item.mediaType eq 'video' ? 'Video' : 'Photo'}" data-short-text="${item.mediaType eq 'video' ? 'V' : 'P'}">${item.mediaType eq 'video' ? 'Video' : 'Photo'}</span>
                     <c:if test="${item.recent}"><span class="new-badge" data-full-text="New" data-short-text="N">New</span></c:if>
                     <span class="select-check" aria-hidden="true">✔</span>

@@ -15,6 +15,8 @@ public class MediaDetailRow {
     private String displayName;
     private String mediumStorageKey;
     private String smallStorageKey;
+    private String thumbStorageKey;
+    private String previewStorageKey;
     private String originalStorageKey;
     private String originalFileName;
     private String originalMimeType;
@@ -117,6 +119,22 @@ public class MediaDetailRow {
 
     public void setOriginalStorageKey(String originalStorageKey) {
         this.originalStorageKey = originalStorageKey;
+    }
+
+    public String getThumbStorageKey() {
+        return thumbStorageKey;
+    }
+
+    public void setThumbStorageKey(String thumbStorageKey) {
+        this.thumbStorageKey = thumbStorageKey;
+    }
+
+    public String getPreviewStorageKey() {
+        return previewStorageKey;
+    }
+
+    public void setPreviewStorageKey(String previewStorageKey) {
+        this.previewStorageKey = previewStorageKey;
     }
 
     public String getOriginalFileName() {
