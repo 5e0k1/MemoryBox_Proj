@@ -25,6 +25,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,6 +35,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -345,10 +349,11 @@ public class PageController {
     }
 
     @GetMapping("/feed/{itemId}/download")
-    public ResponseEntity<StreamingResponseBody> downloadOriginal(@PathVariable Long itemId,
-                                                                  HttpServletRequest request,
-                                                                  HttpSession session) {
+    public ResponseEntity<Resource> downloadOriginal(@PathVariable Long itemId,
+                                                     HttpServletRequest request,
+                                                     HttpSession session) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        log.info("Single download request. mediaId={}, hasLogin={}", itemId, loginUser != null);
         if (loginUser == null) {
             return ResponseEntity.status(302).header(HttpHeaders.LOCATION, "/login").build();
         }
@@ -362,6 +367,8 @@ public class PageController {
         }
 
         if (!fileInfo.existsReadable()) {
+            log.warn("Single download file not found. mediaId={}, userId={}, path={}",
+                    itemId, loginUser.getUserId(), fileInfo.getFilePath());
             return ResponseEntity.status(302)
                     .header(HttpHeaders.LOCATION, "/feed/" + itemId + "?error="
                             + URLEncoder.encode("원본 파일을 찾을 수 없습니다.", StandardCharsets.UTF_8))
@@ -378,6 +385,8 @@ public class PageController {
         }
 
         String contentDisposition = buildAttachmentContentDisposition(fileInfo.getFileName(), "download");
+        log.debug("Single download headers prepared. mediaId={}, userId={}, mimeType={}, fileName={}",
+                itemId, loginUser.getUserId(), mediaType, fileInfo.getFileName());
 
         detailService.logDownloadAttempt(
                 itemId,
@@ -402,18 +411,10 @@ public class PageController {
             responseBuilder.contentLength(contentLength);
         }
 
-        return responseBuilder.body((StreamingResponseBody) outputStream -> {
-            try (var inputStream = fileInfo.openInputStream()) {
-                inputStream.transferTo(outputStream);
-            } catch (IOException e) {
-                if (isClientAbortIOException(e)) {
-                    log.debug("Client aborted single download. mediaId={}, userId={}, msg={}",
-                            itemId, loginUser.getUserId(), e.getMessage());
-                    return;
-                }
-                throw e;
-            }
-        });
+        log.info("Single download response ready. mediaId={}, userId={}, contentLength={}",
+                itemId, loginUser.getUserId(), contentLength);
+        Resource resource = new FileSystemResource(fileInfo.getFilePath());
+        return responseBuilder.body(resource);
     }
 
     @PostMapping(value = "/feed/download-zip", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -421,15 +422,19 @@ public class PageController {
                                                                        HttpServletRequest httpRequest,
                                                                        HttpSession session) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        log.info("Zip download request. hasLogin={}", loginUser != null);
         if (loginUser == null) {
             return errorStreamingResponse(401, "로그인이 필요합니다.");
         }
 
         List<Long> mediaIds = request == null ? null : request.getMediaIds();
+        log.info("Zip download request detail. userId={}, mediaCount={}, mediaIds={}",
+                loginUser.getUserId(), mediaIds == null ? 0 : mediaIds.size(), mediaIds);
         final List<DetailService.DownloadFileInfo> files;
         try {
             files = detailService.getDownloadFileInfos(mediaIds, loginUser.getUserId());
         } catch (DetailService.DownloadException e) {
+            log.warn("Zip download validation failed. userId={}, msg={}", loginUser.getUserId(), e.getMessage());
             return errorStreamingResponse(400, e.getMessage());
         }
 
@@ -444,16 +449,20 @@ public class PageController {
                 + URLEncoder.encode(zipFileName, StandardCharsets.UTF_8).replace("+", "%20");
 
         StreamingResponseBody body = outputStream -> {
+            log.info("Zip stream start. userId={}, fileCount={}", loginUser.getUserId(), files.size());
             try {
                 detailService.streamZip(files, outputStream);
+                log.info("Zip stream complete. userId={}, fileCount={}", loginUser.getUserId(), files.size());
             } catch (DetailService.DownloadException e) {
+                log.warn("Zip stream domain error. userId={}, msg={}", loginUser.getUserId(), e.getMessage());
                 throw new IOException(e.getMessage(), e);
             } catch (IOException e) {
                 if (isClientAbortIOException(e)) {
-                    log.debug("Client aborted zip download. userId={}, msg={}",
+                    log.warn("Client aborted zip download. userId={}, msg={}",
                             loginUser.getUserId(), e.getMessage());
                     return;
                 }
+                log.warn("Zip stream failed. userId={}, msg={}", loginUser.getUserId(), e.getMessage());
                 throw e;
             }
         };
@@ -483,7 +492,18 @@ public class PageController {
                 + URLEncoder.encode(normalizedFileName, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
-    private boolean isClientAbortIOException(IOException e) {
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    @ResponseBody
+    public ResponseEntity<Void> handleAsyncRequestNotUsable(AsyncRequestNotUsableException ex) {
+        if (isClientAbortIOException(ex)) {
+            log.debug("Client aborted async response. msg={}", ex.getMessage());
+            return ResponseEntity.noContent().build();
+        }
+        log.warn("Unhandled async response error. msg={}", ex.getMessage());
+        return ResponseEntity.internalServerError().build();
+    }
+
+    private boolean isClientAbortIOException(Throwable e) {
         Throwable current = e;
         while (current != null) {
             String message = current.getMessage();
