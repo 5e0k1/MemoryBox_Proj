@@ -18,6 +18,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
     const authorFilter = document.getElementById('authorFilter');
     const albumFilter = document.getElementById('albumFilter');
+    const albumPickerSection = document.getElementById('albumPickerSection');
+    const albumPickerGrid = document.getElementById('albumPickerGrid');
+    const selectedAlbumHeader = document.getElementById('selectedAlbumHeader');
+    const selectedAlbumTitle = document.getElementById('selectedAlbumTitle');
+    const floatingHead = document.getElementById('floatingHead');
+    const controlPanel = isSearchMode ? document.querySelector('.control-panel') : null;
     const sortOption = document.getElementById('sortOption');
     const tagChecks = document.querySelectorAll('.tag-check');
     const selectedTagText = document.getElementById('selectedTagText');
@@ -59,8 +65,11 @@ document.addEventListener('DOMContentLoaded', () => {
         type: 'all',
         columns: isSearchMode ? '3' : '1',
         sort: 'uploaded_desc',
-        scrollTop: 0
+        scrollTop: 0,
+        selectedAlbum: isSearchMode ? null : '전체'
     };
+
+    const isAlbumPickerMode = () => isSearchMode && state.selectedAlbum === null;
 
     const stopVideo = (video, reset = false) => {
         if (!video) return;
@@ -120,11 +129,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const selectedPrimaryTag = () => Array.from(tagChecks).find((check) => check.checked)?.value || '';
 
-    const getCards = () => grid.querySelectorAll('.feed-card');
+    const getCards = () => grid.querySelectorAll('.feed-card:not(.is-nav-card)');
     const getMediaBadges = () => grid.querySelectorAll('.media-badge');
     const getNewBadges = () => grid.querySelectorAll('.new-badge');
 
     const updateSelectionUI = () => {
+        if (!selectedCountText || !mobileSelectionBar) return;
         selectedCountText.textContent = String(selectedIds.size);
         mobileSelectionBar.hidden = !selectionMode;
     };
@@ -140,6 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const applyColumn = (columns) => {
+        if (!grid) return;
         state.columns = columns;
         grid.classList.remove('columns-1', 'columns-3', 'columns-5');
         grid.classList.add(`columns-${columns}`);
@@ -173,6 +184,62 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isFeedMode) return;
         state.scrollTop = window.scrollY;
         sessionStorage.setItem(FEED_STATE_KEY, JSON.stringify(state));
+    };
+
+    const resetSearchFilters = () => {
+        state.type = 'all';
+        tabButtons.forEach((button) => button.classList.toggle('is-active', button.dataset.filterType === 'all'));
+        if (authorFilter) authorFilter.value = '전체';
+        tagChecks.forEach((check) => { check.checked = false; });
+        updateTagSummary();
+        if (sortOption) {
+            sortOption.value = 'uploaded_desc';
+            state.sort = sortOption.value;
+        }
+    };
+
+    const buildBackCardHtml = () => `
+        <article class="feed-card is-nav-card" data-role="back-to-albums">
+            <button type="button" class="back-album-btn" aria-label="앨범 선택으로 돌아가기">
+                <span class="back-album-icon" aria-hidden="true">↩</span>
+                <strong>이전</strong>
+                <small>앨범 선택으로</small>
+            </button>
+        </article>
+    `;
+
+    const injectBackCard = () => {
+        if (!isSearchMode || isAlbumPickerMode() || !grid) return;
+        if (grid.querySelector('.is-nav-card')) return;
+        grid.insertAdjacentHTML('afterbegin', buildBackCardHtml());
+    };
+
+    const enterAlbumPicker = () => {
+        if (!isSearchMode) return;
+        state.selectedAlbum = null;
+        clearSelectionMode();
+        resetSearchFilters();
+        if (grid) grid.innerHTML = '';
+        updateCountUI(0, 0);
+        hasMore = false;
+        page = 1;
+        if (albumPickerSection) albumPickerSection.hidden = false;
+        if (selectedAlbumHeader) selectedAlbumHeader.hidden = true;
+        if (floatingHead) floatingHead.hidden = true;
+        if (controlPanel) controlPanel.hidden = true;
+        if (feedEndMessage) feedEndMessage.hidden = true;
+    };
+
+    const enterAlbumView = async (albumName) => {
+        if (!isSearchMode) return;
+        state.selectedAlbum = albumName || '전체';
+        if (selectedAlbumTitle) selectedAlbumTitle.textContent = state.selectedAlbum;
+        if (albumPickerSection) albumPickerSection.hidden = true;
+        if (selectedAlbumHeader) selectedAlbumHeader.hidden = false;
+        if (floatingHead) floatingHead.hidden = false;
+        if (controlPanel) controlPanel.hidden = false;
+        resetSearchFilters();
+        await reloadFromFirstPage();
     };
 
     const isActionElement = (target) => Boolean(target.closest('[data-action], button, input, textarea, select, .modal-close-btn'));
@@ -253,6 +320,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const params = new URLSearchParams();
         params.set('page', String(page));
         params.set('size', String(pageSize));
+        if (isSearchMode) {
+            if (state.selectedAlbum === null) return params;
+            if (state.selectedAlbum !== '전체') params.set('album', state.selectedAlbum);
+        }
         if (state.type !== 'all') params.set('type', state.type);
         if (authorFilter && authorFilter.value !== '전체') params.set('author', authorFilter.value);
         if (albumFilter && albumFilter.value !== '전체') params.set('album', albumFilter.value);
@@ -443,6 +514,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const loadNextPage = async () => {
+        if (!grid) return;
+        if (isAlbumPickerMode()) return;
         if (!canInfinite || loading || !hasMore) return;
         loading = true;
         if (feedEndMessage) feedEndMessage.hidden = true;
@@ -464,6 +537,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 initPreviewAutoplay();
                 page += 1;
             }
+            injectBackCard();
         } finally {
             loading = false;
             infiniteLoader.hidden = true;
@@ -474,7 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const reloadFromFirstPage = async () => {
-        if (!canInfinite) return;
+        if (!canInfinite || isAlbumPickerMode() || !grid) return;
         page = 1;
         hasMore = true;
         if (feedEndMessage) feedEndMessage.hidden = true;
@@ -512,6 +586,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     tabButtons.forEach((button) => {
         button.addEventListener('click', () => {
+            if (isAlbumPickerMode()) return;
             tabButtons.forEach((b) => b.classList.remove('is-active'));
             button.classList.add('is-active');
             state.type = button.dataset.filterType;
@@ -661,6 +736,20 @@ document.addEventListener('DOMContentLoaded', () => {
             resetDownloadUiState('finally');
             debugDownloadState('multi-download-finally');
         }
+    });
+
+    albumPickerGrid?.addEventListener('click', (event) => {
+        const card = event.target.closest('.album-picker-card');
+        if (!card) return;
+        enterAlbumView(card.dataset.albumValue || '전체');
+    });
+
+    grid?.addEventListener('click', (event) => {
+        const backCardButton = event.target.closest('.back-album-btn');
+        if (!backCardButton) return;
+        event.preventDefault();
+        event.stopPropagation();
+        enterAlbumPicker();
     });
 
     openPasswordModalBtn?.addEventListener('click', () => {
@@ -831,5 +920,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isFeedMode) restoreFeedState();
     initInfiniteObserver();
     initPreviewAutoplay();
+    if (isSearchMode) enterAlbumPicker();
     if (isFeedMode) window.addEventListener('beforeunload', saveFeedState);
 });
