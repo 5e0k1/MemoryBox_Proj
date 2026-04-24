@@ -1159,10 +1159,17 @@ body.modal-open {
     gap: 10px;
 }
 
-.calendar-month-nav a {
-    text-decoration: none;
+.calendar-nav-btn {
+    border: none;
+    background: transparent;
     color: #334155;
     font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+.calendar-nav-btn:disabled {
+    opacity: 0.4;
 }
 
 .calendar-week-head,
@@ -1203,6 +1210,11 @@ body.modal-open {
 
 .calendar-day.is-holiday-text .day-number {
     color: #dc2626;
+}
+
+
+.calendar-day.is-saturday-soft .day-number {
+    color: #60a5fa;
 }
 
 .calendar-day.is-selected {
@@ -1262,6 +1274,12 @@ body.modal-open {
     list-style: none;
     display: grid;
     gap: 6px;
+}
+
+.calendar-event-list.is-scrollable {
+    max-height: 168px;
+    overflow-y: auto;
+    padding-right: 2px;
 }
 
 .calendar-event-list li {

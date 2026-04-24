@@ -229,10 +229,13 @@ public class CalendarViewService {
             days.add(dayDto);
         }
 
+        LocalDate upcomingLimitDate = today.plusDays(35);
         List<CalendarEventDto> upcoming = mergedEvents.stream()
                 .map(this::toEventDto)
-                .filter(event -> !LocalDate.parse(event.getDate(), DATE_FMT).isBefore(today))
-                .limit(7)
+                .filter(event -> {
+                    LocalDate eventDate = LocalDate.parse(event.getDate(), DATE_FMT);
+                    return !eventDate.isBefore(today) && !eventDate.isAfter(upcomingLimitDate);
+                })
                 .collect(Collectors.toList());
 
         CalendarMonthDto dto = new CalendarMonthDto();

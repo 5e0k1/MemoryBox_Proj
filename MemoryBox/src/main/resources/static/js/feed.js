@@ -918,28 +918,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const initCalendarWidget = () => {
         const calendarCard = document.getElementById('sharedCalendarCard');
-        if (!calendarCard || calendarCard.dataset.calendarState !== 'READY') return;
+        if (!calendarCard) return;
 
-        const eventPanel = document.getElementById('calendarEventPanel');
-        const eventHeader = document.getElementById('calendarEventHeader');
-        const eventList = document.getElementById('calendarEventList');
-        const closeBtn = document.getElementById('calendarCloseBtn');
-        const dayButtons = Array.from(document.querySelectorAll('.calendar-day[data-date]'));
+        const monthLabel = document.getElementById('calendarMonthLabel');
+        const prevBtn = document.getElementById('calendarPrevBtn');
+        const nextBtn = document.getElementById('calendarNextBtn');
+        const contentArea = document.getElementById('calendarContentArea');
 
-        if (!eventPanel || !eventHeader || !eventList) return;
+        let state = calendarCard.dataset.calendarState || 'DISABLED';
+        let selectedDate = null;
 
-        let monthData;
-        try {
-            monthData = JSON.parse(eventPanel.dataset.calendarMonth || '{}');
-        } catch (_) {
-            return;
-        }
-
-        const dayMap = new Map((monthData.days || []).map((day) => [day.date, day]));
-        const upcomingEvents = monthData.upcomingEvents || [];
-
+        const zeroPad = (num) => String(num).padStart(2, '0');
+        const formatMonth = (year, month) => `${year}.${zeroPad(month)}`;
         const formatKoreanDate = (isoDate) => {
-            const [y, m, d] = isoDate.split('-').map(Number);
+            const [, m, d] = isoDate.split('-').map(Number);
             return `${m}월 ${d}일`;
         };
 
@@ -953,52 +945,160 @@ document.addEventListener('DOMContentLoaded', () => {
             return `D+${Math.abs(diff)}`;
         };
 
-        const renderUpcoming = () => {
-            eventHeader.textContent = '다가오는 일정';
-            closeBtn.hidden = true;
-            if (!upcomingEvents.length) {
-                eventList.innerHTML = '<li class="empty">다가오는 일정이 없습니다.</li>';
-                return;
+        const getStateMessage = (calendarState) => {
+            if (calendarState === 'NO_SOURCES') return '등록된 캘린더가 없습니다.';
+            if (calendarState === 'ERROR') return '일정을 불러오지 못했습니다.';
+            return '캘린더 기능이 비활성화되어 있습니다.';
+        };
+
+        const renderEventItems = (events, useDday, emptyText) => {
+            if (!events || events.length === 0) {
+                return `<li class="empty">${emptyText}</li>`;
             }
-            eventList.innerHTML = upcomingEvents.map((event) => `
+            return events.map((event) => `
                 <li>
-                    <span class="event-time">${calcDday(event.date)} · ${event.timeText}</span>
+                    <span class="event-time">${useDday ? `${calcDday(event.date)} · ` : ''}${event.timeText}</span>
                     <span class="event-title">${escapeHtml(event.title)}</span>
                 </li>
             `).join('');
         };
 
-        const renderSelectedDate = (isoDate) => {
-            const dayData = dayMap.get(isoDate);
-            const events = dayData?.events || [];
-            eventHeader.textContent = `${formatKoreanDate(isoDate)} 일정`;
-            closeBtn.hidden = false;
-            if (!events.length) {
-                eventList.innerHTML = '<li class="empty">일정이 없습니다.</li>';
+        const renderCalendar = (monthData) => {
+            if (!monthData) {
+                contentArea.innerHTML = `<p class="calendar-empty-msg">${getStateMessage(state)}</p>`;
                 return;
             }
-            eventList.innerHTML = events.map((event) => `
-                <li>
-                    <span class="event-time">${event.timeText}</span>
-                    <span class="event-title">${escapeHtml(event.title)}</span>
-                </li>
-            `).join('');
-        };
 
-        dayButtons.forEach((button) => {
-            button.addEventListener('click', () => {
-                dayButtons.forEach((node) => node.classList.remove('is-selected'));
-                button.classList.add('is-selected');
-                renderSelectedDate(button.dataset.date);
+            const dayButtonsHtml = (monthData.days || []).map((day) => {
+                const dayOfWeek = new Date(`${day.date}T00:00:00`).getDay();
+                const isSaturday = dayOfWeek === 6;
+                const classes = [
+                    'calendar-day',
+                    day.currentMonth ? '' : 'is-outside',
+                    day.today ? 'is-today' : '',
+                    (day.sunday || day.holiday) ? 'is-holiday-text' : '',
+                    day.currentMonth && isSaturday && !day.holiday ? 'is-saturday-soft' : '',
+                    selectedDate === day.date ? 'is-selected' : ''
+                ].filter(Boolean).join(' ');
+
+                const personalDot = day.hasPersonalEvent ? '<i class="dot dot-personal"></i>' : '';
+                const holidayDot = day.holiday ? '<i class="dot dot-holiday"></i>' : '';
+                return `
+                    <button type="button" class="${classes}" data-date="${day.date}">
+                        <span class="day-number">${day.dayNumber}</span>
+                        <span class="event-dots">${personalDot}${holidayDot}</span>
+                    </button>
+                `;
+            }).join('');
+
+            const upcomingEvents = (monthData.upcomingEvents || []);
+            const panelTitle = selectedDate ? `${formatKoreanDate(selectedDate)} 일정` : '다가오는 일정';
+            const panelEvents = selectedDate
+                ? ((monthData.days || []).find((day) => day.date === selectedDate)?.events || [])
+                : upcomingEvents;
+            const panelList = renderEventItems(panelEvents, !selectedDate, selectedDate ? '일정이 없습니다.' : '다가오는 일정이 없습니다.');
+            const panelClass = (panelEvents.length > 3) ? 'calendar-event-list is-scrollable' : 'calendar-event-list';
+
+            contentArea.innerHTML = `
+                <div class="calendar-week-head">
+                    <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+                </div>
+                <div class="calendar-grid" id="calendarGrid">${dayButtonsHtml}</div>
+                <section class="calendar-event-panel" id="calendarEventPanel">
+                    <header class="calendar-event-header" id="calendarEventHeader">${panelTitle}</header>
+                    <button type="button" class="calendar-close-btn" id="calendarCloseBtn" ${selectedDate ? '' : 'hidden'}>닫기</button>
+                    <ul class="${panelClass}" id="calendarEventList">${panelList}</ul>
+                </section>
+            `;
+
+            contentArea.querySelectorAll('.calendar-day[data-date]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const clickedDate = button.dataset.date;
+                    if (selectedDate === clickedDate) {
+                        selectedDate = null;
+                    } else {
+                        selectedDate = clickedDate;
+                    }
+                    renderCalendar(monthData);
+                });
             });
+
+            contentArea.querySelector('#calendarCloseBtn')?.addEventListener('click', () => {
+                selectedDate = null;
+                renderCalendar(monthData);
+            });
+        };
+
+        const renderByState = (monthData) => {
+            if (state !== 'READY') {
+                selectedDate = null;
+                contentArea.innerHTML = `<p class="calendar-empty-msg">${getStateMessage(state)}</p>`;
+                return;
+            }
+            renderCalendar(monthData);
+        };
+
+        let currentYear = Number(calendarCard.dataset.calendarYear || 0);
+        let currentMonth = Number(calendarCard.dataset.calendarMonth || 0);
+        let currentMonthData = null;
+
+        const monthDataNode = document.getElementById('calendarEventPanel');
+        if (state === 'READY' && monthDataNode?.dataset.calendarMonth) {
+            try {
+                currentMonthData = JSON.parse(monthDataNode.dataset.calendarMonth || '{}');
+            } catch (_) {
+                state = 'ERROR';
+            }
+        }
+
+        if (monthLabel && currentYear > 0 && currentMonth > 0) {
+            monthLabel.textContent = formatMonth(currentYear, currentMonth);
+        }
+        renderByState(currentMonthData);
+
+        const setNavDisabled = (disabled) => {
+            if (prevBtn) prevBtn.disabled = disabled;
+            if (nextBtn) nextBtn.disabled = disabled;
+        };
+
+        const loadMonthAsync = async (nextYear, nextMonth) => {
+            setNavDisabled(true);
+            try {
+                const params = new URLSearchParams({ year: String(nextYear), month: String(nextMonth) });
+                const response = await fetch(`/api/calendar/month?${params.toString()}`);
+                if (!response.ok) throw new Error('calendar-load-failed');
+                const payload = await response.json();
+
+                currentYear = Number(payload.year || nextYear);
+                currentMonth = Number(payload.month || nextMonth);
+                state = payload.state || 'ERROR';
+                currentMonthData = payload.monthData || null;
+                selectedDate = null;
+
+                if (monthLabel) {
+                    monthLabel.textContent = formatMonth(currentYear, currentMonth);
+                }
+                renderByState(currentMonthData);
+            } catch (_) {
+                state = 'ERROR';
+                currentMonthData = null;
+                renderByState(currentMonthData);
+            } finally {
+                setNavDisabled(false);
+            }
+        };
+
+        prevBtn?.addEventListener('click', () => {
+            const base = new Date(currentYear, currentMonth - 1, 1);
+            base.setMonth(base.getMonth() - 1);
+            loadMonthAsync(base.getFullYear(), base.getMonth() + 1);
         });
 
-        closeBtn?.addEventListener('click', () => {
-            dayButtons.forEach((node) => node.classList.remove('is-selected'));
-            renderUpcoming();
+        nextBtn?.addEventListener('click', () => {
+            const base = new Date(currentYear, currentMonth - 1, 1);
+            base.setMonth(base.getMonth() + 1);
+            loadMonthAsync(base.getFullYear(), base.getMonth() + 1);
         });
-
-        renderUpcoming();
     };
 
     getCards().forEach(bindCardEvents);

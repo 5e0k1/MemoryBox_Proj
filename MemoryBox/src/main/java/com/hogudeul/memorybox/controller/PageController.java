@@ -208,6 +208,28 @@ public class PageController {
         }
     }
 
+    @GetMapping("/api/calendar/month")
+    @ResponseBody
+    public Map<String, Object> calendarMonthApi(@RequestParam int year,
+                                                 @RequestParam int month) {
+        YearMonth targetMonth = resolveTargetMonth(year, month);
+        YearMonth prevMonth = targetMonth.minusMonths(1);
+        YearMonth nextMonth = targetMonth.plusMonths(1);
+
+        CalendarViewService.CalendarLoadResult loadResult = calendarViewService.loadCalendarMonth(targetMonth);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("state", loadResult.getStatus().name());
+        response.put("year", targetMonth.getYear());
+        response.put("month", targetMonth.getMonthValue());
+        response.put("prevYear", prevMonth.getYear());
+        response.put("prevMonth", prevMonth.getMonthValue());
+        response.put("nextYear", nextMonth.getYear());
+        response.put("nextMonth", nextMonth.getMonthValue());
+        response.put("monthData", loadResult.getMonthDto());
+        return response;
+    }
+
     @GetMapping("/api/feed/items")
     @ResponseBody
     public Map<String, Object> feedItemsApi(@RequestParam(defaultValue = "1") int page,

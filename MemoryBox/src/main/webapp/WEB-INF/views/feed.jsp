@@ -60,16 +60,17 @@
             <button class="btn btn-secondary" type="button" id="openPasswordModalBtn">비밀번호 변경</button>
         </section>
 
-        <section class="calendar-card" id="sharedCalendarCard" data-calendar-state="${calendarState}">
+        <section class="calendar-card" id="sharedCalendarCard" data-calendar-state="${calendarState}" data-calendar-year="${calendarYear}" data-calendar-month="${calendarMonth}">
             <header class="calendar-card-header">
                 <h2>우리 일정</h2>
                 <div class="calendar-month-nav">
-                    <a href="/mypage?calendarYear=${calendarPrevYear}&calendarMonth=${calendarPrevMonth}" aria-label="이전 달">&lt;</a>
-                    <strong>${calendarYear}.<c:if test="${calendarMonth lt 10}">0</c:if>${calendarMonth}</strong>
-                    <a href="/mypage?calendarYear=${calendarNextYear}&calendarMonth=${calendarNextMonth}" aria-label="다음 달">&gt;</a>
+                    <button type="button" class="calendar-nav-btn" id="calendarPrevBtn" aria-label="이전 달">&lt;</button>
+                    <strong id="calendarMonthLabel">${calendarYear}.<c:if test="${calendarMonth lt 10}">0</c:if>${calendarMonth}</strong>
+                    <button type="button" class="calendar-nav-btn" id="calendarNextBtn" aria-label="다음 달">&gt;</button>
                 </div>
             </header>
 
+            <div id="calendarContentArea">
             <c:choose>
                 <c:when test="${calendarState eq 'READY'}">
                     <div class="calendar-week-head">
@@ -115,6 +116,7 @@
                     <p class="calendar-empty-msg">캘린더 기능이 비활성화되어 있습니다.</p>
                 </c:otherwise>
             </c:choose>
+            </div>
         </section>
     </c:if>
 
