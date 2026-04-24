@@ -91,6 +91,16 @@ public class PageController {
                 "uploaded_desc", userId, false, false, 1, FEED_PAGE_SIZE);
         int totalCount = feedService.getFeedItemCount(null, null, null, null, userId, false, false);
         List<FeedItemView> optionSource = feedService.getImageFeedItems();
+        List<String> albums = feedService.getAlbumFilterOptions(optionSource);
+        Map<String, Integer> albumPhotoCounts = new HashMap<>();
+        Map<String, Integer> albumVideoCounts = new HashMap<>();
+        for (String album : albums) {
+            String albumFilter = "전체".equals(album) ? null : album;
+            int photoCount = feedService.getFeedItemCount("photo", null, albumFilter, null, userId, false, false);
+            int videoCount = feedService.getFeedItemCount("video", null, albumFilter, null, userId, false, false);
+            albumPhotoCounts.put(album, photoCount);
+            albumVideoCounts.put(album, videoCount);
+        }
 
         model.addAttribute("loginUser", loginUser);
         addNotificationModel(model, userId);
@@ -99,7 +109,9 @@ public class PageController {
         model.addAttribute("feedItems", feedItems);
         model.addAttribute("totalCount", totalCount);
         model.addAttribute("authors", feedService.getAuthorFilterOptions(optionSource));
-        model.addAttribute("albums", feedService.getAlbumFilterOptions(optionSource));
+        model.addAttribute("albums", albums);
+        model.addAttribute("albumPhotoCounts", albumPhotoCounts);
+        model.addAttribute("albumVideoCounts", albumVideoCounts);
         model.addAttribute("tags", feedService.getTagFilterOptionsWithoutAll(optionSource));
         return "feed";
     }

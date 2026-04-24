@@ -825,6 +825,91 @@ body.modal-open {
     padding-bottom: 8px;
 }
 
+.album-picker-section {
+    background: linear-gradient(180deg, #f8fbff 0%, #f8f7ff 100%);
+    border: 1px solid #dbeafe;
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: var(--shadow);
+    margin-bottom: 12px;
+}
+
+.album-picker-header h2 {
+    margin: 0;
+    font-size: 1.04rem;
+    color: #1e293b;
+}
+
+.album-picker-header p {
+    margin: 4px 0 0;
+    color: #64748b;
+    font-size: 0.82rem;
+}
+
+.album-picker-grid {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.album-picker-card {
+    border: 1px solid #dbeafe;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+    min-height: 90px;
+    padding: 10px;
+    display: grid;
+    place-items: center;
+    gap: 6px;
+    color: #1e293b;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.album-picker-card:active {
+    transform: scale(0.98);
+}
+
+.album-picker-card:hover {
+    border-color: #93c5fd;
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.14);
+}
+
+.album-picker-icon {
+    font-size: 1.18rem;
+}
+
+.album-picker-name {
+    text-align: center;
+    font-size: 0.88rem;
+}
+
+.album-picker-count {
+    text-align: center;
+    font-size: 0.73rem;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.selected-album-header {
+    margin-bottom: 10px;
+}
+
+.selected-album-header h2 {
+    margin: 0;
+    font-size: 1.02rem;
+    color: #0f172a;
+}
+
+.selected-album-header p {
+    margin: 2px 0 0;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
 .control-panel .inline-filter select {
     margin-top: 4px;
 }
@@ -868,6 +953,74 @@ body.modal-open {
     color: #64748b;
     font-size: 0.85rem;
     margin: 10px 0;
+}
+
+.feed-card.is-nav-card {
+    border-style: dashed;
+    border-color: #bfdbfe;
+    background: linear-gradient(180deg, #eff6ff 0%, #eef2ff 100%);
+}
+
+.back-album-btn {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    display: block;
+    text-align: left;
+    padding: 0;
+}
+
+.back-thumb {
+    display: grid;
+    place-items: center;
+    background: linear-gradient(180deg, #eaf2ff 0%, #e0edff 100%);
+}
+
+.back-meta {
+    color: #1e3a8a;
+}
+
+.back-meta h2 {
+    color: #1e3a8a;
+}
+
+.back-meta p {
+    color: #475569;
+}
+
+.back-album-btn:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: -2px;
+}
+
+.feed-grid.columns-5 .feed-card.is-nav-card .back-thumb {
+    border-radius: 0;
+}
+
+.feed-grid.columns-5 .feed-card.is-nav-card .back-album-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 0.95rem;
+}
+
+.feed-grid.columns-3 .feed-card.is-nav-card .back-meta p {
+    display: none;
+}
+
+.feed-grid.columns-5 .feed-card.is-nav-card .back-meta {
+    display: none;
+}
+
+.back-album-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    border: 1px solid #93c5fd;
+    display: grid;
+    place-items: center;
+    font-size: 1.2rem;
+    background: #fff;
+    cursor: pointer;
 }
 
 .nav-item em {
@@ -969,4 +1122,10 @@ body.modal-open {
     color: #b91c1c;
     border-color: #fecaca;
     background: #fff5f5;
+}
+
+@media (min-width: 640px) {
+    .album-picker-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
 }

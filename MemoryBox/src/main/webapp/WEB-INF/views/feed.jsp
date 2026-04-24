@@ -75,6 +75,30 @@
     </c:if>
 
     <c:if test="${mode eq 'search'}">
+        <section class="album-picker-section" id="albumPickerSection">
+            <header class="album-picker-header">
+                <h2>앨범 선택</h2>
+                <p>원하는 앨범을 먼저 선택해 주세요.</p>
+            </header>
+            <div class="album-picker-grid" id="albumPickerGrid">
+                <c:forEach var="album" items="${albums}">
+                    <button type="button" class="album-picker-card" data-album-value="${album}" aria-label="${album} 앨범 보기">
+                        <span class="album-picker-icon" aria-hidden="true">📁</span>
+                        <span class="album-picker-name">${album}</span>
+                        <span class="album-picker-count">
+                            사진 ${empty albumPhotoCounts[album] ? 0 : albumPhotoCounts[album]}개
+                            영상 ${empty albumVideoCounts[album] ? 0 : albumVideoCounts[album]}개
+                        </span>
+                    </button>
+                </c:forEach>
+            </div>
+        </section>
+
+        <section class="selected-album-header" id="selectedAlbumHeader" hidden>
+            <h2 id="selectedAlbumTitle">전체</h2>
+            <p>선택한 앨범의 파일을 조회 중입니다.</p>
+        </section>
+
         <section class="control-panel">
             <div class="type-tabs" role="tablist" aria-label="미디어 타입 선택">
                 <button class="tab-btn is-active" data-filter-type="all">전체</button>
@@ -82,11 +106,6 @@
                 <button class="tab-btn" data-filter-type="video">영상</button>
             </div>
             <div class="inline-filters-row">
-                <label class="inline-filter">앨범
-                    <select id="albumFilter">
-                        <c:forEach var="album" items="${albums}"><option value="${album}">${album}</option></c:forEach>
-                    </select>
-                </label>
                 <label class="inline-filter">작성자
                     <select id="authorFilter">
                         <c:forEach var="author" items="${authors}"><option value="${author}">${author}</option></c:forEach>
@@ -110,10 +129,10 @@
         </section>
     </c:if>
 
-    <div class="floating-head">
+    <div class="floating-head" id="floatingHead">
         <div class="feed-count-summary" id="feedCountSummary">
-            <span>불러온 <strong id="loadedCountText">${fn:length(feedItems)}</strong>개</span>
-            <span>/ 전체 <strong id="totalCountText">${totalCount}</strong>개</span>
+            <span>불러온 <strong id="loadedCountText">${mode eq 'search' ? 0 : fn:length(feedItems)}</strong>개</span>
+            <span>/ 전체 <strong id="totalCountText">${mode eq 'search' ? 0 : totalCount}</strong>개</span>
         </div>
         <div class="view-sort-bar">
             <div class="column-controls" aria-label="피드 보기 방식 선택">
@@ -143,52 +162,54 @@
     </div>
 
     <section id="feedGrid" class="feed-grid columns-1" aria-live="polite">
-        <c:forEach var="item" items="${feedItems}">
-            <article class="feed-card" data-media-type="${item.mediaType}" data-item-id="${item.id}" data-detail-url="/feed/${item.id}">
-                <a class="thumb-link" href="/feed/${item.id}" aria-label="${item.title} 상세보기">
-                    <c:choose>
-                        <c:when test="${item.mediaType eq 'video'}">
-                            <video class="feed-preview-video"
-                                   src="${item.previewUrl}"
-                                   poster="${item.thumbnailUrl}"
-                                   muted
-                                   playsinline
-                                   loop
-                                   preload="none"
-                                   data-has-preview="${not empty item.previewUrl}"></video>
-                        </c:when>
-                        <c:otherwise>
-                            <img src="${item.thumbnailUrl}" alt="${item.title} 썸네일" loading="lazy">
-                        </c:otherwise>
-                    </c:choose>
-                    <span class="media-badge ${item.mediaType}" data-full-text="${item.mediaType eq 'video' ? 'Video' : 'Photo'}" data-short-text="${item.mediaType eq 'video' ? 'V' : 'P'}">${item.mediaType eq 'video' ? 'Video' : 'Photo'}</span>
-                    <c:if test="${item.recent}"><span class="new-badge" data-full-text="New" data-short-text="N">New</span></c:if>
-                    <span class="select-check" aria-hidden="true">✔</span>
-                    <div class="overlay-meta overlay-bottom"><p>${item.author}</p></div>
-                </a>
-                <button type="button" class="like-toggle-btn ${item.likedByMe ? 'is-liked' : ''}" data-action="like-toggle" aria-label="좋아요 토글" aria-pressed="${item.likedByMe}">
-                    <span class="heart">${item.likedByMe ? '❤' : '♡'}</span>
-                </button>
-                <div class="feed-meta">
-                    <h2>${item.title}</h2>
-                    <p>${item.author} · 촬영 ${empty item.takenAt ? "-" : item.takenAt} · 업로드 ${item.relativeUploadedAt}</p>
-                    <ul class="tag-list">
-                        <c:forEach var="tag" items="${item.tags}">
-                            <li class="${fn:startsWith(tag, '@') ? 'person-tag' : ''}">${tag}</li>
-                        </c:forEach>
-                    </ul>
-                    <div class="engagement" data-action="meta-actions">
-                        <button type="button" class="meta-btn like-meta-btn ${item.likedByMe ? 'is-liked' : ''}" data-action="like-toggle" aria-label="좋아요 토글">
-                            ❤ <span class="like-count">${item.likeCount}</span>
-                        </button>
-                        <button type="button" class="meta-btn comment-meta-btn" data-action="open-comments" aria-label="댓글 열기">
-                            💬 <span class="comment-count">${item.commentCount}</span>
-                        </button>
+        <c:if test="${mode ne 'search'}">
+            <c:forEach var="item" items="${feedItems}">
+                <article class="feed-card" data-media-type="${item.mediaType}" data-item-id="${item.id}" data-detail-url="/feed/${item.id}">
+                    <a class="thumb-link" href="/feed/${item.id}" aria-label="${item.title} 상세보기">
+                        <c:choose>
+                            <c:when test="${item.mediaType eq 'video'}">
+                                <video class="feed-preview-video"
+                                       src="${item.previewUrl}"
+                                       poster="${item.thumbnailUrl}"
+                                       muted
+                                       playsinline
+                                       loop
+                                       preload="none"
+                                       data-has-preview="${not empty item.previewUrl}"></video>
+                            </c:when>
+                            <c:otherwise>
+                                <img src="${item.thumbnailUrl}" alt="${item.title} 썸네일" loading="lazy">
+                            </c:otherwise>
+                        </c:choose>
+                        <span class="media-badge ${item.mediaType}" data-full-text="${item.mediaType eq 'video' ? 'Video' : 'Photo'}" data-short-text="${item.mediaType eq 'video' ? 'V' : 'P'}">${item.mediaType eq 'video' ? 'Video' : 'Photo'}</span>
+                        <c:if test="${item.recent}"><span class="new-badge" data-full-text="New" data-short-text="N">New</span></c:if>
+                        <span class="select-check" aria-hidden="true">✔</span>
+                        <div class="overlay-meta overlay-bottom"><p>${item.author}</p></div>
+                    </a>
+                    <button type="button" class="like-toggle-btn ${item.likedByMe ? 'is-liked' : ''}" data-action="like-toggle" aria-label="좋아요 토글" aria-pressed="${item.likedByMe}">
+                        <span class="heart">${item.likedByMe ? '❤' : '♡'}</span>
+                    </button>
+                    <div class="feed-meta">
+                        <h2>${item.title}</h2>
+                        <p>${item.author} · 촬영 ${empty item.takenAt ? "-" : item.takenAt} · 업로드 ${item.relativeUploadedAt}</p>
+                        <ul class="tag-list">
+                            <c:forEach var="tag" items="${item.tags}">
+                                <li class="${fn:startsWith(tag, '@') ? 'person-tag' : ''}">${tag}</li>
+                            </c:forEach>
+                        </ul>
+                        <div class="engagement" data-action="meta-actions">
+                            <button type="button" class="meta-btn like-meta-btn ${item.likedByMe ? 'is-liked' : ''}" data-action="like-toggle" aria-label="좋아요 토글">
+                                ❤ <span class="like-count">${item.likeCount}</span>
+                            </button>
+                            <button type="button" class="meta-btn comment-meta-btn" data-action="open-comments" aria-label="댓글 열기">
+                                💬 <span class="comment-count">${item.commentCount}</span>
+                            </button>
+                        </div>
                     </div>
-                </div>
-            </article>
-        </c:forEach>
-        <c:if test="${empty feedItems}"><p class="empty-feed-msg">표시할 이미지 피드가 없습니다.</p></c:if>
+                </article>
+            </c:forEach>
+            <c:if test="${empty feedItems}"><p class="empty-feed-msg">표시할 이미지 피드가 없습니다.</p></c:if>
+        </c:if>
     </section>
 
     <div class="infinite-loader" id="infiniteLoader" hidden><span class="spinner"></span><span>불러오는 중...</span></div>
