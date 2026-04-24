@@ -18,15 +18,20 @@
         </header>
 
         <c:if test="${not empty globalError}">
-            <div class="form-error" role="alert">${globalError}</div>
+            <div class="form-error" role="alert"><c:out value="${globalError}"/></div>
         </c:if>
 
         <form class="login-form" action="/login" method="post">
             <label for="loginId">아이디</label>
-            <input id="loginId" name="loginId" type="text" value="${loginForm.loginId}" placeholder="아이디를 입력하세요" autocomplete="username" required>
+            <input id="loginId" name="loginId" type="text" value="<c:out value='${loginForm.loginId}'/>" placeholder="아이디를 입력하세요" autocomplete="username" required>
 
             <label for="password">비밀번호</label>
             <input id="password" name="password" type="password" placeholder="비밀번호를 입력하세요" autocomplete="current-password" required>
+
+            <label class="remember-me-option" for="rememberMe">
+                <input id="rememberMe" name="rememberMe" type="checkbox" value="true" ${loginForm.rememberMe ? 'checked' : ''}>
+                자동 로그인
+            </label>
 
             <button type="submit" class="btn btn-primary">로그인</button>
         </form>

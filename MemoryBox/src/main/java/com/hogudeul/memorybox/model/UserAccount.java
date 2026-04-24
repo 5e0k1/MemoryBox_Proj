@@ -12,6 +12,9 @@ public class UserAccount {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime lastLoginAt;
+    private String rememberTokenHash;
+    private LocalDateTime rememberTokenExpiresAt;
+    private LocalDateTime lastAccessAt;
     private String delYn;
     private LocalDateTime delAt;
 
@@ -77,6 +80,30 @@ public class UserAccount {
 
     public void setLastLoginAt(LocalDateTime lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
+    }
+
+    public String getRememberTokenHash() {
+        return rememberTokenHash;
+    }
+
+    public void setRememberTokenHash(String rememberTokenHash) {
+        this.rememberTokenHash = rememberTokenHash;
+    }
+
+    public LocalDateTime getRememberTokenExpiresAt() {
+        return rememberTokenExpiresAt;
+    }
+
+    public void setRememberTokenExpiresAt(LocalDateTime rememberTokenExpiresAt) {
+        this.rememberTokenExpiresAt = rememberTokenExpiresAt;
+    }
+
+    public LocalDateTime getLastAccessAt() {
+        return lastAccessAt;
+    }
+
+    public void setLastAccessAt(LocalDateTime lastAccessAt) {
+        this.lastAccessAt = lastAccessAt;
     }
 
     public String getDelYn() {

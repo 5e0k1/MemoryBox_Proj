@@ -1,6 +1,7 @@
 package com.hogudeul.memorybox.interceptor;
 
 import com.hogudeul.memorybox.auth.LoginUserSession;
+import com.hogudeul.memorybox.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -10,20 +11,35 @@ import org.springframework.web.servlet.HandlerInterceptor;
 @Component
 public class LoginCheckInterceptor implements HandlerInterceptor {
 
+    private final AuthService authService;
+
+    public LoginCheckInterceptor(AuthService authService) {
+        this.authService = authService;
+    }
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("loginUser") == null) {
-            response.sendRedirect("/login?expired=true");
-            return false;
+        Object loginUserObj = session != null ? session.getAttribute("loginUser") : null;
+
+        if (!(loginUserObj instanceof LoginUserSession loginUser)) {
+            LoginUserSession autoLoginUser = authService.tryAutoLogin(request, response);
+            if (autoLoginUser == null) {
+                if (session != null) {
+                    session.invalidate();
+                }
+                response.sendRedirect("/login?expired=true");
+                return false;
+            }
+
+            session = request.getSession(true);
+            session.setAttribute("loginUser", autoLoginUser);
+            session.setMaxInactiveInterval(60 * 30);
+            authService.markSessionAccessUpdatedNow(session);
+            loginUser = autoLoginUser;
         }
 
-        Object loginUser = session.getAttribute("loginUser");
-        if (!(loginUser instanceof LoginUserSession)) {
-            session.invalidate();
-            response.sendRedirect("/login?expired=true");
-            return false;
-        }
+        authService.updateLastAccessIfDue(session, loginUser.getUserId());
         return true;
     }
 }

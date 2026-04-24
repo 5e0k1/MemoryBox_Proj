@@ -66,3 +66,18 @@
     color: #b91c1c;
     font-size: 0.9rem;
 }
+
+.remember-me-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+
+.remember-me-option input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    padding: 0;
+}

@@ -5,20 +5,22 @@ import com.hogudeul.memorybox.auth.LoginResult;
 import com.hogudeul.memorybox.auth.LoginUserSession;
 import com.hogudeul.memorybox.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.util.UriUtils;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.util.UriUtils;
 
 @Controller
 public class AuthController {
 
+    // TODO: Spring Security 미사용 구조이므로 로그아웃/비밀번호 변경 등 상태 변경 요청에 대해 CSRF 보호 적용이 필요합니다.
     private final AuthService authService;
 
     public AuthController(AuthService authService) {
@@ -44,6 +46,7 @@ public class AuthController {
     public String login(@Valid @ModelAttribute("loginForm") LoginForm loginForm,
                         BindingResult bindingResult,
                         HttpServletRequest request,
+                        HttpServletResponse response,
                         Model model) {
         if (bindingResult.hasErrors()) {
             model.addAttribute("globalError", "아이디와 비밀번호를 모두 입력해 주세요.");
@@ -70,11 +73,23 @@ public class AuthController {
                 result.getUserAccount().getRole()
         ));
         session.setMaxInactiveInterval(60 * 30);
+        authService.markSessionAccessUpdatedNow(session);
+        authService.handleLoginSuccess(result.getUserAccount().getUserId(), loginForm.isRememberMe(), response);
         return "redirect:/feed";
     }
 
     @PostMapping("/logout")
-    public String logout(HttpSession session) {
+    public String logout(HttpSession session, HttpServletResponse response) {
+        Long userId = null;
+        if (session != null) {
+            Object loginUser = session.getAttribute("loginUser");
+            if (loginUser instanceof LoginUserSession loginUserSession) {
+                userId = loginUserSession.getUserId();
+            }
+        }
+
+        authService.logout(userId, response);
+
         if (session != null) {
             session.invalidate();
         }
