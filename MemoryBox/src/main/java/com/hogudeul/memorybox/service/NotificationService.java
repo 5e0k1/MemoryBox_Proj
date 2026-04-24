@@ -38,12 +38,12 @@ public class NotificationService {
     }
 
     @Transactional
-    public void notifyComment(Long actorUserId, Long mediaId, Long commentId, String contentPreview) {
-        notifyMediaOwnerForComment(actorUserId, mediaId, commentId, contentPreview);
+    public void notifyComment(Long actorUserId, Long mediaId, Long commentId) {
+        notifyMediaOwnerForComment(actorUserId, mediaId, commentId);
     }
 
     @Transactional
-    public void notifyMediaOwnerForComment(Long actorUserId, Long mediaId, Long commentId, String contentPreview) {
+    public void notifyMediaOwnerForComment(Long actorUserId, Long mediaId, Long commentId) {
         if (actorUserId == null || mediaId == null || commentId == null) {
             return;
         }
@@ -54,7 +54,8 @@ public class NotificationService {
         }
 
         String actorName = safeDisplayName(actorUserId);
-        String message = actorName + "님이 " + summarize(contentPreview) + " 게시물에 댓글을 작성했습니다.";
+        String mediaTitle = notificationMapper.findMediaTitleByMediaId(mediaId);
+        String message = actorName + "님이 " + summarizeTitle(mediaTitle) + " 게시물에 댓글을 작성했습니다.";
         notificationMapper.insertNotification(receiverId, actorUserId,
                 "MEDIA_COMMENT", "COMMENT", commentId, message);
     }
@@ -75,10 +76,39 @@ public class NotificationService {
             return;
         }
 
+        String parentContent = notificationMapper.findCommentContentByCommentId(parentCommentId);
         String actorName = safeDisplayName(actorUserId);
-        String message = actorName + "님이 답글을 작성했습니다.";
+        String message = "'" + summarize(parentContent) + "' 댓글에 " + actorName + "님이 답글을 작성했습니다.";
         notificationMapper.insertNotification(receiverId, actorUserId,
                 "MEDIA_REPLY", "COMMENT", replyCommentId, message);
+    }
+
+    @Transactional
+    public void notifyAdminsForRequestPost(Long actorUserId, Long requestId) {
+        if (actorUserId == null || requestId == null) {
+            return;
+        }
+        String actorName = safeDisplayName(actorUserId);
+        String message = actorName + "님이 새 요청을 등록했습니다.";
+        for (Long receiverId : notificationMapper.findActiveAdminUserIdsExcept(actorUserId)) {
+            notificationMapper.insertNotification(receiverId, actorUserId,
+                    "REQUEST_POST", "REQUEST", requestId, message);
+        }
+    }
+
+    @Transactional
+    public void notifyRequestAuthorForComment(Long actorUserId, Long requestId, Long requestCommentId, String requestTitle) {
+        if (actorUserId == null || requestId == null || requestCommentId == null) {
+            return;
+        }
+        Long receiverId = notificationMapper.findRequestOwnerId(requestId);
+        if (receiverId == null || receiverId.equals(actorUserId)) {
+            return;
+        }
+        String actorName = safeDisplayName(actorUserId);
+        String message = "'" + summarizeTitle(requestTitle) + "'요청에 " + actorName + "님이 댓글을 작성했습니다.";
+        notificationMapper.insertNotification(receiverId, actorUserId,
+                "REQUEST_COMMENT", "REQUEST_COMMENT", requestCommentId, message);
     }
 
     public Map<String, Object> getNotificationPanel(Long userId) {
@@ -121,6 +151,15 @@ public class NotificationService {
                 return "/feed/" + mediaId + "#comment-" + row.getTargetId();
             }
         }
+        if ("REQUEST".equalsIgnoreCase(row.getTargetType())) {
+            return "/requests/" + row.getTargetId();
+        }
+        if ("REQUEST_COMMENT".equalsIgnoreCase(row.getTargetType())) {
+            Long requestId = notificationMapper.findRequestIdByRequestCommentId(row.getTargetId());
+            if (requestId != null) {
+                return "/requests/" + requestId;
+            }
+        }
         if ("MEDIA".equalsIgnoreCase(row.getTargetType())) {
             return "/feed/" + row.getTargetId();
         }
@@ -158,11 +197,22 @@ public class NotificationService {
     private String summarize(String raw) {
         String trimmed = raw == null ? "" : raw.trim();
         if (trimmed.isBlank()) {
-            return "게시물";
+            return "내용";
         }
         if (trimmed.length() <= 12) {
             return trimmed;
         }
         return trimmed.substring(0, 12) + "...";
+    }
+
+    private String summarizeTitle(String raw) {
+        String trimmed = raw == null ? "" : raw.trim();
+        if (trimmed.isBlank()) {
+            return "게시물";
+        }
+        if (trimmed.length() <= 6) {
+            return trimmed;
+        }
+        return trimmed.substring(0, 6) + "...";
     }
 }

@@ -22,4 +22,9 @@ public interface RequestMapper {
     int insertRequestComment(@Param("requestId") Long requestId,
                              @Param("userId") Long userId,
                              @Param("content") String content);
+
+    RequestPostRow findLatestRequestPostByUserId(@Param("userId") Long userId);
+
+    RequestCommentRow findLatestRequestCommentByUserId(@Param("requestId") Long requestId,
+                                                       @Param("userId") Long userId);
 }

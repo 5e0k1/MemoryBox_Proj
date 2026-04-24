@@ -70,7 +70,10 @@ public class RememberMeService {
             return null;
         }
 
-        issueRememberMeToken(user.getUserId(), response);
+        // 자동 로그인 시 토큰을 즉시 재발급(회전)하면, 세션이 만료된 직후 동시에 들어온 요청들 간
+        // 레이스 컨디션으로 이전 토큰이 무효화되어 간헐적으로 자동로그인이 풀릴 수 있다.
+        // (예: 요청 A가 토큰 회전 성공 후, 요청 B가 아직 이전 쿠키로 검증 시도)
+        // 따라서 자동 로그인 성공 시에는 기존 토큰을 유지하고, 만료 시점까지 동일 토큰을 사용한다.
         userMapper.updateLastAccessAt(user.getUserId());
 
         return new LoginUserSession(user.getUserId(), user.getLoginId(), user.getDisplayName(), user.getRole());
