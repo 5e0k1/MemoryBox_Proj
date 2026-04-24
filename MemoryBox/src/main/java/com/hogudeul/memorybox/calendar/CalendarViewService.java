@@ -24,7 +24,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -46,6 +45,7 @@ public class CalendarViewService {
     private static final Logger log = LoggerFactory.getLogger(CalendarViewService.class);
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final Duration CACHE_TTL = Duration.ofMinutes(10);
+    private static final ZoneId CALENDAR_ZONE = ZoneId.of("Asia/Seoul");
 
     private final CalendarProperties calendarProperties;
     private final HttpClient httpClient;
@@ -153,10 +153,10 @@ public class CalendarViewService {
         String title = StringUtils.hasText(summary != null ? summary.getValue() : null)
                 ? summary.getValue().trim() : "(제목 없음)";
 
-        ZoneId zone = ZoneId.systemDefault();
+        ZoneId zone = CALENDAR_ZONE;
         boolean allDay = !dateStart.getValue().hasTime();
         LocalDateTime startDateTime = allDay
-                ? LocalDateTime.ofInstant(dateStart.getValue().toInstant(), ZoneOffset.UTC).toLocalDate().atStartOfDay()
+                ? LocalDateTime.ofInstant(dateStart.getValue().toInstant(), zone).toLocalDate().atStartOfDay()
                 : LocalDateTime.ofInstant(dateStart.getValue().toInstant(), zone);
 
         DateEnd dateEnd = event.getDateEnd();
@@ -164,7 +164,7 @@ public class CalendarViewService {
         if (dateEnd != null && dateEnd.getValue() != null) {
             endDateTime = dateEnd.getValue().hasTime()
                     ? LocalDateTime.ofInstant(dateEnd.getValue().toInstant(), zone)
-                    : LocalDateTime.ofInstant(dateEnd.getValue().toInstant(), ZoneOffset.UTC).toLocalDate().atStartOfDay();
+                    : LocalDateTime.ofInstant(dateEnd.getValue().toInstant(), zone).toLocalDate().atStartOfDay();
         }
 
         String sourceName = StringUtils.hasText(source.getName()) ? source.getName().trim() : "외부 캘린더";
