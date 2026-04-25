@@ -26,16 +26,6 @@ cd MemoryBox
 java -jar target/MemoryBox-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 ```
 
-### prod (외부 secret 파일 자동 로드)
-`application-prod.yml`은 기본적으로 아래 경로를 자동 import 합니다.
-- `/etc/memorybox/application-secret.yml`
-
-경로를 바꾸고 싶으면 `APP_SECRET_CONFIG` 환경변수를 지정합니다.
-```bash
-export APP_SECRET_CONFIG=/opt/memorybox/config/application-secret.yml
-java -jar target/MemoryBox-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
-```
-
 ## 3) 환경변수 목록
 ### 필수(권장)
 - `DB_URL`
@@ -43,7 +33,6 @@ java -jar target/MemoryBox-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 - `DB_PASSWORD`
 
 ### 선택(프로파일/환경별)
-- `APP_SECRET_CONFIG` (prod 외부 secret 파일 경로)
 - `SERVER_PORT`
 - `FEED_NEW_THRESHOLD_HOURS`
 - `FFMPEG_COMMAND`
@@ -76,6 +65,6 @@ java -jar MemoryBox.jar --spring.profiles.active=prod
 ```
 
 ## 6) 주의사항
-- `application-secret.yml`, `application-private.yml`, `.env`는 Git에 커밋하지 않습니다.
+- `application-private.yml`, `.env`는 Git에 커밋하지 않습니다.
 - GitHub에 노출된 기존 자격증명/개인 URL은 반드시 폐기하고 새 값으로 교체하세요.
 - 현재 구현된 저장소는 `local`이며, `s3/cloudfront` 키는 전환 준비용 설정입니다.

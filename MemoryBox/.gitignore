@@ -5,7 +5,6 @@ target/
 !**/src/test/**/target/
 .env
 *.pem
-application-secret.yml
 application-private.yml
 uploads/
 logs/

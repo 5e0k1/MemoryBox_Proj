@@ -67,7 +67,6 @@ replay_pid*
 .env
 .env.*
 !.env.example
-application-secret.yml
 application-private.yml
 
 *.pem
