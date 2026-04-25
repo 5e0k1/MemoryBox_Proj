@@ -3,6 +3,12 @@ target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+.env
+*.pem
+application-secret.yml
+application-private.yml
+uploads/
+logs/
 
 ### STS ###
 .apt_generated

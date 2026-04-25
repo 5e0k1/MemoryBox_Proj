@@ -4,7 +4,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import org.springframework.beans.factory.annotation.Value;
+import com.hogudeul.memorybox.config.AppProperties;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -15,8 +15,8 @@ public class TimeDisplayService {
 
     private final long newThresholdHours;
 
-    public TimeDisplayService(@Value("${app.feed.new-threshold-hours:24}") long newThresholdHours) {
-        this.newThresholdHours = Math.max(1, newThresholdHours);
+    public TimeDisplayService(AppProperties appProperties) {
+        this.newThresholdHours = Math.max(1, appProperties.getFeed().getNewThresholdHours());
     }
 
     public String formatRelativeUploadedAt(LocalDateTime uploadedAt) {

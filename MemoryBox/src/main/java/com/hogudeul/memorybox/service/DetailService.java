@@ -28,7 +28,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+import com.hogudeul.memorybox.config.StorageProperties;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,12 +50,12 @@ public class DetailService {
                          TimeDisplayService timeDisplayService,
                          NotificationService notificationService,
                          UploadMapper uploadMapper,
-                         @Value("${app.storage.local-root:D:/memorybox/upload/}") String storageRoot) {
+                         StorageProperties storageProperties) {
         this.detailMapper = detailMapper;
         this.timeDisplayService = timeDisplayService;
         this.notificationService = notificationService;
         this.uploadMapper = uploadMapper;
-        this.storageRoot = Paths.get(storageRoot).toAbsolutePath().normalize();
+        this.storageRoot = Paths.get(storageProperties.getLocalRoot()).toAbsolutePath().normalize();
     }
 
     public MediaDetailView getMediaDetail(Long mediaId, Long userId) {
