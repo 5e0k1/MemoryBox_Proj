@@ -9,7 +9,7 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.Locale;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
+import com.hogudeul.memorybox.config.StorageProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,8 +18,8 @@ public class LocalStorageService implements StorageService {
 
     private final Path root;
 
-    public LocalStorageService(@Value("${app.storage.local-root:D:/memorybox/upload/}") String rootPath) {
-        this.root = Paths.get(rootPath).toAbsolutePath().normalize();
+    public LocalStorageService(StorageProperties storageProperties) {
+        this.root = Paths.get(storageProperties.getLocalRoot()).toAbsolutePath().normalize();
     }
 
     @Override

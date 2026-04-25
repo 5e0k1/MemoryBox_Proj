@@ -1,10 +1,10 @@
 {
   "properties": [
     {
-      "name": "app.storage.local-root",
-      "type": "java.lang.String",
-      "description": "MemoryBox 로컬 업로드 파일 저장 루트 경로입니다.",
-      "defaultValue": "D:/memorybox/upload/"
+      "name": "app.feed.new-threshold-hours",
+      "type": "java.lang.Long",
+      "description": "신규 업로드로 표시할 기준 시간(시간)입니다.",
+      "defaultValue": 24
     },
     {
       "name": "app.ffmpeg.command",
@@ -17,6 +17,43 @@
       "type": "java.lang.Long",
       "description": "영상 업로드 최대 크기(byte)입니다.",
       "defaultValue": 314572800
+    },
+    {
+      "name": "app.storage.type",
+      "type": "java.lang.String",
+      "description": "스토리지 드라이버 타입(local/s3)입니다.",
+      "defaultValue": "local"
+    },
+    {
+      "name": "app.storage.local-root",
+      "type": "java.lang.String",
+      "description": "MemoryBox 로컬 업로드 파일 저장 루트 경로입니다."
+    },
+    {
+      "name": "app.storage.public-base-url",
+      "type": "java.lang.String",
+      "description": "정적 파일 제공용 공개 base URL입니다.",
+      "defaultValue": "/files"
+    },
+    {
+      "name": "app.storage.s3.bucket",
+      "type": "java.lang.String",
+      "description": "S3 버킷명입니다."
+    },
+    {
+      "name": "app.storage.s3.region",
+      "type": "java.lang.String",
+      "description": "S3 리전입니다."
+    },
+    {
+      "name": "app.storage.s3.prefix",
+      "type": "java.lang.String",
+      "description": "S3 오브젝트 키 prefix입니다."
+    },
+    {
+      "name": "app.storage.cloudfront.domain",
+      "type": "java.lang.String",
+      "description": "CloudFront 배포 도메인입니다."
     },
     {
       "name": "app.auth.remember-days",
@@ -34,7 +71,7 @@
       "name": "app.auth.remember-secure",
       "type": "java.lang.Boolean",
       "description": "자동로그인 쿠키에 Secure 속성을 적용할지 여부입니다.",
-      "defaultValue": true
+      "defaultValue": false
     },
     {
       "name": "app.auth.last-access-update-minutes",

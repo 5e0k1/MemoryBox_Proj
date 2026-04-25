@@ -7,7 +7,8 @@ import com.hogudeul.memorybox.upload.StorageCategory;
 import com.hogudeul.memorybox.upload.StoredFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+import com.hogudeul.memorybox.config.AppProperties;
+import com.hogudeul.memorybox.config.StorageProperties;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -40,12 +41,13 @@ public class VideoProcessingService {
 
     public VideoProcessingService(UploadMapper uploadMapper,
                                   StorageService storageService,
-                                  @Value("${app.storage.local-root:D:/memorybox/upload/}") String storageRoot,
-                                  @Value("${app.ffmpeg.command:ffmpeg}") String ffmpegCommand) {
+                                  StorageProperties storageProperties,
+                                  AppProperties appProperties) {
         this.uploadMapper = uploadMapper;
         this.storageService = storageService;
-        this.storageRoot = Paths.get(storageRoot).toAbsolutePath().normalize();
-        this.ffmpegCommand = ffmpegCommand == null || ffmpegCommand.isBlank() ? "ffmpeg" : ffmpegCommand.trim();
+        this.storageRoot = Paths.get(storageProperties.getLocalRoot()).toAbsolutePath().normalize();
+        String ffmpeg = appProperties.getFfmpeg().getCommand();
+        this.ffmpegCommand = ffmpeg == null || ffmpeg.isBlank() ? "ffmpeg" : ffmpeg.trim();
         this.resolvedFfmpegCommand = this.ffmpegCommand;
     }
 
@@ -60,7 +62,7 @@ public class VideoProcessingService {
 
         String ffmpeg = resolvedFfmpegPath();
         if (!isExecutable(ffmpeg)) {
-            log.error("[video-processing] ffmpeg 실행 파일을 찾지 못했습니다. mediaId={}, configured='{}'. app.ffmpeg.command에 절대 경로(예: C:/ffmpeg/bin/ffmpeg.exe)를 설정해 주세요.", mediaId, ffmpegCommand);
+            log.error("[video-processing] ffmpeg 실행 파일을 찾지 못했습니다. mediaId={}, configured='{}'. app.ffmpeg.command 값을 확인해 주세요.", mediaId, ffmpegCommand);
             return;
         }
 
