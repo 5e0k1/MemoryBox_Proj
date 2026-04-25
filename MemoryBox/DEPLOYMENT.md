@@ -23,7 +23,7 @@ cd MemoryBox
 ### prod
 ```bash
 cd MemoryBox
-java -jar target/MemoryBox-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+java -jar target/MemoryBox-0.0.1-SNAPSHOT.war --spring.profiles.active=prod
 ```
 
 ## 3) 환경변수 목록
@@ -61,7 +61,7 @@ cd MemoryBox
 
 ## 5) 실행 명령어 예시
 ```bash
-java -jar MemoryBox.jar --spring.profiles.active=prod
+java -jar MemoryBox-0.0.1-SNAPSHOT.war --spring.profiles.active=prod
 ```
 
 ## 6) 주의사항
