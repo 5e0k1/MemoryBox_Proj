@@ -1,0 +1,45 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mariadb://localhost:3306/memorybox_dev}
+    username: ${DB_USERNAME:mbx_dev_user}
+    password: ${DB_PASSWORD:change_this_dev_password}
+    driver-class-name: org.mariadb.jdbc.Driver
+
+logging:
+  level:
+    com.hogudeul.memorybox.mapper: ${MAPPER_LOG_LEVEL:DEBUG}
+
+app:
+  feed:
+    new-threshold-hours: ${FEED_NEW_THRESHOLD_HOURS:24}
+  ffmpeg:
+    command: ${FFMPEG_COMMAND:C:/ffmpeg/bin/ffmpeg.exe}
+  video:
+    max-file-size-bytes: ${VIDEO_MAX_FILE_SIZE_BYTES:314572800}
+  auth:
+    remember-days: ${REMEMBER_DAYS:30}
+    remember-cookie-name: ${REMEMBER_COOKIE_NAME:remember_token}
+    remember-secure: ${REMEMBER_SECURE:false}
+    last-access-update-minutes: ${LAST_ACCESS_UPDATE_MINUTES:10}
+  storage:
+    type: ${STORAGE_TYPE:local}
+    local-root: ${STORAGE_LOCAL_ROOT:D:/memorybox/upload-dev/}
+    public-base-url: ${STORAGE_PUBLIC_BASE_URL:/files}
+    s3:
+      bucket: ${S3_BUCKET:}
+      region: ${S3_REGION:}
+      prefix: ${S3_PREFIX:}
+    cloudfront:
+      domain: ${CLOUDFRONT_DOMAIN:}
+  calendar:
+    enabled: ${CALENDAR_ENABLED:true}
+    sources:
+      - name: 우리 일정
+        url: ${CALENDAR_PERSONAL_URL:}
+        type: PERSONAL
+      - name: 대한민국 공휴일
+        url: ${CALENDAR_HOLIDAY_URL:}
+        type: HOLIDAY

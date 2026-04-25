@@ -9,7 +9,7 @@ public class AuthProperties {
 
     private int rememberDays = 30;
     private String rememberCookieName = "remember_token";
-    private boolean rememberSecure = true;
+    private boolean rememberSecure = false;
     private int lastAccessUpdateMinutes = 10;
 
     public int getRememberDays() {

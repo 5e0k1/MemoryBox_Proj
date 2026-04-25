@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import javax.imageio.ImageIO;
-import org.springframework.beans.factory.annotation.Value;
+import com.hogudeul.memorybox.config.AppProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -54,13 +54,13 @@ public class UploadService {
                          StorageService storageService,
                          NotificationService notificationService,
                          VideoProcessingService videoProcessingService,
-                         @Value("${app.video.max-file-size-bytes:314572800}") long maxVideoFileSizeBytes) {
+                         AppProperties appProperties) {
         this.uploadMapper = uploadMapper;
         this.albumMapper = albumMapper;
         this.storageService = storageService;
         this.notificationService = notificationService;
         this.videoProcessingService = videoProcessingService;
-        this.maxVideoFileSizeBytes = maxVideoFileSizeBytes;
+        this.maxVideoFileSizeBytes = appProperties.getVideo().getMaxFileSizeBytes();
     }
 
     public List<AlbumOption> getActiveAlbums(Long userId) {
