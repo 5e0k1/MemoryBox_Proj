@@ -54,7 +54,11 @@
         <section class="detail-panel meta-panel">
             <div class="title-row">
                 <h1 class="detail-title">${detail.title}</h1>
-                <button type="button" class="share-open-btn" id="openShareModalBtn" aria-label="공유하기">🔗</button>
+                <button type="button"
+                        class="share-open-btn"
+                        id="openShareModalBtn"
+                        data-media-id="${detail.mediaId}"
+                        aria-label="공유하기">🔗</button>
             </div>
             <p class="meta-line">업로드 ${detail.relativeUploadedAt}</p>
             <c:if test="${not empty detail.takenAt}">
@@ -419,9 +423,9 @@
 
         const selected = shareForm.querySelector('input[name="shareType"]:checked');
         const isGuest = selected?.value === 'guest';
-        const mediaId = shareMediaId?.value;
+        const mediaId = (openShareModalBtn?.dataset?.mediaId || shareMediaId?.value || '').trim();
         if (!mediaId) {
-            shareFeedback.textContent = '미디어 정보를 찾을 수 없습니다.';
+            shareFeedback.textContent = '공유할 게시글 정보를 찾을 수 없습니다.';
             return;
         }
 
