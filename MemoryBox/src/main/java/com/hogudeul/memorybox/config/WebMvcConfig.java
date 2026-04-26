@@ -29,7 +29,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/js/**",
                         "/images/**",
                         "/static/**",
+                        "/manifest.json",
+                        "/service-worker.js",
                         "/favicon.ico",
+                        "/icon-192.png",
+                        "/icon-512.png",
+                        "/apple-touch-icon.png",
                         "/files/**",
                         "/error");
     }
