@@ -10,10 +10,12 @@ import java.time.LocalDate;
 import java.util.Locale;
 import java.util.UUID;
 import com.hogudeul.memorybox.config.StorageProperties;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
+@ConditionalOnProperty(prefix = "app.storage", name = "type", havingValue = "local", matchIfMissing = true)
 public class LocalStorageService implements StorageService {
 
     private final Path root;
