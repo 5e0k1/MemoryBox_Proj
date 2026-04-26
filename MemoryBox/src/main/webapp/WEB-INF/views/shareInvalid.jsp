@@ -11,8 +11,10 @@
 <body class="page">
 <main class="detail-layout">
     <section class="detail-panel state-panel">
-        <h1>유효하지 않은 공유 링크입니다.</h1>
+        <img src="/share-error.png" alt="공유 링크 오류 안내 이미지" style="width:min(220px, 70%); margin:0 auto; display:block;">
+        <h1>유효하지 않거나 만료된 공유 페이지입니다.</h1>
         <p>${reason}</p>
+        <p>링크를 다시 확인하거나, 공유한 사용자에게 새 링크를 요청해 주세요.</p>
     </section>
 </main>
 </body>

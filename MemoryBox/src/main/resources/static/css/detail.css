@@ -408,21 +408,20 @@
     gap: 8px;
 }
 
+.guest-option-wrap[hidden] {
+    display: none !important;
+}
+
 .guest-option-wrap h3 {
     margin: 0;
     font-size: 0.95rem;
 }
 
-.share-expire-row {
-    display: grid;
-    gap: 6px;
-    font-size: 0.85rem;
-}
-
-.share-expire-row input {
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    padding: 8px;
+.share-expire-notice {
+    margin: 0;
+    font-size: 0.84rem;
+    color: #334155;
+    line-height: 1.4;
 }
 
 .share-action-row {

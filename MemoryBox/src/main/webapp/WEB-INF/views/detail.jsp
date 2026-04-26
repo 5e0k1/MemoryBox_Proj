@@ -272,10 +272,7 @@
                     <input type="checkbox" id="allowDownload">
                     <span>다운로드 허용</span>
                 </label>
-                <label class="share-expire-row" for="expiresMinutes">
-                    만료(분)
-                    <input type="number" id="expiresMinutes" min="1" max="10080" value="60">
-                </label>
+                <p class="share-expire-notice">게스트 공유 링크는 생성 시점부터 1시간 동안만 접속 가능합니다.</p>
             </section>
 
             <div class="share-action-row">
@@ -379,7 +376,6 @@
     const guestOptionWrap = document.getElementById('guestOptionWrap');
     const allowCommentsInput = document.getElementById('allowComments');
     const allowDownloadInput = document.getElementById('allowDownload');
-    const expiresMinutesInput = document.getElementById('expiresMinutes');
     const shareUrlOutput = document.getElementById('shareUrlOutput');
     const copyShareUrlBtn = document.getElementById('copyShareUrlBtn');
     const shareFeedback = document.getElementById('shareFeedback');
@@ -447,7 +443,7 @@
                     guest: isGuest,
                     allowComments: isGuest ? allowCommentsInput.checked : false,
                     allowDownload: isGuest ? allowDownloadInput.checked : false,
-                    expiresMinutes: isGuest ? Number(expiresMinutesInput.value || 60) : null
+                    expiresMinutes: isGuest ? 60 : null
                 })
             });
 
