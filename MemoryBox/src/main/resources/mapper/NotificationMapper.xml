@@ -12,11 +12,13 @@
         <result column="target_id" property="targetId"/>
         <result column="message" property="message"/>
         <result column="is_read" property="isRead"/>
+        <result column="push_sent_yn" property="pushSentYn"/>
         <result column="read_at" property="readAt"/>
+        <result column="push_sent_at" property="pushSentAt"/>
         <result column="created_at" property="createdAt"/>
     </resultMap>
 
-    <insert id="insertNotification">
+    <insert id="insertNotification" parameterType="com.hogudeul.memorybox.model.NotificationRow" useGeneratedKeys="true" keyProperty="notificationId">
         INSERT INTO NOTIFICATION (
             receiver_user_id,
             actor_user_id,
@@ -25,6 +27,7 @@
             target_id,
             message,
             is_read,
+            push_sent_yn,
             created_at
         ) VALUES (
             #{receiverUserId},
@@ -33,6 +36,7 @@
             #{targetType},
             #{targetId},
             #{message},
+            'N',
             'N',
             NOW()
         )
@@ -48,7 +52,9 @@
                n.target_id,
                n.message,
                n.is_read,
+               n.push_sent_yn,
                n.read_at,
+               n.push_sent_at,
                n.created_at
         FROM NOTIFICATION n
                  JOIN USER u ON n.actor_user_id = u.user_id
@@ -74,7 +80,9 @@
                n.target_id,
                n.message,
                n.is_read,
+               n.push_sent_yn,
                n.read_at,
+               n.push_sent_at,
                n.created_at
         FROM NOTIFICATION n
                  JOIN USER u ON n.actor_user_id = u.user_id
@@ -176,5 +184,65 @@
           AND del_yn = 'N'
         LIMIT 1
     </select>
+
+    <select id="findPendingUploadPushReceiverUserIds" resultType="java.lang.Long">
+        SELECT DISTINCT receiver_user_id
+        FROM NOTIFICATION
+        WHERE notification_type = 'UPLOAD'
+          AND target_type = 'MEDIA'
+          AND push_sent_yn = 'N'
+          AND is_read = 'N'
+    </select>
+
+    <select id="countPendingUploadPushByUserId" resultType="int">
+        SELECT COUNT(*)
+        FROM NOTIFICATION
+        WHERE receiver_user_id = #{userId}
+          AND notification_type = 'UPLOAD'
+          AND target_type = 'MEDIA'
+          AND push_sent_yn = 'N'
+          AND is_read = 'N'
+    </select>
+
+    <select id="findPendingUploadNotificationsByUserId" resultMap="NotificationRowMap">
+        SELECT notification_id,
+               receiver_user_id,
+               actor_user_id,
+               notification_type,
+               target_type,
+               target_id,
+               message,
+               is_read,
+               push_sent_yn,
+               read_at,
+               push_sent_at,
+               created_at
+        FROM NOTIFICATION
+        WHERE receiver_user_id = #{userId}
+          AND notification_type = 'UPLOAD'
+          AND target_type = 'MEDIA'
+          AND push_sent_yn = 'N'
+          AND is_read = 'N'
+        ORDER BY created_at ASC, notification_id ASC
+    </select>
+
+    <update id="markPushSentByNotificationIds">
+        UPDATE NOTIFICATION
+        SET push_sent_yn = 'Y',
+            push_sent_at = NOW()
+        WHERE notification_id IN
+        <foreach collection="notificationIds" item="notificationId" open="(" separator="," close=")">
+            #{notificationId}
+        </foreach>
+          AND push_sent_yn = 'N'
+    </update>
+
+    <update id="markPushSentByNotificationId">
+        UPDATE NOTIFICATION
+        SET push_sent_yn = 'Y',
+            push_sent_at = NOW()
+        WHERE notification_id = #{notificationId}
+          AND push_sent_yn = 'N'
+    </update>
 
 </mapper>

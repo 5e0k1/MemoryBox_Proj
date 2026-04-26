@@ -13,7 +13,9 @@ public class NotificationRow {
     private Long targetId;
     private String message;
     private String isRead;
+    private String pushSentYn;
     private LocalDateTime readAt;
+    private LocalDateTime pushSentAt;
     private LocalDateTime createdAt;
 
     public Long getNotificationId() {
@@ -88,12 +90,28 @@ public class NotificationRow {
         this.isRead = isRead;
     }
 
+    public String getPushSentYn() {
+        return pushSentYn;
+    }
+
+    public void setPushSentYn(String pushSentYn) {
+        this.pushSentYn = pushSentYn;
+    }
+
     public LocalDateTime getReadAt() {
         return readAt;
     }
 
     public void setReadAt(LocalDateTime readAt) {
         this.readAt = readAt;
+    }
+
+    public LocalDateTime getPushSentAt() {
+        return pushSentAt;
+    }
+
+    public void setPushSentAt(LocalDateTime pushSentAt) {
+        this.pushSentAt = pushSentAt;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -62,10 +62,6 @@
                 <span>${loginUser.loginId}</span>
             </div>
             <div class="mypage-actions">
-                <a class="kakao-link-status" href="/kakao/connect" aria-label="카카오 알림 연동 상태">
-                    <img src="/${kakaoLinked ? 'kakaotalk_sharing_btn_medium_o.png' : 'kakaotalk_sharing_btn_medium_x.png'}"
-                         alt="${kakaoLinked ? '카카오 로그인 연동 완료' : '카카오 로그인 미연동'}">
-                </a>
                 <button class="btn btn-secondary btn-sm" type="button" id="openPasswordModalBtn">비밀번호 변경</button>
                 <label class="push-toggle" for="webPushToggle">
                     <span>알림 설정</span>

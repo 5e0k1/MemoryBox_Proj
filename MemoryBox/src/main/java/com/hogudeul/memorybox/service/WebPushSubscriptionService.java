@@ -33,7 +33,38 @@ public class WebPushSubscriptionService {
         webPushSubscriptionMapper.deactivateByEndpointAndUserId(endpoint, userId);
     }
 
+    @Transactional
+    public void deactivateAllByUserId(Long userId) {
+        if (userId == null) {
+            return;
+        }
+        webPushSubscriptionMapper.deactivateAllByUserId(userId);
+    }
+
+    @Transactional
+    public void deactivateBySubscriptionId(Long subscriptionId) {
+        if (subscriptionId == null) {
+            return;
+        }
+        webPushSubscriptionMapper.deactivateBySubscriptionId(subscriptionId);
+    }
+
+    @Transactional
+    public void deactivateInvalidActiveByUserId(Long userId) {
+        if (userId == null) {
+            return;
+        }
+        webPushSubscriptionMapper.deactivateInvalidActiveByUserId(userId);
+    }
+
     public List<WebPushSubscription> findActiveByUserId(Long userId) {
         return webPushSubscriptionMapper.findByUserId(userId);
+    }
+
+    public boolean hasActiveSubscription(Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        return webPushSubscriptionMapper.countActiveByUserId(userId) > 0;
     }
 }

@@ -8,6 +8,7 @@ import java.util.Map;
 import nl.martijndwars.webpush.Notification;
 import nl.martijndwars.webpush.PushService;
 import nl.martijndwars.webpush.Utils;
+import org.apache.http.HttpResponse;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,10 +21,14 @@ public class WebPushService {
 
     private final WebPushProperties webPushProperties;
     private final ObjectMapper objectMapper;
+    private final WebPushSubscriptionService webPushSubscriptionService;
 
-    public WebPushService(WebPushProperties webPushProperties, ObjectMapper objectMapper) {
+    public WebPushService(WebPushProperties webPushProperties,
+                          ObjectMapper objectMapper,
+                          WebPushSubscriptionService webPushSubscriptionService) {
         this.webPushProperties = webPushProperties;
         this.objectMapper = objectMapper;
+        this.webPushSubscriptionService = webPushSubscriptionService;
         ensureBouncyCastleProvider();
     }
 
@@ -34,11 +39,29 @@ public class WebPushService {
     }
 
     public boolean sendTestPush(WebPushSubscription subscription) {
+        return sendPush(subscription, "MemoryBox 알림 테스트", "웹 푸시 알림이 정상적으로 연결되었습니다.", "/feed");
+    }
+
+    public boolean sendPush(WebPushSubscription subscription, String title, String body, String url) {
+        if (subscription == null || hasBlank(subscription.getEndpoint())
+                || hasBlank(subscription.getP256dh()) || hasBlank(subscription.getAuth())) {
+            Long subscriptionId = subscription == null ? null : subscription.getSubscriptionId();
+            Long userId = subscription == null ? null : subscription.getUserId();
+            log.warn("Skip invalid web push subscription. subscriptionId={}, userId={}", subscriptionId, userId);
+            deactivateIfPossible(subscriptionId);
+            return false;
+        }
+
+        if (!webPushProperties.hasValidClientPublicKey() || !webPushProperties.hasValidServerPrivateKey()) {
+            log.warn("Skip web push send due to invalid VAPID key configuration.");
+            return false;
+        }
+
         try {
             String payload = objectMapper.writeValueAsString(Map.of(
-                    "title", "MemoryBox 알림 테스트",
-                    "body", "웹 푸시 알림이 정상적으로 연결되었습니다.",
-                    "url", "/mypage"
+                    "title", title,
+                    "body", body,
+                    "url", url
             ));
 
             PushService pushService = new PushService();
@@ -52,22 +75,49 @@ public class WebPushService {
                     subscription.getAuth(),
                     payload
             );
-            pushService.send(notification);
-            return true;
+
+            HttpResponse response = pushService.send(notification);
+            int statusCode = response != null && response.getStatusLine() != null
+                    ? response.getStatusLine().getStatusCode() : 0;
+
+            if (statusCode == 404 || statusCode == 410) {
+                log.warn("Deactivate expired web push subscription. subscriptionId={}, userId={}, statusCode={}",
+                        subscription.getSubscriptionId(), subscription.getUserId(), statusCode);
+                deactivateIfPossible(subscription.getSubscriptionId());
+                return false;
+            }
+
+            return statusCode >= 200 && statusCode < 300;
         } catch (Exception e) {
-            log.warn("Web push send failed. subscriptionId={}, endpointPrefix={}",
-                    subscription.getSubscriptionId(),
-                    maskEndpoint(subscription.getEndpoint()),
-                    e);
+            log.warn("Web push send failed. subscriptionId={}, userId={}",
+                    subscription.getSubscriptionId(), subscription.getUserId(), e);
+            if (isSubscriptionKeyError(e)) {
+                deactivateIfPossible(subscription.getSubscriptionId());
+            }
             return false;
         }
     }
 
-    private String maskEndpoint(String endpoint) {
-        if (endpoint == null || endpoint.isBlank()) {
-            return "(empty)";
+    private void deactivateIfPossible(Long subscriptionId) {
+        if (subscriptionId == null) {
+            return;
         }
-        int visible = Math.min(endpoint.length(), 24);
-        return endpoint.substring(0, visible) + "...";
+        webPushSubscriptionService.deactivateBySubscriptionId(subscriptionId);
+    }
+
+    private boolean hasBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
+    private boolean isSubscriptionKeyError(Exception e) {
+        if (e instanceof ArrayIndexOutOfBoundsException || e instanceof IllegalArgumentException) {
+            return true;
+        }
+        String message = e.getMessage();
+        return message != null && (
+                message.contains("p256dh")
+                        || message.contains("public key")
+                        || message.contains("Invalid point")
+        );
     }
 }
