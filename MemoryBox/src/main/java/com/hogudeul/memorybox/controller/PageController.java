@@ -275,6 +275,7 @@ public class PageController {
         MediaDetailView detail = detailService.getMediaDetail(itemId, userId);
         model.addAttribute("loginUser", loginUser);
         addNotificationModel(model, userId);
+        model.addAttribute("currentMediaId", itemId);
         model.addAttribute("info", info);
         model.addAttribute("error", error);
 

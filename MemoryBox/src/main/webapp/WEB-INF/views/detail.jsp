@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="/css/upload.css">
 </head>
 <body class="page page-detail">
-<main class="detail-layout" id="detailLayout" data-media-id="${not empty detail ? detail.mediaId : ''}">
+<main class="detail-layout" id="detailLayout" data-media-id="${currentMediaId}">
     <header class="detail-header">
         <a href="/feed" class="back-link" aria-label="피드로 돌아가기">← 피드</a>
         <div class="login-chip">${loginUser.displayName}</div>
@@ -57,7 +57,7 @@
                 <button type="button"
                         class="share-open-btn"
                         id="openShareModalBtn"
-                        data-media-id="${detail.mediaId}"
+                        data-media-id="${currentMediaId}"
                         aria-label="공유하기">🔗</button>
             </div>
             <p class="meta-line">업로드 ${detail.relativeUploadedAt}</p>
@@ -252,7 +252,7 @@
         </header>
 
         <form class="share-form" id="shareForm">
-            <input type="hidden" id="shareMediaId" value="${detail.mediaId}">
+            <input type="hidden" id="shareMediaId" value="${currentMediaId}">
             <label class="share-option-row">
                 <input type="radio" name="shareType" value="member" checked>
                 <span>회원끼리 공유</span>
@@ -424,7 +424,7 @@
 
         const selected = shareForm.querySelector('input[name="shareType"]:checked');
         const isGuest = selected?.value === 'guest';
-        const serverRenderedMediaId = '${not empty detail ? detail.mediaId : ""}';
+        const serverRenderedMediaId = '${currentMediaId}';
         const mediaId = (
             openShareModalBtn?.dataset?.mediaId
             || detailLayout?.dataset?.mediaId
