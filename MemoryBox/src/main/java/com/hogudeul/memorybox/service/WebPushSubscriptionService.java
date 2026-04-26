@@ -34,6 +34,14 @@ public class WebPushSubscriptionService {
     }
 
     @Transactional
+    public void deactivateAllByUserId(Long userId) {
+        if (userId == null) {
+            return;
+        }
+        webPushSubscriptionMapper.deactivateAllByUserId(userId);
+    }
+
+    @Transactional
     public void deactivateBySubscriptionId(Long subscriptionId) {
         if (subscriptionId == null) {
             return;
@@ -51,5 +59,12 @@ public class WebPushSubscriptionService {
 
     public List<WebPushSubscription> findActiveByUserId(Long userId) {
         return webPushSubscriptionMapper.findByUserId(userId);
+    }
+
+    public boolean hasActiveSubscription(Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        return webPushSubscriptionMapper.countActiveByUserId(userId) > 0;
     }
 }

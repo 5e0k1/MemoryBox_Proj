@@ -8,6 +8,7 @@ import java.util.Map;
 import nl.martijndwars.webpush.Notification;
 import nl.martijndwars.webpush.PushService;
 import nl.martijndwars.webpush.Utils;
+import org.apache.http.HttpResponse;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,14 +39,15 @@ public class WebPushService {
     }
 
     public boolean sendTestPush(WebPushSubscription subscription) {
-        return sendPush(subscription, "MemoryBox 알림 테스트", "웹 푸시 알림이 정상적으로 연결되었습니다.", "/mypage");
+        return sendPush(subscription, "MemoryBox 알림 테스트", "웹 푸시 알림이 정상적으로 연결되었습니다.", "/feed");
     }
 
     public boolean sendPush(WebPushSubscription subscription, String title, String body, String url) {
         if (subscription == null || hasBlank(subscription.getEndpoint())
                 || hasBlank(subscription.getP256dh()) || hasBlank(subscription.getAuth())) {
             Long subscriptionId = subscription == null ? null : subscription.getSubscriptionId();
-            log.warn("Skip invalid web push subscription. subscriptionId={}", subscriptionId);
+            Long userId = subscription == null ? null : subscription.getUserId();
+            log.warn("Skip invalid web push subscription. subscriptionId={}, userId={}", subscriptionId, userId);
             deactivateIfPossible(subscriptionId);
             return false;
         }
@@ -73,10 +75,22 @@ public class WebPushService {
                     subscription.getAuth(),
                     payload
             );
-            pushService.send(notification);
-            return true;
+
+            HttpResponse response = pushService.send(notification);
+            int statusCode = response != null && response.getStatusLine() != null
+                    ? response.getStatusLine().getStatusCode() : 0;
+
+            if (statusCode == 404 || statusCode == 410) {
+                log.warn("Deactivate expired web push subscription. subscriptionId={}, userId={}, statusCode={}",
+                        subscription.getSubscriptionId(), subscription.getUserId(), statusCode);
+                deactivateIfPossible(subscription.getSubscriptionId());
+                return false;
+            }
+
+            return statusCode >= 200 && statusCode < 300;
         } catch (Exception e) {
-            log.warn("Web push send failed. subscriptionId={}", subscription.getSubscriptionId(), e);
+            log.warn("Web push send failed. subscriptionId={}, userId={}",
+                    subscription.getSubscriptionId(), subscription.getUserId(), e);
             if (isSubscriptionKeyError(e)) {
                 deactivateIfPossible(subscription.getSubscriptionId());
             }

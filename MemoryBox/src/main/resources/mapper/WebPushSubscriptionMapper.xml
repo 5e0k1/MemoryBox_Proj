@@ -52,6 +52,14 @@
           AND user_id = #{userId}
     </update>
 
+    <update id="deactivateAllByUserId">
+        UPDATE WEB_PUSH_SUBSCRIPTION
+        SET active_yn = 'N',
+            updated_at = NOW()
+        WHERE user_id = #{userId}
+          AND active_yn = 'Y'
+    </update>
+
 
 
     <update id="deactivateBySubscriptionId">
@@ -93,6 +101,19 @@
           AND LENGTH(TRIM(p256dh)) > 0
           AND LENGTH(TRIM(auth)) > 0
         ORDER BY updated_at DESC
+    </select>
+
+    <select id="countActiveByUserId" resultType="int">
+        SELECT COUNT(*)
+        FROM WEB_PUSH_SUBSCRIPTION
+        WHERE user_id = #{userId}
+          AND active_yn = 'Y'
+          AND endpoint IS NOT NULL
+          AND p256dh IS NOT NULL
+          AND auth IS NOT NULL
+          AND LENGTH(TRIM(endpoint)) > 0
+          AND LENGTH(TRIM(p256dh)) > 0
+          AND LENGTH(TRIM(auth)) > 0
     </select>
 
 </mapper>

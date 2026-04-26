@@ -15,6 +15,8 @@ public interface WebPushSubscriptionMapper {
     int deactivateByEndpointAndUserId(@Param("endpoint") String endpoint,
                                       @Param("userId") Long userId);
 
+    int deactivateAllByUserId(@Param("userId") Long userId);
+
     int deactivateBySubscriptionId(@Param("subscriptionId") Long subscriptionId);
 
     int deactivateInvalidActiveByUserId(@Param("userId") Long userId);
@@ -22,4 +24,6 @@ public interface WebPushSubscriptionMapper {
     WebPushSubscription findByEndpoint(@Param("endpoint") String endpoint);
 
     List<WebPushSubscription> findByUserId(@Param("userId") Long userId);
+
+    int countActiveByUserId(@Param("userId") Long userId);
 }

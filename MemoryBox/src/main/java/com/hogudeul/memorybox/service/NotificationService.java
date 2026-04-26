@@ -95,7 +95,7 @@ public class NotificationService {
         NotificationRow notification = createNotification(receiverId, actorUserId,
                 "MEDIA_REPLY", "COMMENT", replyCommentId, message);
 
-        sendCommentOrReplyPushSafely(notification, "MemoryBox 댓글 알림", "새 답글이 달렸어요.");
+        sendCommentOrReplyPushSafely(notification, "MemoryBox 답글 알림", "새 답글이 달렸어요.");
     }
 
     @Transactional
@@ -127,40 +127,55 @@ public class NotificationService {
 
     @Transactional
     public int sendPendingUploadPushBatch() {
-        int sentUsers = 0;
         List<Long> receiverUserIds = notificationMapper.findPendingUploadPushReceiverUserIds();
+        if (receiverUserIds == null || receiverUserIds.isEmpty()) {
+            return 0;
+        }
+
+        int sentUsers = 0;
+        int failedUsers = 0;
         for (Long receiverUserId : receiverUserIds) {
-            int count = notificationMapper.countPendingUploadPushByUserId(receiverUserId);
-            if (count <= 0) {
-                continue;
-            }
+            try {
+                int count = notificationMapper.countPendingUploadPushByUserId(receiverUserId);
+                if (count <= 0) {
+                    continue;
+                }
 
-            List<WebPushSubscription> subscriptions = webPushSubscriptionService.findActiveByUserId(receiverUserId);
-            if (subscriptions == null || subscriptions.isEmpty()) {
-                continue;
-            }
+                List<WebPushSubscription> subscriptions = webPushSubscriptionService.findActiveByUserId(receiverUserId);
+                if (subscriptions == null || subscriptions.isEmpty()) {
+                    continue;
+                }
 
-            String title = "MemoryBox";
-            String body = "새 사진/영상 " + count + "개가 올라왔어요.";
-            boolean pushSent = sendPushToAnySubscription(subscriptions, title, body, "/mypage");
-            if (!pushSent) {
-                log.warn("Upload batch push failed. userId={}, notificationCount={}", receiverUserId, count);
-                continue;
-            }
+                String title = "MemoryBox";
+                String body = "새 사진/영상 " + count + "개가 올라왔어요.";
+                boolean pushSent = sendPushToAnySubscription(subscriptions, title, body, "/feed");
+                if (!pushSent) {
+                    failedUsers++;
+                    continue;
+                }
 
-            List<NotificationRow> pendingRows = notificationMapper.findPendingUploadNotificationsByUserId(receiverUserId);
-            if (pendingRows.isEmpty()) {
-                continue;
+                List<NotificationRow> pendingRows = notificationMapper.findPendingUploadNotificationsByUserId(receiverUserId);
+                if (pendingRows.isEmpty()) {
+                    continue;
+                }
+                List<Long> notificationIds = pendingRows.stream()
+                        .map(NotificationRow::getNotificationId)
+                        .collect(Collectors.toList());
+                notificationMapper.markPushSentByNotificationIds(notificationIds);
+                sentUsers++;
+            } catch (Exception e) {
+                failedUsers++;
+                log.warn("Upload batch push user processing failed. userId={}", receiverUserId, e);
             }
-            List<Long> notificationIds = pendingRows.stream()
-                    .map(NotificationRow::getNotificationId)
-                    .collect(Collectors.toList());
-            notificationMapper.markPushSentByNotificationIds(notificationIds);
-            sentUsers++;
-            log.info("Upload batch push sent. userId={}, notificationCount={}", receiverUserId, notificationIds.size());
+        }
+
+        if (sentUsers > 0 || failedUsers > 0) {
+            log.info("Upload batch push summary. targetUsers={}, sentUsers={}, failedUsers={}",
+                    receiverUserIds.size(), sentUsers, failedUsers);
         }
         return sentUsers;
     }
+
 
     public Map<String, Object> getNotificationPanel(Long userId) {
         Map<String, Object> payload = new LinkedHashMap<>();

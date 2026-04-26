@@ -19,6 +19,8 @@ public class NotificationPushScheduler {
     @Scheduled(fixedDelay = 600000)
     public void sendUploadBatchPush() {
         int sentUsers = notificationService.sendPendingUploadPushBatch();
-        log.info("Upload push scheduler executed. sentUsers={}", sentUsers);
+        if (sentUsers > 0) {
+            log.info("Upload push scheduler executed. sentUsers={}", sentUsers);
+        }
     }
 }

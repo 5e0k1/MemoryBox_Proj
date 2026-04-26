@@ -85,6 +85,16 @@
     return null;
   }
 
+
+  async function fetchPushStatus() {
+    const response = await fetch('/api/push/status');
+    if (!response.ok) {
+      return false;
+    }
+    const json = await response.json();
+    return !!(json && json.enabled);
+  }
+
   async function fetchVapidPublicKey() {
     const response = await fetch('/api/push/public-key');
     if (!response.ok) {
@@ -170,12 +180,13 @@
     const registration = await getRegistration();
     const subscription = await registration.pushManager.getSubscription();
 
+    await fetch('/push/unsubscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: subscription ? subscription.endpoint : null })
+    });
+
     if (subscription) {
-      await fetch('/push/unsubscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ endpoint: subscription.endpoint })
-      });
       await subscription.unsubscribe();
     }
 
@@ -197,9 +208,12 @@
       return;
     }
 
-    const registration = await getRegistration();
+    const [dbEnabled, registration] = await Promise.all([
+      fetchPushStatus(),
+      getRegistration()
+    ]);
     const subscription = await registration.pushManager.getSubscription();
-    toggle.checked = !!subscription;
+    toggle.checked = !!subscription && dbEnabled;
   }
 
   toggle.addEventListener('change', async function () {
