@@ -38,6 +38,9 @@ public class PushController {
         if (loginUser == null) {
             return ResponseEntity.status(401).body(Map.of("message", "로그인이 필요합니다."));
         }
+        if (!webPushProperties.hasValidClientPublicKey()) {
+            return ResponseEntity.status(500).body(Map.of("message", "VAPID 공개키가 비어 있거나 형식이 올바르지 않습니다."));
+        }
         return ResponseEntity.ok(Map.of("publicKey", webPushProperties.getPublicKey()));
     }
 

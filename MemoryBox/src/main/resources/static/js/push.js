@@ -28,6 +28,18 @@
     return outputArray;
   }
 
+  function isValidVapidPublicKey(key) {
+    if (!key || typeof key !== 'string') {
+      return false;
+    }
+    try {
+      const bytes = urlBase64ToUint8Array(key.trim());
+      return bytes && bytes.length > 0;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function toBase64Url(arrayBuffer) {
     if (!arrayBuffer) {
       return null;
@@ -79,10 +91,14 @@
       throw new Error('VAPID 공개키 조회 실패');
     }
     const json = await response.json();
-    if (!json.publicKey) {
-      throw new Error('VAPID 공개키가 비어 있습니다.');
+    const publicKey = json && json.publicKey ? String(json.publicKey).trim() : '';
+    if (!publicKey) {
+      throw new Error((json && json.message) ? json.message : 'VAPID 공개키가 비어 있습니다.');
     }
-    return json.publicKey;
+    if (!isValidVapidPublicKey(publicKey)) {
+      throw new Error('VAPID 공개키 형식이 올바르지 않습니다. (환경변수 WEBPUSH_VAPID_PUBLIC_KEY 확인)');
+    }
+    return publicKey;
   }
 
   async function getRegistration() {
@@ -94,6 +110,12 @@
   async function enablePush() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       setStatus('이 브라우저는 Web Push를 지원하지 않습니다.', true);
+      toggle.checked = false;
+      return;
+    }
+
+    if (!window.isSecureContext) {
+      setStatus('Web Push는 HTTPS 환경(또는 localhost)에서만 동작합니다.', true);
       toggle.checked = false;
       return;
     }

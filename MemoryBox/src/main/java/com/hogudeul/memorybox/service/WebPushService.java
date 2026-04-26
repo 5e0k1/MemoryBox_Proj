@@ -50,6 +50,11 @@ public class WebPushService {
             return false;
         }
 
+        if (!webPushProperties.hasValidClientPublicKey() || !webPushProperties.hasValidServerPrivateKey()) {
+            log.warn("Skip web push send due to invalid VAPID key configuration.");
+            return false;
+        }
+
         try {
             String payload = objectMapper.writeValueAsString(Map.of(
                     "title", title,
