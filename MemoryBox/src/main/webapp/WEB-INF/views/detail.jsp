@@ -439,13 +439,10 @@
     const toSmallVariantUrl = (value) => {
         if (!value) return '';
         const absoluteUrl = toAbsoluteUrl(value);
-        if (!isCloudFrontUrl(absoluteUrl)) {
-            return '';
-        }
         if (absoluteUrl.includes('/small/')) {
             return absoluteUrl;
         }
-        if (absoluteUrl.includes('/medium/')) {
+        if (isCloudFrontUrl(absoluteUrl) && absoluteUrl.includes('/medium/')) {
             return absoluteUrl.replace('/medium/', '/small/');
         }
         return '';

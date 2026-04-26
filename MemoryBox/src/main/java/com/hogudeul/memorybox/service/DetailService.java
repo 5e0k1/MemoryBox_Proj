@@ -30,6 +30,7 @@ import java.util.zip.ZipOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.hogudeul.memorybox.config.StorageProperties;
+import com.hogudeul.memorybox.config.AppProperties;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,12 +48,14 @@ public class DetailService {
     private final NotificationService notificationService;
     private final UploadMapper uploadMapper;
     private final StorageUrlResolver storageUrlResolver;
+    private final String shareBaseUrl;
 
     public DetailService(DetailMapper detailMapper,
                          TimeDisplayService timeDisplayService,
                          NotificationService notificationService,
                          UploadMapper uploadMapper,
                          StorageProperties storageProperties,
+                         AppProperties appProperties,
                          StorageUrlResolver storageUrlResolver) {
         this.detailMapper = detailMapper;
         this.timeDisplayService = timeDisplayService;
@@ -60,6 +63,7 @@ public class DetailService {
         this.uploadMapper = uploadMapper;
         this.storageRoot = Paths.get(storageProperties.getLocalRoot()).toAbsolutePath().normalize();
         this.storageUrlResolver = storageUrlResolver;
+        this.shareBaseUrl = trimTrailingSlash(appProperties.getShare().getBaseUrl());
     }
 
     public MediaDetailView getMediaDetail(Long mediaId, Long userId) {
@@ -92,7 +96,7 @@ public class DetailService {
                 defaultText(row.getAlbumName(), "미분류"),
                 defaultText(row.getDisplayName(), "알 수 없음"),
                 isVideo ? "" : toPublicFileUrl(displayStorageKey),
-                toPublicFileUrl(shareImageStorageKey),
+                toAbsoluteShareUrl(toPublicFileUrl(shareImageStorageKey)),
                 isVideo ? toPublicFileUrl(row.getOriginalStorageKey()) : "",
                 isVideo ? toPublicFileUrl(row.getThumbStorageKey()) : "",
                 "",
@@ -456,6 +460,35 @@ public class DetailService {
 
     private String toPublicFileUrl(String storageKey) {
         return storageUrlResolver.resolvePublicUrl(storageKey);
+    }
+
+    private String toAbsoluteShareUrl(String value) {
+        if (isBlank(value)) {
+            return "";
+        }
+        String trimmed = value.trim();
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            return trimmed;
+        }
+        if (trimmed.startsWith("//")) {
+            return "https:" + trimmed;
+        }
+        String normalizedPath = trimmed.startsWith("/") ? trimmed : "/" + trimmed;
+        if (isBlank(shareBaseUrl)) {
+            return normalizedPath;
+        }
+        return shareBaseUrl + normalizedPath;
+    }
+
+    private String trimTrailingSlash(String value) {
+        if (value == null) {
+            return "";
+        }
+        String trimmed = value.trim();
+        while (trimmed.endsWith("/")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        }
+        return trimmed;
     }
 
     private int safeInt(Integer value) {
