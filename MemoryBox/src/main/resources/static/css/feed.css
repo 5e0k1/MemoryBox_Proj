@@ -804,6 +804,55 @@ body.modal-open {
 }
 
 
+.push-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #334155;
+}
+
+.push-toggle-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.push-toggle-slider {
+    position: relative;
+    width: 42px;
+    height: 24px;
+    border-radius: 999px;
+    background: #cbd5e1;
+    transition: background 180ms ease;
+}
+
+.push-toggle-slider::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+    transition: transform 180ms ease;
+}
+
+.push-toggle-input:checked + .push-toggle-slider {
+    background: #0ea5e9;
+}
+
+.push-toggle-input:checked + .push-toggle-slider::after {
+    transform: translateX(18px);
+}
+
+.push-toggle-input:disabled + .push-toggle-slider {
+    opacity: 0.6;
+}
+
 .webpush-status-msg {
     margin: 8px 0 0;
     font-size: 0.82rem;

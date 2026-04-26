@@ -12,6 +12,9 @@ public interface WebPushSubscriptionMapper {
 
     int update(WebPushSubscription subscription);
 
+    int deactivateByEndpointAndUserId(@Param("endpoint") String endpoint,
+                                      @Param("userId") Long userId);
+
     WebPushSubscription findByEndpoint(@Param("endpoint") String endpoint);
 
     List<WebPushSubscription> findByUserId(@Param("userId") Long userId);

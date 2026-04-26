@@ -65,6 +65,25 @@ public class PushController {
         return ResponseEntity.ok(Map.of("success", true));
     }
 
+
+    @PostMapping("/push/unsubscribe")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> unsubscribe(@RequestBody Map<String, String> request,
+                                                            HttpSession session) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        if (loginUser == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "로그인이 필요합니다."));
+        }
+
+        String endpoint = request != null ? request.get("endpoint") : null;
+        if (endpoint == null || endpoint.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "endpoint가 필요합니다."));
+        }
+
+        webPushSubscriptionService.deactivateByEndpoint(loginUser.getUserId(), endpoint);
+        return ResponseEntity.ok(Map.of("success", true));
+    }
+
     @PostMapping("/push/test")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> testPush(HttpSession session) {

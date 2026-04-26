@@ -25,6 +25,14 @@ public class WebPushSubscriptionService {
         webPushSubscriptionMapper.update(subscription);
     }
 
+    @Transactional
+    public void deactivateByEndpoint(Long userId, String endpoint) {
+        if (userId == null || endpoint == null || endpoint.isBlank()) {
+            return;
+        }
+        webPushSubscriptionMapper.deactivateByEndpointAndUserId(endpoint, userId);
+    }
+
     public List<WebPushSubscription> findActiveByUserId(Long userId) {
         return webPushSubscriptionMapper.findByUserId(userId);
     }

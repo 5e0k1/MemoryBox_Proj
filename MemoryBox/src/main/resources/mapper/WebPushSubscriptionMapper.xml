@@ -43,6 +43,15 @@
         WHERE endpoint = #{endpoint}
     </update>
 
+
+    <update id="deactivateByEndpointAndUserId">
+        UPDATE WEB_PUSH_SUBSCRIPTION
+        SET active_yn = 'N',
+            updated_at = NOW()
+        WHERE endpoint = #{endpoint}
+          AND user_id = #{userId}
+    </update>
+
     <select id="findByEndpoint" resultMap="WebPushSubscriptionMap">
         SELECT subscription_id, user_id, endpoint, p256dh, auth, active_yn, created_at, updated_at
         FROM WEB_PUSH_SUBSCRIPTION

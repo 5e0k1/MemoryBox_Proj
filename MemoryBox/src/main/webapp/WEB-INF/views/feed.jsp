@@ -61,7 +61,11 @@
             <div class="mypage-actions">
                 <button class="btn btn-secondary" type="button" id="openPasswordModalBtn">비밀번호 변경</button>
                 <a class="btn" href="/kakao/connect">카카오 알림 연동하기</a>
-                <button class="btn" type="button" id="enableWebPushBtn">웹 푸시 알림 켜기</button>
+                <label class="push-toggle" for="webPushToggle">
+                    <span>웹 푸시 알림</span>
+                    <input type="checkbox" id="webPushToggle" class="push-toggle-input">
+                    <span class="push-toggle-slider" aria-hidden="true"></span>
+                </label>
                 <button class="btn btn-secondary" type="button" id="sendWebPushTestBtn">웹 푸시 테스트</button>
             </div>
             <p class="webpush-status-msg" id="webPushStatusMsg" aria-live="polite"></p>
