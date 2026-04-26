@@ -1,3 +1,11 @@
+self.addEventListener('install', function (event) {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', function (event) {
+  event.waitUntil(clients.claim());
+});
+
 self.addEventListener('push', function (event) {
   console.log('[SW] push event received', event);
 
