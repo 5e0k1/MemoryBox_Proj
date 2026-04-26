@@ -2,25 +2,37 @@ package com.hogudeul.memorybox.service;
 
 import com.hogudeul.memorybox.mapper.NotificationMapper;
 import com.hogudeul.memorybox.model.NotificationRow;
+import com.hogudeul.memorybox.model.WebPushSubscription;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class NotificationService {
 
+    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final NotificationMapper notificationMapper;
     private final TimeDisplayService timeDisplayService;
+    private final WebPushService webPushService;
+    private final WebPushSubscriptionService webPushSubscriptionService;
 
-    public NotificationService(NotificationMapper notificationMapper, TimeDisplayService timeDisplayService) {
+    public NotificationService(NotificationMapper notificationMapper,
+                               TimeDisplayService timeDisplayService,
+                               WebPushService webPushService,
+                               WebPushSubscriptionService webPushSubscriptionService) {
         this.notificationMapper = notificationMapper;
         this.timeDisplayService = timeDisplayService;
+        this.webPushService = webPushService;
+        this.webPushSubscriptionService = webPushSubscriptionService;
     }
 
     @Transactional
@@ -32,8 +44,7 @@ public class NotificationService {
         String message = actorName + "님이 " + fileCount + "개의 새로운 파일을 업로드했습니다.";
 
         for (Long receiverId : notificationMapper.findActiveUserIdsExcept(actorUserId)) {
-            notificationMapper.insertNotification(receiverId, actorUserId,
-                    "UPLOAD", "MEDIA", sampleMediaId, message);
+            createNotification(receiverId, actorUserId, "UPLOAD", "MEDIA", sampleMediaId, message);
         }
     }
 
@@ -56,8 +67,10 @@ public class NotificationService {
         String actorName = safeDisplayName(actorUserId);
         String mediaTitle = notificationMapper.findMediaTitleByMediaId(mediaId);
         String message = actorName + "님이 " + summarizeTitle(mediaTitle) + " 게시물에 댓글을 작성했습니다.";
-        notificationMapper.insertNotification(receiverId, actorUserId,
+        NotificationRow notification = createNotification(receiverId, actorUserId,
                 "MEDIA_COMMENT", "COMMENT", commentId, message);
+
+        sendCommentOrReplyPushSafely(notification, "MemoryBox 댓글 알림", "새 댓글이 달렸어요.");
     }
 
     @Transactional
@@ -79,8 +92,10 @@ public class NotificationService {
         String parentContent = notificationMapper.findCommentContentByCommentId(parentCommentId);
         String actorName = safeDisplayName(actorUserId);
         String message = "'" + summarize(parentContent) + "' 댓글에 " + actorName + "님이 답글을 작성했습니다.";
-        notificationMapper.insertNotification(receiverId, actorUserId,
+        NotificationRow notification = createNotification(receiverId, actorUserId,
                 "MEDIA_REPLY", "COMMENT", replyCommentId, message);
+
+        sendCommentOrReplyPushSafely(notification, "MemoryBox 댓글 알림", "새 답글이 달렸어요.");
     }
 
     @Transactional
@@ -91,8 +106,7 @@ public class NotificationService {
         String actorName = safeDisplayName(actorUserId);
         String message = actorName + "님이 새 요청을 등록했습니다.";
         for (Long receiverId : notificationMapper.findActiveAdminUserIdsExcept(actorUserId)) {
-            notificationMapper.insertNotification(receiverId, actorUserId,
-                    "REQUEST_POST", "REQUEST", requestId, message);
+            createNotification(receiverId, actorUserId, "REQUEST_POST", "REQUEST", requestId, message);
         }
     }
 
@@ -107,8 +121,45 @@ public class NotificationService {
         }
         String actorName = safeDisplayName(actorUserId);
         String message = "'" + summarizeTitle(requestTitle) + "'요청에 " + actorName + "님이 댓글을 작성했습니다.";
-        notificationMapper.insertNotification(receiverId, actorUserId,
+        createNotification(receiverId, actorUserId,
                 "REQUEST_COMMENT", "REQUEST_COMMENT", requestCommentId, message);
+    }
+
+    @Transactional
+    public int sendPendingUploadPushBatch() {
+        int sentUsers = 0;
+        List<Long> receiverUserIds = notificationMapper.findPendingUploadPushReceiverUserIds();
+        for (Long receiverUserId : receiverUserIds) {
+            int count = notificationMapper.countPendingUploadPushByUserId(receiverUserId);
+            if (count <= 0) {
+                continue;
+            }
+
+            List<WebPushSubscription> subscriptions = webPushSubscriptionService.findActiveByUserId(receiverUserId);
+            if (subscriptions == null || subscriptions.isEmpty()) {
+                continue;
+            }
+
+            String title = "MemoryBox";
+            String body = "새 사진/영상 " + count + "개가 올라왔어요.";
+            boolean pushSent = sendPushToAnySubscription(subscriptions, title, body, "/mypage");
+            if (!pushSent) {
+                log.warn("Upload batch push failed. userId={}, notificationCount={}", receiverUserId, count);
+                continue;
+            }
+
+            List<NotificationRow> pendingRows = notificationMapper.findPendingUploadNotificationsByUserId(receiverUserId);
+            if (pendingRows.isEmpty()) {
+                continue;
+            }
+            List<Long> notificationIds = pendingRows.stream()
+                    .map(NotificationRow::getNotificationId)
+                    .collect(Collectors.toList());
+            notificationMapper.markPushSentByNotificationIds(notificationIds);
+            sentUsers++;
+            log.info("Upload batch push sent. userId={}, notificationCount={}", receiverUserId, notificationIds.size());
+        }
+        return sentUsers;
     }
 
     public Map<String, Object> getNotificationPanel(Long userId) {
@@ -187,6 +238,74 @@ public class NotificationService {
             return false;
         }
         return notificationMapper.deleteNotification(notificationId, userId) > 0;
+    }
+
+    private void sendCommentOrReplyPushSafely(NotificationRow notification, String title, String body) {
+        if (notification == null || notification.getNotificationId() == null || notification.getReceiverUserId() == null) {
+            return;
+        }
+
+        try {
+            List<WebPushSubscription> subscriptions = webPushSubscriptionService.findActiveByUserId(notification.getReceiverUserId());
+            if (subscriptions == null || subscriptions.isEmpty()) {
+                return;
+            }
+
+            String targetUrl = resolveCommentTargetUrl(notification);
+            boolean pushSent = sendPushToAnySubscription(subscriptions, title, body, targetUrl);
+            if (!pushSent) {
+                log.warn("Comment/reply push failed. userId={}, notificationId={}",
+                        notification.getReceiverUserId(), notification.getNotificationId());
+                return;
+            }
+
+            notificationMapper.markPushSentByNotificationId(notification.getNotificationId());
+            log.info("Comment/reply push sent. userId={}, notificationId={}",
+                    notification.getReceiverUserId(), notification.getNotificationId());
+        } catch (Exception e) {
+            log.warn("Comment/reply push error ignored. userId={}, notificationId={}",
+                    notification.getReceiverUserId(), notification.getNotificationId(), e);
+        }
+    }
+
+    private boolean sendPushToAnySubscription(List<WebPushSubscription> subscriptions,
+                                              String title,
+                                              String body,
+                                              String url) {
+        for (WebPushSubscription subscription : subscriptions) {
+            if (webPushService.sendPush(subscription, title, body, url)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String resolveCommentTargetUrl(NotificationRow notification) {
+        if (notification == null || notification.getTargetId() == null) {
+            return "/mypage";
+        }
+        Long mediaId = notificationMapper.findMediaIdByCommentId(notification.getTargetId());
+        if (mediaId == null) {
+            return "/mypage";
+        }
+        return "/feed/" + mediaId + "#comment-" + notification.getTargetId();
+    }
+
+    private NotificationRow createNotification(Long receiverUserId,
+                                               Long actorUserId,
+                                               String notificationType,
+                                               String targetType,
+                                               Long targetId,
+                                               String message) {
+        NotificationRow notification = new NotificationRow();
+        notification.setReceiverUserId(receiverUserId);
+        notification.setActorUserId(actorUserId);
+        notification.setNotificationType(notificationType);
+        notification.setTargetType(targetType);
+        notification.setTargetId(targetId);
+        notification.setMessage(message);
+        notificationMapper.insertNotification(notification);
+        return notification;
     }
 
     private String safeDisplayName(Long userId) {

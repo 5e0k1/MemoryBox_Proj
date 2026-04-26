@@ -8,12 +8,7 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface NotificationMapper {
 
-    int insertNotification(@Param("receiverUserId") Long receiverUserId,
-                           @Param("actorUserId") Long actorUserId,
-                           @Param("notificationType") String notificationType,
-                           @Param("targetType") String targetType,
-                           @Param("targetId") Long targetId,
-                           @Param("message") String message);
+    int insertNotification(NotificationRow notification);
 
     List<NotificationRow> findTopNotificationsByUserId(@Param("userId") Long userId,
                                                        @Param("limit") int limit);
@@ -48,4 +43,14 @@ public interface NotificationMapper {
     Long findRequestOwnerId(@Param("requestId") Long requestId);
 
     Long findRequestIdByRequestCommentId(@Param("requestCommentId") Long requestCommentId);
+
+    List<Long> findPendingUploadPushReceiverUserIds();
+
+    int countPendingUploadPushByUserId(@Param("userId") Long userId);
+
+    List<NotificationRow> findPendingUploadNotificationsByUserId(@Param("userId") Long userId);
+
+    int markPushSentByNotificationIds(@Param("notificationIds") List<Long> notificationIds);
+
+    int markPushSentByNotificationId(@Param("notificationId") Long notificationId);
 }

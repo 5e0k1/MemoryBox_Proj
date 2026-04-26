@@ -34,11 +34,15 @@ public class WebPushService {
     }
 
     public boolean sendTestPush(WebPushSubscription subscription) {
+        return sendPush(subscription, "MemoryBox 알림 테스트", "웹 푸시 알림이 정상적으로 연결되었습니다.", "/mypage");
+    }
+
+    public boolean sendPush(WebPushSubscription subscription, String title, String body, String url) {
         try {
             String payload = objectMapper.writeValueAsString(Map.of(
-                    "title", "MemoryBox 알림 테스트",
-                    "body", "웹 푸시 알림이 정상적으로 연결되었습니다.",
-                    "url", "/mypage"
+                    "title", title,
+                    "body", body,
+                    "url", url
             ));
 
             PushService pushService = new PushService();
@@ -55,19 +59,8 @@ public class WebPushService {
             pushService.send(notification);
             return true;
         } catch (Exception e) {
-            log.warn("Web push send failed. subscriptionId={}, endpointPrefix={}",
-                    subscription.getSubscriptionId(),
-                    maskEndpoint(subscription.getEndpoint()),
-                    e);
+            log.warn("Web push send failed. subscriptionId={}", subscription.getSubscriptionId(), e);
             return false;
         }
-    }
-
-    private String maskEndpoint(String endpoint) {
-        if (endpoint == null || endpoint.isBlank()) {
-            return "(empty)";
-        }
-        int visible = Math.min(endpoint.length(), 24);
-        return endpoint.substring(0, visible) + "...";
     }
 }
