@@ -3,10 +3,12 @@ package com.hogudeul.memorybox.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hogudeul.memorybox.config.WebPushProperties;
 import com.hogudeul.memorybox.model.WebPushSubscription;
+import java.security.Security;
 import java.util.Map;
 import nl.martijndwars.webpush.Notification;
 import nl.martijndwars.webpush.PushService;
 import nl.martijndwars.webpush.Utils;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,13 @@ public class WebPushService {
     public WebPushService(WebPushProperties webPushProperties, ObjectMapper objectMapper) {
         this.webPushProperties = webPushProperties;
         this.objectMapper = objectMapper;
+        ensureBouncyCastleProvider();
+    }
+
+    private void ensureBouncyCastleProvider() {
+        if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+            Security.addProvider(new BouncyCastleProvider());
+        }
     }
 
     public boolean sendTestPush(WebPushSubscription subscription) {
