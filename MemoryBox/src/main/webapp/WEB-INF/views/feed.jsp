@@ -58,7 +58,10 @@
     <c:if test="${mode eq 'mypage'}">
         <section class="mypage-panel">
             <p><strong>${loginUser.displayName}</strong> (${loginUser.loginId})</p>
-            <button class="btn btn-secondary" type="button" id="openPasswordModalBtn">비밀번호 변경</button>
+            <div class="mypage-actions">
+                <button class="btn btn-secondary" type="button" id="openPasswordModalBtn">비밀번호 변경</button>
+                <a class="btn" href="/kakao/connect">카카오 알림 연동하기</a>
+            </div>
         </section>
 
         <section class="calendar-card" id="sharedCalendarCard" data-calendar-state="${calendarState}" data-calendar-year="${calendarYear}" data-calendar-month="${calendarMonth}">
