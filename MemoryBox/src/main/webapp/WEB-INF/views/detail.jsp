@@ -14,7 +14,7 @@
 </head>
 <body class="page page-detail">
 <c:set var="shareTitleValue" value="${not empty detail ? detail.title : ''}" />
-<c:set var="shareImageValue" value="${not empty detail ? (detail.mediaType eq 'VIDEO' ? detail.videoThumbnailUrl : detail.displayImageUrl) : ''}" />
+<c:set var="shareImageValue" value="${not empty detail ? detail.shareImageUrl : ''}" />
 <main class="detail-layout"
       id="detailLayout"
       data-media-id="${currentMediaId}"
@@ -434,6 +434,7 @@
     };
 
     const isCloudFrontUrl = (value) => /^https?:\/\/[^/]*cloudfront\.net\//i.test(value || '');
+    const isLocalhostUrl = (value) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(value || '');
 
     const toSmallVariantUrl = (value) => {
         if (!value) return '';
@@ -451,11 +452,18 @@
     };
 
     const resolveShareImageUrl = () => {
-        const shareImageSmallUrl = toSmallVariantUrl(shareImageFromData);
-        if (shareImageSmallUrl) {
-            return shareImageSmallUrl;
-        }
-        return toAbsoluteUrl(fallbackImageUrl);
+        const smallUrl = toSmallVariantUrl(shareImageFromData);
+        const absoluteFallbackImageUrl = toAbsoluteUrl(fallbackImageUrl);
+        const shareImageUrl = (!smallUrl || isLocalhostUrl(smallUrl))
+                ? absoluteFallbackImageUrl
+                : smallUrl;
+        console.log('[share-kakao] image candidates', {
+            shareImageFromData: shareImageFromData,
+            smallUrl: smallUrl,
+            fallbackImageUrl: absoluteFallbackImageUrl,
+            shareImageUrl: shareImageUrl
+        });
+        return shareImageUrl;
     };
 
     const updateGuestOptionVisibility = () => {
@@ -536,13 +544,19 @@
                 return;
             }
 
-            const generatedUrl = isGuest ? data.guestUrl : data.memberUrl;
-            const absoluteShareUrl = toAbsoluteUrl(generatedUrl || '');
-            shareUrlOutput.value = absoluteShareUrl || '';
-            currentShareUrl = absoluteShareUrl || '';
+            const memberUrl = toAbsoluteUrl(data.memberUrl || '');
+            const guestUrl = toAbsoluteUrl(data.guestUrl || '');
+            const selectedShareUrl = isGuest ? guestUrl : memberUrl;
+            shareUrlOutput.value = selectedShareUrl || '';
+            currentShareUrl = selectedShareUrl || '';
             currentShareType = isGuest ? 'guest' : 'member';
-            copyShareUrlBtn.disabled = !absoluteShareUrl;
-            kakaoShareBtn.disabled = !absoluteShareUrl || !kakaoReady;
+            copyShareUrlBtn.disabled = !selectedShareUrl;
+            kakaoShareBtn.disabled = !selectedShareUrl || !kakaoReady;
+            console.log('[share-kakao] share link response', {
+                memberUrl: memberUrl,
+                guestUrl: guestUrl,
+                selectedShareUrl: selectedShareUrl
+            });
             shareFeedback.textContent = isGuest
                     ? '게스트 공유 링크가 생성되었습니다.'
                     : '회원 공유 링크가 준비되었습니다.';
@@ -578,9 +592,9 @@
             return;
         }
 
-        const absoluteShareUrl = toAbsoluteUrl(currentShareUrl);
-        if (!absoluteShareUrl) {
-            shareFeedback.textContent = '유효한 공유 링크가 없습니다. 링크를 다시 생성해 주세요.';
+        const selectedShareUrl = toAbsoluteUrl(currentShareUrl);
+        if (!selectedShareUrl) {
+            shareFeedback.textContent = '먼저 공유 링크를 생성해 주세요.';
             return;
         }
 
@@ -589,6 +603,10 @@
                 ? '공유된 사진/영상을 확인해보세요.'
                 : 'MemoryBox에서 사진/영상을 확인해보세요.';
         const shareImageUrl = resolveShareImageUrl();
+        console.log('[share-kakao] send payload', {
+            selectedShareUrl: selectedShareUrl,
+            shareImageUrl: shareImageUrl
+        });
 
         try {
             window.Kakao.Share.sendDefault({
@@ -598,16 +616,16 @@
                     description: description,
                     imageUrl: shareImageUrl,
                     link: {
-                        mobileWebUrl: absoluteShareUrl,
-                        webUrl: absoluteShareUrl
+                        mobileWebUrl: selectedShareUrl,
+                        webUrl: selectedShareUrl
                     }
                 },
                 buttons: [
                     {
                         title: '보러가기',
                         link: {
-                            mobileWebUrl: absoluteShareUrl,
-                            webUrl: absoluteShareUrl
+                            mobileWebUrl: selectedShareUrl,
+                            webUrl: selectedShareUrl
                         }
                     }
                 ]

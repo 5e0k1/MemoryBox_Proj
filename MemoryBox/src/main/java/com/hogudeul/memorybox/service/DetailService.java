@@ -70,11 +70,15 @@ public class DetailService {
 
         boolean isVideo = "VIDEO".equalsIgnoreCase(row.getMediaType());
         String displayStorageKey = row.getMediumStorageKey();
+        String shareImageStorageKey = row.getSmallStorageKey();
         if (isBlank(displayStorageKey)) {
             displayStorageKey = row.getSmallStorageKey();
         }
         if (isVideo && isBlank(displayStorageKey)) {
             displayStorageKey = row.getThumbStorageKey();
+        }
+        if (isVideo && isBlank(shareImageStorageKey)) {
+            shareImageStorageKey = row.getThumbStorageKey();
         }
 
         return new MediaDetailView(
@@ -88,6 +92,7 @@ public class DetailService {
                 defaultText(row.getAlbumName(), "미분류"),
                 defaultText(row.getDisplayName(), "알 수 없음"),
                 isVideo ? "" : toPublicFileUrl(displayStorageKey),
+                toPublicFileUrl(shareImageStorageKey),
                 isVideo ? toPublicFileUrl(row.getOriginalStorageKey()) : "",
                 isVideo ? toPublicFileUrl(row.getThumbStorageKey()) : "",
                 "",
