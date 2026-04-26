@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: MemoryBox
+  profiles:
+    active: local
+  mvc:
+    view:
+      prefix: /WEB-INF/views/
+      suffix: .jsp
+    async:
+      request-timeout: 600000
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 500MB
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.hogudeul.memorybox.model
+  configuration:
+    map-underscore-to-camel-case: true
