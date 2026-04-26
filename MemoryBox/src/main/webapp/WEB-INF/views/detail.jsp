@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="/css/upload.css">
 </head>
 <body class="page page-detail">
-<main class="detail-layout">
+<main class="detail-layout" id="detailLayout" data-media-id="${not empty detail ? detail.mediaId : ''}">
     <header class="detail-header">
         <a href="/feed" class="back-link" aria-label="피드로 돌아가기">← 피드</a>
         <div class="login-chip">${loginUser.displayName}</div>
@@ -384,6 +384,7 @@
     const copyShareUrlBtn = document.getElementById('copyShareUrlBtn');
     const shareFeedback = document.getElementById('shareFeedback');
     const shareMediaId = document.getElementById('shareMediaId');
+    const detailLayout = document.getElementById('detailLayout');
 
     const updateGuestOptionVisibility = () => {
         const selected = shareForm?.querySelector('input[name="shareType"]:checked');
@@ -423,7 +424,14 @@
 
         const selected = shareForm.querySelector('input[name="shareType"]:checked');
         const isGuest = selected?.value === 'guest';
-        const mediaId = (openShareModalBtn?.dataset?.mediaId || shareMediaId?.value || '').trim();
+        const serverRenderedMediaId = '${not empty detail ? detail.mediaId : ""}';
+        const mediaId = (
+            openShareModalBtn?.dataset?.mediaId
+            || detailLayout?.dataset?.mediaId
+            || shareMediaId?.value
+            || serverRenderedMediaId
+            || ''
+        ).trim();
         if (!mediaId) {
             shareFeedback.textContent = '공유할 게시글 정보를 찾을 수 없습니다.';
             return;
