@@ -2,6 +2,7 @@ package com.hogudeul.memorybox.service;
 
 import com.hogudeul.memorybox.config.KakaoProperties;
 import com.hogudeul.memorybox.dto.KakaoTokenResponse;
+import com.hogudeul.memorybox.dto.KakaoUserResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -20,6 +21,7 @@ public class KakaoService {
 
     private static final Logger log = LoggerFactory.getLogger(KakaoService.class);
     private static final String KAKAO_TOKEN_URL = "https://kauth.kakao.com/oauth/token";
+    private static final String KAKAO_USER_ME_URL = "https://kapi.kakao.com/v2/user/me";
 
     private final KakaoProperties kakaoProperties;
     private final RestTemplate restTemplate;
@@ -54,6 +56,29 @@ public class KakaoService {
             return null;
         } catch (Exception e) {
             log.error("Kakao token API request failed", e);
+            return null;
+        }
+    }
+
+    public KakaoUserResponse requestUserInfo(String accessToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<KakaoUserResponse> response = restTemplate.exchange(
+                    KAKAO_USER_ME_URL,
+                    HttpMethod.GET,
+                    request,
+                    KakaoUserResponse.class
+            );
+            return response.getBody();
+        } catch (RestClientResponseException e) {
+            log.error("Kakao user API failed. status: {}, body: {}", e.getRawStatusCode(), e.getResponseBodyAsString());
+            return null;
+        } catch (Exception e) {
+            log.error("Kakao user API request failed", e);
             return null;
         }
     }

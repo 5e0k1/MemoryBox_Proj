@@ -1,8 +1,14 @@
 package com.hogudeul.memorybox.controller;
 
+import com.hogudeul.memorybox.auth.LoginUserSession;
 import com.hogudeul.memorybox.config.KakaoProperties;
 import com.hogudeul.memorybox.dto.KakaoTokenResponse;
+import com.hogudeul.memorybox.dto.KakaoUserResponse;
+import com.hogudeul.memorybox.model.UserKakaoLink;
 import com.hogudeul.memorybox.service.KakaoService;
+import com.hogudeul.memorybox.service.UserKakaoLinkService;
+import jakarta.servlet.http.HttpSession;
+import java.time.LocalDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -18,10 +24,14 @@ public class KakaoController {
     private static final String KAKAO_AUTHORIZE_URL = "https://kauth.kakao.com/oauth/authorize";
     private final KakaoProperties kakaoProperties;
     private final KakaoService kakaoService;
+    private final UserKakaoLinkService userKakaoLinkService;
 
-    public KakaoController(KakaoProperties kakaoProperties, KakaoService kakaoService) {
+    public KakaoController(KakaoProperties kakaoProperties,
+                           KakaoService kakaoService,
+                           UserKakaoLinkService userKakaoLinkService) {
         this.kakaoProperties = kakaoProperties;
         this.kakaoService = kakaoService;
+        this.userKakaoLinkService = userKakaoLinkService;
     }
 
     @GetMapping("/kakao/connect")
@@ -36,21 +46,54 @@ public class KakaoController {
     }
 
     @GetMapping("/kakao/callback")
-    public String callback(@RequestParam String code) {
+    public String callback(@RequestParam String code, HttpSession session) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        if (loginUser == null) {
+            return "redirect:/login?expired=true";
+        }
+
+        Long userId = loginUser.getUserId();
         log.info("Kakao authorization code received: {}", code);
 
         KakaoTokenResponse tokenResponse = kakaoService.requestToken(code);
         if (tokenResponse == null) {
-            log.warn("Kakao token response is null");
+            log.warn("Kakao token response is null. userId={}", userId);
+            return "redirect:/mypage";
+        }
+        log.info("Kakao token issued for userId={}. accessToken={}, refreshToken={}",
+                userId,
+                maskToken(tokenResponse.getAccessToken()),
+                maskToken(tokenResponse.getRefreshToken()));
+
+        KakaoUserResponse userResponse = kakaoService.requestUserInfo(tokenResponse.getAccessToken());
+        if (userResponse == null || userResponse.getId() == null) {
+            log.warn("Kakao user info response is invalid. userId={}", userId);
             return "redirect:/mypage";
         }
 
-        log.info("Kakao access_token issued: {}", maskToken(tokenResponse.getAccessToken()));
-        log.info("Kakao refresh_token issued: {}", maskToken(tokenResponse.getRefreshToken()));
-        log.info("Kakao expires_in: {}", tokenResponse.getExpiresIn());
-        log.info("Kakao refresh_token_expires_in: {}", tokenResponse.getRefreshTokenExpiresIn());
+        Long kakaoUserId = userResponse.getId();
+        log.info("Kakao user info received. kakaoUserId={}", kakaoUserId);
+
+        UserKakaoLink link = new UserKakaoLink();
+        link.setUserId(userId);
+        link.setKakaoUserId(kakaoUserId);
+        link.setAccessToken(tokenResponse.getAccessToken());
+        link.setRefreshToken(tokenResponse.getRefreshToken());
+        link.setAccessTokenExpiresAt(resolveExpiresAt(tokenResponse.getExpiresIn()));
+        link.setRefreshTokenExpiresAt(resolveExpiresAt(tokenResponse.getRefreshTokenExpiresIn()));
+        link.setUseKakaoNotify("Y");
+
+        userKakaoLinkService.upsert(link);
+        log.info("Kakao link saved. userId={}, kakaoUserId={}", userId, kakaoUserId);
 
         return "redirect:/mypage";
+    }
+
+    private LocalDateTime resolveExpiresAt(Long expiresInSeconds) {
+        if (expiresInSeconds == null || expiresInSeconds <= 0) {
+            return null;
+        }
+        return LocalDateTime.now().plusSeconds(expiresInSeconds);
     }
 
     private String maskToken(String token) {
