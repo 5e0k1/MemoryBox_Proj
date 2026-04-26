@@ -20,10 +20,14 @@ public class WebPushService {
 
     private final WebPushProperties webPushProperties;
     private final ObjectMapper objectMapper;
+    private final WebPushSubscriptionService webPushSubscriptionService;
 
-    public WebPushService(WebPushProperties webPushProperties, ObjectMapper objectMapper) {
+    public WebPushService(WebPushProperties webPushProperties,
+                          ObjectMapper objectMapper,
+                          WebPushSubscriptionService webPushSubscriptionService) {
         this.webPushProperties = webPushProperties;
         this.objectMapper = objectMapper;
+        this.webPushSubscriptionService = webPushSubscriptionService;
         ensureBouncyCastleProvider();
     }
 
@@ -38,6 +42,14 @@ public class WebPushService {
     }
 
     public boolean sendPush(WebPushSubscription subscription, String title, String body, String url) {
+        if (subscription == null || hasBlank(subscription.getEndpoint())
+                || hasBlank(subscription.getP256dh()) || hasBlank(subscription.getAuth())) {
+            Long subscriptionId = subscription == null ? null : subscription.getSubscriptionId();
+            log.warn("Skip invalid web push subscription. subscriptionId={}", subscriptionId);
+            deactivateIfPossible(subscriptionId);
+            return false;
+        }
+
         try {
             String payload = objectMapper.writeValueAsString(Map.of(
                     "title", title,
@@ -60,7 +72,33 @@ public class WebPushService {
             return true;
         } catch (Exception e) {
             log.warn("Web push send failed. subscriptionId={}", subscription.getSubscriptionId(), e);
+            if (isSubscriptionKeyError(e)) {
+                deactivateIfPossible(subscription.getSubscriptionId());
+            }
             return false;
         }
+    }
+
+    private void deactivateIfPossible(Long subscriptionId) {
+        if (subscriptionId == null) {
+            return;
+        }
+        webPushSubscriptionService.deactivateBySubscriptionId(subscriptionId);
+    }
+
+    private boolean hasBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
+    private boolean isSubscriptionKeyError(Exception e) {
+        if (e instanceof ArrayIndexOutOfBoundsException || e instanceof IllegalArgumentException) {
+            return true;
+        }
+        String message = e.getMessage();
+        return message != null && (
+                message.contains("p256dh")
+                        || message.contains("public key")
+                        || message.contains("Invalid point")
+        );
     }
 }

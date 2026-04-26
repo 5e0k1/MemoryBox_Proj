@@ -49,16 +49,25 @@ public class PushController {
         if (loginUser == null) {
             return ResponseEntity.status(401).body(Map.of("message", "로그인이 필요합니다."));
         }
-        if (request == null || request.getEndpoint() == null || request.getKeys() == null
-                || request.getKeys().getP256dh() == null || request.getKeys().getAuth() == null) {
+        if (request == null) {
             return ResponseEntity.badRequest().body(Map.of("message", "구독 정보가 올바르지 않습니다."));
         }
 
+        String endpoint = trimToNull(request.getEndpoint());
+        String p256dh = trimToNull(request.resolveP256dh());
+        String auth = trimToNull(request.resolveAuth());
+
+        if (endpoint == null || p256dh == null || auth == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "endpoint, p256dh, auth는 필수입니다."));
+        }
+
+        webPushSubscriptionService.deactivateInvalidActiveByUserId(loginUser.getUserId());
+
         WebPushSubscription subscription = new WebPushSubscription();
         subscription.setUserId(loginUser.getUserId());
-        subscription.setEndpoint(request.getEndpoint());
-        subscription.setP256dh(request.getKeys().getP256dh());
-        subscription.setAuth(request.getKeys().getAuth());
+        subscription.setEndpoint(endpoint);
+        subscription.setP256dh(p256dh);
+        subscription.setAuth(auth);
         subscription.setActiveYn("Y");
         webPushSubscriptionService.upsert(subscription);
 
@@ -105,5 +114,13 @@ public class PushController {
                 "total", subscriptions.size(),
                 "sent", successCount
         ));
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

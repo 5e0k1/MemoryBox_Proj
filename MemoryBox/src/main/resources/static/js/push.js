@@ -71,10 +71,22 @@
       });
     }
 
+    const subJson = subscription.toJSON ? subscription.toJSON() : {
+      endpoint: subscription.endpoint,
+      keys: {
+        p256dh: subscription.getKey ? btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh') || []))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '') : null,
+        auth: subscription.getKey ? btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth') || []))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '') : null
+      }
+    };
+
+    if (!subJson.endpoint || !subJson.keys || !subJson.keys.p256dh || !subJson.keys.auth) {
+      throw new Error('유효하지 않은 PushSubscription 데이터입니다.');
+    }
+
     const response = await fetch('/push/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(subscription)
+      body: JSON.stringify(subJson)
     });
 
     if (!response.ok) {

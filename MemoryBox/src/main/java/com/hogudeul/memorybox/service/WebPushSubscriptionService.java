@@ -33,6 +33,22 @@ public class WebPushSubscriptionService {
         webPushSubscriptionMapper.deactivateByEndpointAndUserId(endpoint, userId);
     }
 
+    @Transactional
+    public void deactivateBySubscriptionId(Long subscriptionId) {
+        if (subscriptionId == null) {
+            return;
+        }
+        webPushSubscriptionMapper.deactivateBySubscriptionId(subscriptionId);
+    }
+
+    @Transactional
+    public void deactivateInvalidActiveByUserId(Long userId) {
+        if (userId == null) {
+            return;
+        }
+        webPushSubscriptionMapper.deactivateInvalidActiveByUserId(userId);
+    }
+
     public List<WebPushSubscription> findActiveByUserId(Long userId) {
         return webPushSubscriptionMapper.findByUserId(userId);
     }
