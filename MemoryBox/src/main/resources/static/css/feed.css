@@ -784,6 +784,11 @@ body.modal-open {
     height: 4px;
 }
 
+.btn-sm {
+    padding: 6px 10px;
+    font-size: 0.78rem;
+}
+
 .mypage-panel {
     background: #fff;
     border: 1px solid var(--line);
@@ -799,28 +804,43 @@ body.modal-open {
 
 .mypage-user-info {
     display: grid;
-    gap: 2px;
+    gap: 1px;
     color: #0f172a;
 }
 
+.mypage-user-info strong {
+    font-size: 1rem;
+}
+
 .mypage-user-info span {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     color: #64748b;
 }
 
 .mypage-actions {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
     flex-wrap: wrap;
 }
 
+.kakao-link-status {
+    display: inline-flex;
+    align-items: center;
+}
+
+.kakao-link-status img {
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+    display: block;
+}
 
 .push-toggle {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.85rem;
+    gap: 6px;
+    font-size: 0.78rem;
     color: #334155;
 }
 
@@ -833,8 +853,8 @@ body.modal-open {
 
 .push-toggle-slider {
     position: relative;
-    width: 42px;
-    height: 24px;
+    width: 38px;
+    height: 22px;
     border-radius: 999px;
     background: #cbd5e1;
     transition: background 180ms ease;
@@ -843,8 +863,8 @@ body.modal-open {
 .push-toggle-slider::after {
     content: '';
     position: absolute;
-    top: 3px;
-    left: 3px;
+    top: 2px;
+    left: 2px;
     width: 18px;
     height: 18px;
     border-radius: 50%;
@@ -858,7 +878,7 @@ body.modal-open {
 }
 
 .push-toggle-input:checked + .push-toggle-slider::after {
-    transform: translateX(18px);
+    transform: translateX(16px);
 }
 
 .push-toggle-input:disabled + .push-toggle-slider {

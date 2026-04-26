@@ -14,6 +14,13 @@ public class UserKakaoLinkService {
         this.userKakaoLinkMapper = userKakaoLinkMapper;
     }
 
+    public boolean isLinked(Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        return userKakaoLinkMapper.countByUserId(userId) > 0;
+    }
+
     @Transactional
     public void upsert(UserKakaoLink link) {
         int count = userKakaoLinkMapper.countByUserId(link.getUserId());

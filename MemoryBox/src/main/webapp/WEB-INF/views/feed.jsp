@@ -62,14 +62,18 @@
                 <span>${loginUser.loginId}</span>
             </div>
             <div class="mypage-actions">
-                <button class="btn btn-secondary" type="button" id="openPasswordModalBtn">비밀번호 변경</button>
+                <a class="kakao-link-status" href="/kakao/connect" aria-label="카카오 알림 연동 상태">
+                    <img src="/${kakaoLinked ? 'kakaotalk_sharing_btn_medium_o.png' : 'kakaotalk_sharing_btn_medium_x.png'}"
+                         alt="${kakaoLinked ? '카카오 로그인 연동 완료' : '카카오 로그인 미연동'}">
+                </a>
+                <button class="btn btn-secondary btn-sm" type="button" id="openPasswordModalBtn">비밀번호 변경</button>
                 <label class="push-toggle" for="webPushToggle">
-                    <span>웹 푸시 알림</span>
+                    <span>알림 설정</span>
                     <input type="checkbox" id="webPushToggle" class="push-toggle-input">
                     <span class="push-toggle-slider" aria-hidden="true"></span>
                 </label>
                 <c:if test="${loginUser.role eq 'ADMIN'}">
-                    <button class="btn btn-secondary" type="button" id="sendWebPushTestBtn">웹 푸시 테스트</button>
+                    <button class="btn btn-secondary btn-sm" type="button" id="sendWebPushTestBtn">테스트 푸시</button>
                 </c:if>
             </div>
             <c:if test="${loginUser.role eq 'ADMIN'}">
