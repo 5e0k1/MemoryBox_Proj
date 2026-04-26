@@ -28,6 +28,51 @@
     return outputArray;
   }
 
+  function toBase64Url(arrayBuffer) {
+    if (!arrayBuffer) {
+      return null;
+    }
+    const bytes = new Uint8Array(arrayBuffer);
+    if (bytes.length === 0) {
+      return null;
+    }
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  }
+
+  function extractSubscriptionPayload(subscription) {
+    const endpoint = subscription && subscription.endpoint ? subscription.endpoint : null;
+
+    const p256dh = toBase64Url(subscription && subscription.getKey ? subscription.getKey('p256dh') : null);
+    const auth = toBase64Url(subscription && subscription.getKey ? subscription.getKey('auth') : null);
+
+    if (endpoint && p256dh && auth) {
+      return {
+        endpoint: endpoint,
+        keys: {
+          p256dh: p256dh,
+          auth: auth
+        }
+      };
+    }
+
+    const fallback = subscription && subscription.toJSON ? subscription.toJSON() : null;
+    if (fallback && fallback.endpoint && fallback.keys && fallback.keys.p256dh && fallback.keys.auth) {
+      return {
+        endpoint: fallback.endpoint,
+        keys: {
+          p256dh: fallback.keys.p256dh,
+          auth: fallback.keys.auth
+        }
+      };
+    }
+
+    return null;
+  }
+
   async function fetchVapidPublicKey() {
     const response = await fetch('/api/push/public-key');
     if (!response.ok) {
@@ -71,15 +116,8 @@
       });
     }
 
-    const subJson = subscription.toJSON ? subscription.toJSON() : {
-      endpoint: subscription.endpoint,
-      keys: {
-        p256dh: subscription.getKey ? btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh') || []))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '') : null,
-        auth: subscription.getKey ? btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth') || []))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '') : null
-      }
-    };
-
-    if (!subJson.endpoint || !subJson.keys || !subJson.keys.p256dh || !subJson.keys.auth) {
+    const subJson = extractSubscriptionPayload(subscription);
+    if (!subJson) {
       throw new Error('유효하지 않은 PushSubscription 데이터입니다.');
     }
 
@@ -90,7 +128,16 @@
     });
 
     if (!response.ok) {
-      throw new Error('구독 저장 요청 실패');
+      let message = '구독 저장 요청 실패';
+      try {
+        const errorJson = await response.json();
+        if (errorJson && errorJson.message) {
+          message = errorJson.message;
+        }
+      } catch (e) {
+        // ignore parse failure
+      }
+      throw new Error(message);
     }
 
     toggle.checked = true;
@@ -143,7 +190,7 @@
       }
     } catch (error) {
       toggle.checked = !toggle.checked;
-      setStatus('웹 푸시 설정 변경 중 오류가 발생했습니다.', true);
+      setStatus(error && error.message ? error.message : '웹 푸시 설정 변경 중 오류가 발생했습니다.', true);
     } finally {
       toggle.disabled = false;
     }
