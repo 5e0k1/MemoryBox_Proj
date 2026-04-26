@@ -398,6 +398,7 @@
     const shareBaseUrl = (detailLayout?.dataset?.shareBaseUrl || '').trim();
     const shareTitle = (detailLayout?.dataset?.shareTitle || '').trim();
     const shareImageFromData = (detailLayout?.dataset?.shareImageUrl || '').trim();
+    const fallbackImageUrl = '/images/default-image.png';
     let currentShareUrl = '';
     let currentShareType = 'member';
     const kakaoReady = (() => {
@@ -432,21 +433,29 @@
         return normalizedBase + normalizedPath;
     };
 
+    const isCloudFrontUrl = (value) => /^https?:\/\/[^/]*cloudfront\.net\//i.test(value || '');
+
+    const toSmallVariantUrl = (value) => {
+        if (!value) return '';
+        const absoluteUrl = toAbsoluteUrl(value);
+        if (!isCloudFrontUrl(absoluteUrl)) {
+            return '';
+        }
+        if (absoluteUrl.includes('/small/')) {
+            return absoluteUrl;
+        }
+        if (absoluteUrl.includes('/medium/')) {
+            return absoluteUrl.replace('/medium/', '/small/');
+        }
+        return '';
+    };
+
     const resolveShareImageUrl = () => {
-        if (shareImageFromData) {
-            return toAbsoluteUrl(shareImageFromData);
+        const shareImageSmallUrl = toSmallVariantUrl(shareImageFromData);
+        if (shareImageSmallUrl) {
+            return shareImageSmallUrl;
         }
-
-        const mediaImg = document.querySelector('.media-panel img.detail-image');
-        if (mediaImg?.getAttribute('src')) {
-            return toAbsoluteUrl(mediaImg.getAttribute('src'));
-        }
-
-        const mediaVideo = document.querySelector('.media-panel video.detail-image');
-        if (mediaVideo?.getAttribute('poster')) {
-            return toAbsoluteUrl(mediaVideo.getAttribute('poster'));
-        }
-        return toAbsoluteUrl('/icon-512.png');
+        return toAbsoluteUrl(fallbackImageUrl);
     };
 
     const updateGuestOptionVisibility = () => {
@@ -528,11 +537,12 @@
             }
 
             const generatedUrl = isGuest ? data.guestUrl : data.memberUrl;
-            shareUrlOutput.value = generatedUrl || '';
-            currentShareUrl = generatedUrl || '';
+            const absoluteShareUrl = toAbsoluteUrl(generatedUrl || '');
+            shareUrlOutput.value = absoluteShareUrl || '';
+            currentShareUrl = absoluteShareUrl || '';
             currentShareType = isGuest ? 'guest' : 'member';
-            copyShareUrlBtn.disabled = !generatedUrl;
-            kakaoShareBtn.disabled = !generatedUrl || !kakaoReady;
+            copyShareUrlBtn.disabled = !absoluteShareUrl;
+            kakaoShareBtn.disabled = !absoluteShareUrl || !kakaoReady;
             shareFeedback.textContent = isGuest
                     ? '게스트 공유 링크가 생성되었습니다.'
                     : '회원 공유 링크가 준비되었습니다.';
@@ -568,12 +578,17 @@
             return;
         }
 
+        const absoluteShareUrl = toAbsoluteUrl(currentShareUrl);
+        if (!absoluteShareUrl) {
+            shareFeedback.textContent = '유효한 공유 링크가 없습니다. 링크를 다시 생성해 주세요.';
+            return;
+        }
+
         const resolvedTitle = shareTitle || 'MemoryBox 공유 사진';
         const description = currentShareType === 'guest'
                 ? '공유된 사진/영상을 확인해보세요.'
                 : 'MemoryBox에서 사진/영상을 확인해보세요.';
         const shareImageUrl = resolveShareImageUrl();
-        const absoluteShareUrl = toAbsoluteUrl(currentShareUrl);
 
         try {
             window.Kakao.Share.sendDefault({
