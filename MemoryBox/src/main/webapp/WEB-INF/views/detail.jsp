@@ -438,7 +438,7 @@
         }
 
         try {
-            const response = await fetch(`/share/media/${mediaId}`, {
+            const response = await fetch('/share/media/' + mediaId, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
