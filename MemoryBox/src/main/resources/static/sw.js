@@ -1,4 +1,6 @@
 self.addEventListener('push', function (event) {
+  console.log('[SW] push event received', event);
+
   var payload = {
     title: 'MemoryBox',
     body: '새 알림이 도착했습니다.',
@@ -13,11 +15,15 @@ self.addEventListener('push', function (event) {
         body: data.body || payload.body,
         url: data.url || payload.url
       };
+      console.log('[SW] push payload parsed', payload);
+    } else {
+      console.log('[SW] push payload missing, using default payload');
     }
   } catch (e) {
-    // payload 파싱 실패 시 기본값 사용
+    console.warn('[SW] push payload parse failed, using default payload', e);
   }
 
+  console.log('[SW] showNotification about to be called', payload);
   event.waitUntil(
     self.registration.showNotification(payload.title, {
       body: payload.body,
