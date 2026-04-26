@@ -6,6 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>사진 1장 업로드 | MemoryBox</title>
+    <%@ include file="/WEB-INF/views/common/head-icons.jspf" %>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/common.css">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/upload.css">
 </head>

@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>업로드 (준비중)</title>
+    <%@ include file="/WEB-INF/views/common/head-icons.jspf" %>
     <link rel="stylesheet" href="/css/common.css">
 </head>
 <body class="page">
