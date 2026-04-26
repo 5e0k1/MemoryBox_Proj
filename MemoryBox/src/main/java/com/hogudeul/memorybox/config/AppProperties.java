@@ -13,6 +13,7 @@ public class AppProperties {
     private final Ffmpeg ffmpeg = new Ffmpeg();
     private final Video video = new Video();
     private final Calendar calendar = new Calendar();
+    private final Share share = new Share();
 
     public Feed getFeed() {
         return feed;
@@ -28,6 +29,10 @@ public class AppProperties {
 
     public Calendar getCalendar() {
         return calendar;
+    }
+
+    public Share getShare() {
+        return share;
     }
 
     public static class Feed {
@@ -87,6 +92,18 @@ public class AppProperties {
         }
     }
 
+
+    public static class Share {
+        private String baseUrl = "http://localhost:8080";
+
+        public String getBaseUrl() {
+            return baseUrl;
+        }
+
+        public void setBaseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+        }
+    }
     public static class CalendarSource {
         private String name;
         private String url;

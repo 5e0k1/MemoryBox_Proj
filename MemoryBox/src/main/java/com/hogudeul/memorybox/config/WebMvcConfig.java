@@ -36,6 +36,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/icon-512.png",
                         "/apple-touch-icon.png",
                         "/files/**",
+                        "/share/**",
                         "/error");
     }
 
