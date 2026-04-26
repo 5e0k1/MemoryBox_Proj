@@ -3,11 +3,14 @@
   const testBtn = document.getElementById('sendWebPushTestBtn');
   const statusBox = document.getElementById('webPushStatusMsg');
 
-  if (!toggle || !statusBox) {
+  if (!toggle) {
     return;
   }
 
   function setStatus(msg, isError) {
+    if (!statusBox) {
+      return;
+    }
     statusBox.textContent = msg;
     statusBox.classList.toggle('is-error', !!isError);
     statusBox.classList.toggle('is-success', !isError);

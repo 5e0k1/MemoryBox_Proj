@@ -57,18 +57,24 @@
 
     <c:if test="${mode eq 'mypage'}">
         <section class="mypage-panel">
-            <p><strong>${loginUser.displayName}</strong> (${loginUser.loginId})</p>
+            <div class="mypage-user-info">
+                <strong>${loginUser.displayName}</strong>
+                <span>${loginUser.loginId}</span>
+            </div>
             <div class="mypage-actions">
                 <button class="btn btn-secondary" type="button" id="openPasswordModalBtn">비밀번호 변경</button>
-                <a class="btn" href="/kakao/connect">카카오 알림 연동하기</a>
                 <label class="push-toggle" for="webPushToggle">
                     <span>웹 푸시 알림</span>
                     <input type="checkbox" id="webPushToggle" class="push-toggle-input">
                     <span class="push-toggle-slider" aria-hidden="true"></span>
                 </label>
-                <button class="btn btn-secondary" type="button" id="sendWebPushTestBtn">웹 푸시 테스트</button>
+                <c:if test="${loginUser.role eq 'ADMIN'}">
+                    <button class="btn btn-secondary" type="button" id="sendWebPushTestBtn">웹 푸시 테스트</button>
+                </c:if>
             </div>
-            <p class="webpush-status-msg" id="webPushStatusMsg" aria-live="polite"></p>
+            <c:if test="${loginUser.role eq 'ADMIN'}">
+                <p class="webpush-status-msg" id="webPushStatusMsg" aria-live="polite"></p>
+            </c:if>
         </section>
 
         <section class="calendar-card" id="sharedCalendarCard" data-calendar-state="${calendarState}" data-calendar-year="${calendarYear}" data-calendar-month="${calendarMonth}">

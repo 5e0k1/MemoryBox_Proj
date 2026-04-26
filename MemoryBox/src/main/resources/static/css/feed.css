@@ -793,8 +793,20 @@ body.modal-open {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
+.mypage-user-info {
+    display: grid;
+    gap: 2px;
+    color: #0f172a;
+}
+
+.mypage-user-info span {
+    font-size: 0.82rem;
+    color: #64748b;
+}
 
 .mypage-actions {
     display: flex;
