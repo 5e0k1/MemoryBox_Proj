@@ -6,7 +6,7 @@ import biweekly.component.VEvent;
 import biweekly.property.DateEnd;
 import biweekly.property.DateStart;
 import biweekly.property.Summary;
-import com.hogudeul.memorybox.config.CalendarProperties;
+import com.hogudeul.memorybox.config.AppProperties;
 import com.hogudeul.memorybox.dto.calendar.CalendarDayDto;
 import com.hogudeul.memorybox.dto.calendar.CalendarEventDto;
 import com.hogudeul.memorybox.dto.calendar.CalendarMonthDto;
@@ -47,14 +47,14 @@ public class CalendarViewService {
     private static final Duration CACHE_TTL = Duration.ofMinutes(10);
     private static final ZoneId CALENDAR_ZONE = ZoneId.of("Asia/Seoul");
 
-    private final CalendarProperties calendarProperties;
+    private final AppProperties appProperties;
     private final HttpClient httpClient;
     private final Clock clock;
 
     private volatile CacheEntry cacheEntry;
 
-    public CalendarViewService(CalendarProperties calendarProperties) {
-        this.calendarProperties = calendarProperties;
+    public CalendarViewService(AppProperties appProperties) {
+        this.appProperties = appProperties;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
                 .followRedirects(HttpClient.Redirect.NORMAL)
@@ -63,10 +63,11 @@ public class CalendarViewService {
     }
 
     public CalendarLoadResult loadCalendarMonth(YearMonth targetMonth) {
+        AppProperties.Calendar calendarProperties = appProperties.getCalendar();
         if (!calendarProperties.isEnabled()) {
             return CalendarLoadResult.disabled();
         }
-        List<CalendarProperties.CalendarSource> validSources = calendarProperties.getSources().stream()
+        List<AppProperties.CalendarSource> validSources = calendarProperties.getSources().stream()
                 .filter(source -> StringUtils.hasText(source.getUrl()))
                 .collect(Collectors.toList());
         if (validSources.isEmpty()) {
@@ -83,7 +84,7 @@ public class CalendarViewService {
         }
     }
 
-    private List<RawCalendarEvent> getCachedOrFetch(List<CalendarProperties.CalendarSource> sources) {
+    private List<RawCalendarEvent> getCachedOrFetch(List<AppProperties.CalendarSource> sources) {
         CacheEntry existing = cacheEntry;
         Instant now = clock.instant();
         if (existing != null && now.isBefore(existing.cachedAt.plus(CACHE_TTL))) {
@@ -102,9 +103,9 @@ public class CalendarViewService {
         }
     }
 
-    private List<RawCalendarEvent> fetchAllSources(List<CalendarProperties.CalendarSource> sources) {
+    private List<RawCalendarEvent> fetchAllSources(List<AppProperties.CalendarSource> sources) {
         List<RawCalendarEvent> merged = new ArrayList<>();
-        for (CalendarProperties.CalendarSource source : sources) {
+        for (AppProperties.CalendarSource source : sources) {
             try {
                 merged.addAll(fetchSourceEvents(source));
             } catch (Exception e) {
@@ -115,7 +116,7 @@ public class CalendarViewService {
         return dedupeAndSort(merged);
     }
 
-    private List<RawCalendarEvent> fetchSourceEvents(CalendarProperties.CalendarSource source) throws IOException, InterruptedException {
+    private List<RawCalendarEvent> fetchSourceEvents(AppProperties.CalendarSource source) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(source.getUrl()))
                 .timeout(Duration.ofSeconds(8))
@@ -143,7 +144,7 @@ public class CalendarViewService {
         return events;
     }
 
-    private RawCalendarEvent parseEvent(CalendarProperties.CalendarSource source, VEvent event) {
+    private RawCalendarEvent parseEvent(AppProperties.CalendarSource source, VEvent event) {
         Summary summary = event.getSummary();
         DateStart dateStart = event.getDateStart();
         if (dateStart == null || dateStart.getValue() == null) {

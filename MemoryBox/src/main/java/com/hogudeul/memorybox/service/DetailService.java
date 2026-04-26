@@ -7,6 +7,7 @@ import com.hogudeul.memorybox.mapper.UploadMapper;
 import com.hogudeul.memorybox.model.CommentRow;
 import com.hogudeul.memorybox.model.MediaDetailRow;
 import com.hogudeul.memorybox.model.Tag;
+import com.hogudeul.memorybox.storage.StorageUrlResolver;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,7 +29,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+import com.hogudeul.memorybox.config.StorageProperties;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,17 +46,20 @@ public class DetailService {
     private final TimeDisplayService timeDisplayService;
     private final NotificationService notificationService;
     private final UploadMapper uploadMapper;
+    private final StorageUrlResolver storageUrlResolver;
 
     public DetailService(DetailMapper detailMapper,
                          TimeDisplayService timeDisplayService,
                          NotificationService notificationService,
                          UploadMapper uploadMapper,
-                         @Value("${app.storage.local-root:D:/memorybox/upload/}") String storageRoot) {
+                         StorageProperties storageProperties,
+                         StorageUrlResolver storageUrlResolver) {
         this.detailMapper = detailMapper;
         this.timeDisplayService = timeDisplayService;
         this.notificationService = notificationService;
         this.uploadMapper = uploadMapper;
-        this.storageRoot = Paths.get(storageRoot).toAbsolutePath().normalize();
+        this.storageRoot = Paths.get(storageProperties.getLocalRoot()).toAbsolutePath().normalize();
+        this.storageUrlResolver = storageUrlResolver;
     }
 
     public MediaDetailView getMediaDetail(Long mediaId, Long userId) {
@@ -87,7 +91,7 @@ public class DetailService {
                 isVideo ? toPublicFileUrl(row.getOriginalStorageKey()) : "",
                 isVideo ? toPublicFileUrl(row.getThumbStorageKey()) : "",
                 "",
-                "/feed/" + mediaId + "/download",
+                storageUrlResolver.resolveDownloadUrl(mediaId, row.getOriginalStorageKey()),
                 parseTags(row.getTagsCsv()),
                 safeInt(row.getLikeCount()),
                 safeInt(row.getCommentCount()),
@@ -446,10 +450,7 @@ public class DetailService {
     }
 
     private String toPublicFileUrl(String storageKey) {
-        if (isBlank(storageKey)) {
-            return "";
-        }
-        return "/files/" + storageKey.replace('\\', '/');
+        return storageUrlResolver.resolvePublicUrl(storageKey);
     }
 
     private int safeInt(Integer value) {

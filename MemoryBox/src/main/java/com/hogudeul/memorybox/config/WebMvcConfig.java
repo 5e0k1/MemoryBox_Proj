@@ -1,7 +1,6 @@
 package com.hogudeul.memorybox.config;
 
 import com.hogudeul.memorybox.interceptor.LoginCheckInterceptor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -14,9 +13,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private final String localStorageRoot;
 
     public WebMvcConfig(LoginCheckInterceptor loginCheckInterceptor,
-                        @Value("${app.storage.local-root:D:/memorybox/upload/}") String localStorageRoot) {
+                        StorageProperties storageProperties) {
         this.loginCheckInterceptor = loginCheckInterceptor;
-        this.localStorageRoot = localStorageRoot;
+        this.localStorageRoot = storageProperties.getLocalRoot();
     }
 
     @Override
