@@ -13,7 +13,15 @@
     <link rel="stylesheet" href="/css/upload.css">
 </head>
 <body class="page page-detail">
-<main class="detail-layout" id="detailLayout" data-media-id="${currentMediaId}">
+<c:set var="shareTitleValue" value="${not empty detail ? detail.title : ''}" />
+<c:set var="shareImageValue" value="${not empty detail ? (detail.mediaType eq 'VIDEO' ? detail.videoThumbnailUrl : detail.displayImageUrl) : ''}" />
+<main class="detail-layout"
+      id="detailLayout"
+      data-media-id="${currentMediaId}"
+      data-share-title="${fn:escapeXml(shareTitleValue)}"
+      data-share-image-url="${fn:escapeXml(shareImageValue)}"
+      data-share-media-type="${not empty detail ? detail.mediaType : ''}"
+      data-share-base-url="${fn:escapeXml(shareBaseUrl)}">
     <header class="detail-header">
         <a href="/feed" class="back-link" aria-label="피드로 돌아가기">← 피드</a>
         <div class="login-chip">${loginUser.displayName}</div>
@@ -278,12 +286,16 @@
             <div class="share-action-row">
                 <button type="submit" class="btn btn-primary">링크 생성</button>
                 <button type="button" class="btn btn-secondary" id="copyShareUrlBtn" disabled>링크 복사</button>
+                <button type="button" class="kakao-share-btn" id="kakaoShareBtn" disabled aria-label="카카오톡 공유">
+                    <img src="/kakaotalk_sharing_btn_medium.png" alt="카카오톡 공유하기">
+                </button>
             </div>
             <input type="text" id="shareUrlOutput" class="share-url-output" readonly placeholder="생성된 공유 링크가 여기에 표시됩니다.">
             <p id="shareFeedback" class="share-feedback" aria-live="polite"></p>
         </form>
     </section>
 </div>
+<script src="https://developers.kakao.com/sdk/js/kakao.min.js"></script>
 <script>
     document.querySelectorAll('.reply-toggle-btn').forEach((button) => {
         button.addEventListener('click', () => {
@@ -378,13 +390,69 @@
     const allowDownloadInput = document.getElementById('allowDownload');
     const shareUrlOutput = document.getElementById('shareUrlOutput');
     const copyShareUrlBtn = document.getElementById('copyShareUrlBtn');
+    const kakaoShareBtn = document.getElementById('kakaoShareBtn');
     const shareFeedback = document.getElementById('shareFeedback');
     const shareMediaId = document.getElementById('shareMediaId');
     const detailLayout = document.getElementById('detailLayout');
+    const kakaoJavascriptKey = '${kakaoJavascriptKey}';
+    const shareBaseUrl = (detailLayout?.dataset?.shareBaseUrl || '').trim();
+    const shareTitle = (detailLayout?.dataset?.shareTitle || '').trim();
+    const shareImageFromData = (detailLayout?.dataset?.shareImageUrl || '').trim();
+    let currentShareUrl = '';
+    let currentShareType = 'member';
+    const kakaoReady = (() => {
+        if (!window.Kakao) {
+            console.error('[share-kakao] Kakao SDK not loaded.');
+            return false;
+        }
+        if (!kakaoJavascriptKey) {
+            return false;
+        }
+        try {
+            if (!window.Kakao.isInitialized()) {
+                window.Kakao.init(kakaoJavascriptKey);
+            }
+            return true;
+        } catch (error) {
+            console.error('[share-kakao] Kakao.init failed', error);
+            return false;
+        }
+    })();
+
+    const toAbsoluteUrl = (value) => {
+        if (!value) return '';
+        if (/^https?:\/\//i.test(value)) {
+            return value;
+        }
+        if (value.startsWith('//')) {
+            return window.location.protocol + value;
+        }
+        const normalizedBase = (shareBaseUrl || window.location.origin).replace(/\/$/, '');
+        const normalizedPath = value.startsWith('/') ? value : '/' + value;
+        return normalizedBase + normalizedPath;
+    };
+
+    const resolveShareImageUrl = () => {
+        if (shareImageFromData) {
+            return toAbsoluteUrl(shareImageFromData);
+        }
+
+        const mediaImg = document.querySelector('.media-panel img.detail-image');
+        if (mediaImg?.getAttribute('src')) {
+            return toAbsoluteUrl(mediaImg.getAttribute('src'));
+        }
+
+        const mediaVideo = document.querySelector('.media-panel video.detail-image');
+        if (mediaVideo?.getAttribute('poster')) {
+            return toAbsoluteUrl(mediaVideo.getAttribute('poster'));
+        }
+        return toAbsoluteUrl('/icon-512.png');
+    };
 
     const updateGuestOptionVisibility = () => {
         const selected = shareForm?.querySelector('input[name="shareType"]:checked');
         const isGuest = selected?.value === 'guest';
+        currentShareType = isGuest ? 'guest' : 'member';
         if (guestOptionWrap) {
             guestOptionWrap.hidden = !isGuest;
         }
@@ -398,6 +466,10 @@
         if (!shareModal) return;
         shareModal.hidden = false;
         updateGuestOptionVisibility();
+        if (!kakaoJavascriptKey) {
+            kakaoShareBtn.disabled = true;
+            shareFeedback.textContent = '카카오 공유 설정이 필요합니다.';
+        }
     };
 
     const closeShareModal = () => {
@@ -416,7 +488,9 @@
         event.preventDefault();
         shareFeedback.textContent = '';
         copyShareUrlBtn.disabled = true;
+        kakaoShareBtn.disabled = true;
         shareUrlOutput.value = '';
+        currentShareUrl = '';
 
         const selected = shareForm.querySelector('input[name="shareType"]:checked');
         const isGuest = selected?.value === 'guest';
@@ -455,7 +529,10 @@
 
             const generatedUrl = isGuest ? data.guestUrl : data.memberUrl;
             shareUrlOutput.value = generatedUrl || '';
+            currentShareUrl = generatedUrl || '';
+            currentShareType = isGuest ? 'guest' : 'member';
             copyShareUrlBtn.disabled = !generatedUrl;
+            kakaoShareBtn.disabled = !generatedUrl || !kakaoReady;
             shareFeedback.textContent = isGuest
                     ? '게스트 공유 링크가 생성되었습니다.'
                     : '회원 공유 링크가 준비되었습니다.';
@@ -472,6 +549,57 @@
             shareFeedback.textContent = '링크가 복사되었습니다.';
         } catch (error) {
             shareFeedback.textContent = '복사에 실패했습니다. 링크를 직접 복사해 주세요.';
+        }
+    });
+
+    kakaoShareBtn?.addEventListener('click', () => {
+        if (!currentShareUrl) {
+            shareFeedback.textContent = '먼저 공유 링크를 생성해 주세요.';
+            return;
+        }
+        if (!window.Kakao) {
+            console.error('[share-kakao] Kakao SDK not loaded.');
+            shareFeedback.textContent = '카카오 SDK를 불러오지 못했습니다.';
+            return;
+        }
+        if (!kakaoJavascriptKey || !kakaoReady) {
+            console.error('[share-kakao] javascript key missing or Kakao not initialized.');
+            shareFeedback.textContent = '카카오 공유 설정이 필요합니다.';
+            return;
+        }
+
+        const resolvedTitle = shareTitle || 'MemoryBox 공유 사진';
+        const description = currentShareType === 'guest'
+                ? '공유된 사진/영상을 확인해보세요.'
+                : 'MemoryBox에서 사진/영상을 확인해보세요.';
+        const shareImageUrl = resolveShareImageUrl();
+        const absoluteShareUrl = toAbsoluteUrl(currentShareUrl);
+
+        try {
+            window.Kakao.Share.sendDefault({
+                objectType: 'feed',
+                content: {
+                    title: resolvedTitle,
+                    description: description,
+                    imageUrl: shareImageUrl,
+                    link: {
+                        mobileWebUrl: absoluteShareUrl,
+                        webUrl: absoluteShareUrl
+                    }
+                },
+                buttons: [
+                    {
+                        title: '보러가기',
+                        link: {
+                            mobileWebUrl: absoluteShareUrl,
+                            webUrl: absoluteShareUrl
+                        }
+                    }
+                ]
+            });
+        } catch (error) {
+            console.error('[share-kakao] sendDefault failed', error);
+            shareFeedback.textContent = '카카오 공유 중 오류가 발생했습니다.';
         }
     });
 

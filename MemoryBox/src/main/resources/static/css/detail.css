@@ -426,7 +426,7 @@
 
 .share-action-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 8px;
 }
 
@@ -436,6 +436,32 @@
     color: #94a3b8;
     cursor: not-allowed;
     opacity: 1;
+}
+
+.kakao-share-btn {
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    background: #ffffff;
+    min-height: 44px;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+}
+
+.kakao-share-btn img {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+}
+
+.kakao-share-btn[disabled] {
+    cursor: not-allowed;
+    background: #f3f4f6;
+}
+
+.kakao-share-btn[disabled] img {
+    opacity: 0.45;
+    filter: grayscale(100%);
 }
 
 .share-url-output {
