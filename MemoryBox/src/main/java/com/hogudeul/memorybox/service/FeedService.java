@@ -3,6 +3,7 @@ package com.hogudeul.memorybox.service;
 import com.hogudeul.memorybox.dto.FeedItemView;
 import com.hogudeul.memorybox.mapper.FeedMapper;
 import com.hogudeul.memorybox.model.FeedRow;
+import com.hogudeul.memorybox.storage.StorageUrlResolver;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -19,10 +20,14 @@ public class FeedService {
 
     private final FeedMapper feedMapper;
     private final TimeDisplayService timeDisplayService;
+    private final StorageUrlResolver storageUrlResolver;
 
-    public FeedService(FeedMapper feedMapper, TimeDisplayService timeDisplayService) {
+    public FeedService(FeedMapper feedMapper,
+                       TimeDisplayService timeDisplayService,
+                       StorageUrlResolver storageUrlResolver) {
         this.feedMapper = feedMapper;
         this.timeDisplayService = timeDisplayService;
+        this.storageUrlResolver = storageUrlResolver;
     }
 
     public List<FeedItemView> getImageFeedItems() {
@@ -176,11 +181,7 @@ public class FeedService {
     }
 
     private String toPublicFileUrl(String storageKey) {
-        if (storageKey == null || storageKey.isBlank()) {
-            return "";
-        }
-        String normalized = storageKey.replace('\\', '/');
-        return "/files/" + normalized;
+        return storageUrlResolver.resolvePublicUrl(storageKey);
     }
 
     private String[] parseTags(String tagsCsv) {
