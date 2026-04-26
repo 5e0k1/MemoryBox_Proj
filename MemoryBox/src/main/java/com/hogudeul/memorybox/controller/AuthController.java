@@ -32,9 +32,12 @@ public class AuthController {
                             Model model,
                             HttpSession session,
                             HttpServletRequest request,
-                            HttpServletResponse response) {
+                            HttpServletResponse response,
+                            @RequestParam(required = false) String redirect) {
+        String redirectTarget = resolveRedirectTarget(redirect);
+
         if (session != null && session.getAttribute("loginUser") != null) {
-            return "redirect:/feed";
+            return "redirect:" + redirectTarget;
         }
 
         LoginUserSession autoLoginUser = authService.tryAutoLogin(request, response);
@@ -43,12 +46,13 @@ public class AuthController {
             loginSession.setAttribute("loginUser", autoLoginUser);
             loginSession.setMaxInactiveInterval(60 * 30);
             authService.markSessionAccessUpdatedNow(loginSession);
-            return "redirect:/feed";
+            return "redirect:" + redirectTarget;
         }
 
         if ("true".equals(request.getParameter("expired"))) {
             model.addAttribute("globalError", "세션이 만료되었거나 로그인이 필요합니다.");
         }
+        model.addAttribute("redirect", redirectTarget);
         return "login";
     }
 
@@ -57,9 +61,13 @@ public class AuthController {
                         BindingResult bindingResult,
                         HttpServletRequest request,
                         HttpServletResponse response,
-                        Model model) {
+                        Model model,
+                        @RequestParam(required = false) String redirect) {
+        String redirectTarget = resolveRedirectTarget(redirect);
+
         if (bindingResult.hasErrors()) {
             model.addAttribute("globalError", "아이디와 비밀번호를 모두 입력해 주세요.");
+            model.addAttribute("redirect", redirectTarget);
             return "login";
         }
 
@@ -72,6 +80,7 @@ public class AuthController {
 
         if (!result.isSuccess()) {
             model.addAttribute("globalError", result.getMessage());
+            model.addAttribute("redirect", redirectTarget);
             return "login";
         }
 
@@ -85,7 +94,7 @@ public class AuthController {
         session.setMaxInactiveInterval(60 * 30);
         authService.markSessionAccessUpdatedNow(session);
         authService.handleLoginSuccess(result.getUserAccount().getUserId(), loginForm.isRememberMe(), response);
-        return "redirect:/feed";
+        return "redirect:" + redirectTarget;
     }
 
     @PostMapping("/logout")
@@ -127,5 +136,15 @@ public class AuthController {
             return "redirect:/feed?pwdError=" + UriUtils.encode(errorMessage, java.nio.charset.StandardCharsets.UTF_8);
         }
         return "redirect:/feed?pwdChanged=true";
+    }
+
+    private String resolveRedirectTarget(String redirect) {
+        if (redirect == null || redirect.isBlank()) {
+            return "/feed";
+        }
+        if (!redirect.startsWith("/") || redirect.startsWith("//")) {
+            return "/feed";
+        }
+        return redirect;
     }
 }

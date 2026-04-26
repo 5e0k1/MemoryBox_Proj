@@ -784,6 +784,11 @@ body.modal-open {
     height: 4px;
 }
 
+.btn-sm {
+    padding: 6px 10px;
+    font-size: 0.78rem;
+}
+
 .mypage-panel {
     background: #fff;
     border: 1px solid var(--line);
@@ -793,6 +798,105 @@ body.modal-open {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.mypage-user-info {
+    display: grid;
+    gap: 1px;
+    color: #0f172a;
+}
+
+.mypage-user-info strong {
+    font-size: 1rem;
+}
+
+.mypage-user-info span {
+    font-size: 0.78rem;
+    color: #64748b;
+}
+
+.mypage-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.kakao-link-status {
+    display: inline-flex;
+    align-items: center;
+}
+
+.kakao-link-status img {
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+    display: block;
+}
+
+.push-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: #334155;
+}
+
+.push-toggle-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.push-toggle-slider {
+    position: relative;
+    width: 38px;
+    height: 22px;
+    border-radius: 999px;
+    background: #cbd5e1;
+    transition: background 180ms ease;
+}
+
+.push-toggle-slider::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+    transition: transform 180ms ease;
+}
+
+.push-toggle-input:checked + .push-toggle-slider {
+    background: #0ea5e9;
+}
+
+.push-toggle-input:checked + .push-toggle-slider::after {
+    transform: translateX(16px);
+}
+
+.push-toggle-input:disabled + .push-toggle-slider {
+    opacity: 0.6;
+}
+
+.webpush-status-msg {
+    margin: 8px 0 0;
+    font-size: 0.82rem;
+    color: #475569;
+}
+
+.webpush-status-msg.is-error {
+    color: #dc2626;
+}
+
+.webpush-status-msg.is-success {
+    color: #0f766e;
 }
 
 .fab-upload {

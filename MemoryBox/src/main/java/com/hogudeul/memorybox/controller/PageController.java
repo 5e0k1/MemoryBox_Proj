@@ -12,6 +12,7 @@ import com.hogudeul.memorybox.service.DetailService;
 import com.hogudeul.memorybox.service.FeedService;
 import com.hogudeul.memorybox.service.NotificationService;
 import com.hogudeul.memorybox.service.UploadService;
+import com.hogudeul.memorybox.service.UserKakaoLinkService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
@@ -57,6 +58,7 @@ public class PageController {
     private final NotificationService notificationService;
     private final UploadService uploadService;
     private final CalendarViewService calendarViewService;
+    private final UserKakaoLinkService userKakaoLinkService;
     private final ObjectMapper objectMapper;
 
     public PageController(FeedService feedService,
@@ -64,12 +66,14 @@ public class PageController {
                           NotificationService notificationService,
                           UploadService uploadService,
                           CalendarViewService calendarViewService,
+                          UserKakaoLinkService userKakaoLinkService,
                           ObjectMapper objectMapper) {
         this.feedService = feedService;
         this.detailService = detailService;
         this.notificationService = notificationService;
         this.uploadService = uploadService;
         this.calendarViewService = calendarViewService;
+        this.userKakaoLinkService = userKakaoLinkService;
         this.objectMapper = objectMapper;
     }
 
@@ -175,6 +179,7 @@ public class PageController {
         model.addAttribute("calendarPrevMonth", prevMonth.getMonthValue());
         model.addAttribute("calendarNextYear", nextMonth.getYear());
         model.addAttribute("calendarNextMonth", nextMonth.getMonthValue());
+        model.addAttribute("kakaoLinked", userKakaoLinkService.isLinked(userId));
 
         if (calendarLoadResult.getStatus() == CalendarViewService.CalendarLoadResult.Status.READY) {
             CalendarMonthDto monthDto = calendarLoadResult.getMonthDto();

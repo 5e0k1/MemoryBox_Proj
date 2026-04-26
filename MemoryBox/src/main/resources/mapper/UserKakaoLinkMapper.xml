@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hogudeul.memorybox.mapper.UserKakaoLinkMapper">
+
+    <select id="countByUserId" resultType="int">
+        SELECT COUNT(*)
+        FROM USER_KAKAO_LINK
+        WHERE user_id = #{userId}
+    </select>
+
+    <insert id="insert" parameterType="com.hogudeul.memorybox.model.UserKakaoLink">
+        INSERT INTO USER_KAKAO_LINK (
+            user_id,
+            kakao_user_id,
+            access_token,
+            refresh_token,
+            access_token_expires_at,
+            refresh_token_expires_at,
+            use_kakao_notify,
+            linked_at,
+            updated_at
+        ) VALUES (
+            #{userId},
+            #{kakaoUserId},
+            #{accessToken},
+            #{refreshToken},
+            #{accessTokenExpiresAt},
+            #{refreshTokenExpiresAt},
+            #{useKakaoNotify},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+    <update id="update" parameterType="com.hogudeul.memorybox.model.UserKakaoLink">
+        UPDATE USER_KAKAO_LINK
+        SET kakao_user_id = #{kakaoUserId},
+            access_token = #{accessToken},
+            refresh_token = #{refreshToken},
+            access_token_expires_at = #{accessTokenExpiresAt},
+            refresh_token_expires_at = #{refreshTokenExpiresAt},
+            use_kakao_notify = #{useKakaoNotify},
+            updated_at = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+</mapper>

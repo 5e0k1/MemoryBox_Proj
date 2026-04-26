@@ -5,6 +5,8 @@ import com.hogudeul.memorybox.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -31,7 +33,13 @@ public class LoginCheckInterceptor implements HandlerInterceptor {
                 if (session != null) {
                     session.invalidate();
                 }
-                response.sendRedirect("/login?expired=true");
+                String originalUrl = request.getRequestURI();
+                String query = request.getQueryString();
+                if (query != null && !query.isBlank()) {
+                    originalUrl += "?" + query;
+                }
+                String encodedRedirect = URLEncoder.encode(originalUrl, StandardCharsets.UTF_8);
+                response.sendRedirect("/login?expired=true&redirect=" + encodedRedirect);
                 return false;
             }
 

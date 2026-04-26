@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hogudeul.memorybox.mapper.WebPushSubscriptionMapper">
+
+    <resultMap id="WebPushSubscriptionMap" type="com.hogudeul.memorybox.model.WebPushSubscription">
+        <id column="subscription_id" property="subscriptionId"/>
+        <result column="user_id" property="userId"/>
+        <result column="endpoint" property="endpoint"/>
+        <result column="p256dh" property="p256dh"/>
+        <result column="auth" property="auth"/>
+        <result column="active_yn" property="activeYn"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.hogudeul.memorybox.model.WebPushSubscription" useGeneratedKeys="true" keyProperty="subscriptionId">
+        INSERT INTO WEB_PUSH_SUBSCRIPTION (
+            user_id,
+            endpoint,
+            p256dh,
+            auth,
+            active_yn,
+            created_at,
+            updated_at
+        ) VALUES (
+            #{userId},
+            #{endpoint},
+            #{p256dh},
+            #{auth},
+            #{activeYn},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+    <update id="update" parameterType="com.hogudeul.memorybox.model.WebPushSubscription">
+        UPDATE WEB_PUSH_SUBSCRIPTION
+        SET user_id = #{userId},
+            p256dh = #{p256dh},
+            auth = #{auth},
+            active_yn = #{activeYn},
+            updated_at = NOW()
+        WHERE endpoint = #{endpoint}
+    </update>
+
+
+    <update id="deactivateByEndpointAndUserId">
+        UPDATE WEB_PUSH_SUBSCRIPTION
+        SET active_yn = 'N',
+            updated_at = NOW()
+        WHERE endpoint = #{endpoint}
+          AND user_id = #{userId}
+    </update>
+
+    <select id="findByEndpoint" resultMap="WebPushSubscriptionMap">
+        SELECT subscription_id, user_id, endpoint, p256dh, auth, active_yn, created_at, updated_at
+        FROM WEB_PUSH_SUBSCRIPTION
+        WHERE endpoint = #{endpoint}
+        LIMIT 1
+    </select>
+
+    <select id="findByUserId" resultMap="WebPushSubscriptionMap">
+        SELECT subscription_id, user_id, endpoint, p256dh, auth, active_yn, created_at, updated_at
+        FROM WEB_PUSH_SUBSCRIPTION
+        WHERE user_id = #{userId}
+          AND active_yn = 'Y'
+        ORDER BY updated_at DESC
+    </select>
+
+</mapper>
