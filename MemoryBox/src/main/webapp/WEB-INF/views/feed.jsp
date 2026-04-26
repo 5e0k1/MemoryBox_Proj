@@ -61,7 +61,10 @@
             <div class="mypage-actions">
                 <button class="btn btn-secondary" type="button" id="openPasswordModalBtn">비밀번호 변경</button>
                 <a class="btn" href="/kakao/connect">카카오 알림 연동하기</a>
+                <button class="btn" type="button" id="enableWebPushBtn">웹 푸시 알림 켜기</button>
+                <button class="btn btn-secondary" type="button" id="sendWebPushTestBtn">웹 푸시 테스트</button>
             </div>
+            <p class="webpush-status-msg" id="webPushStatusMsg" aria-live="polite"></p>
         </section>
 
         <section class="calendar-card" id="sharedCalendarCard" data-calendar-state="${calendarState}" data-calendar-year="${calendarYear}" data-calendar-month="${calendarMonth}">
@@ -321,5 +324,6 @@
     </section>
 </div>
 <script src="/js/feed.js"></script>
+<script src="/js/push.js"></script>
 </body>
 </html>

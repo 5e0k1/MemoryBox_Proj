@@ -803,6 +803,21 @@ body.modal-open {
     flex-wrap: wrap;
 }
 
+
+.webpush-status-msg {
+    margin: 8px 0 0;
+    font-size: 0.82rem;
+    color: #475569;
+}
+
+.webpush-status-msg.is-error {
+    color: #dc2626;
+}
+
+.webpush-status-msg.is-success {
+    color: #0f766e;
+}
+
 .fab-upload {
     bottom: 84px;
 }
