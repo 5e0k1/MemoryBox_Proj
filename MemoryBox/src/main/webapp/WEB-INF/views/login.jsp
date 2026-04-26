@@ -23,6 +23,7 @@
         </c:if>
 
         <form class="login-form" action="/login" method="post">
+            <input type="hidden" name="redirect" value="<c:out value='${redirect}'/>">
             <label for="loginId">아이디</label>
             <input id="loginId" name="loginId" type="text" value="<c:out value='${loginForm.loginId}'/>" placeholder="아이디를 입력하세요" autocomplete="username" required>
 
