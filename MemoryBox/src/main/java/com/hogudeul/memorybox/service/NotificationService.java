@@ -36,15 +36,15 @@ public class NotificationService {
     }
 
     @Transactional
-    public void notifyUpload(Long actorUserId, Long sampleMediaId, int fileCount) {
-        if (actorUserId == null || sampleMediaId == null || fileCount <= 0) {
+    public void notifyUpload(Long actorUserId, Long batchId, int fileCount) {
+        if (actorUserId == null || batchId == null || fileCount <= 0) {
             return;
         }
         String actorName = safeDisplayName(actorUserId);
         String message = actorName + "님이 " + fileCount + "개의 새로운 파일을 업로드했습니다.";
 
         for (Long receiverId : notificationMapper.findActiveUserIdsExcept(actorUserId)) {
-            createNotification(receiverId, actorUserId, "UPLOAD", "MEDIA", sampleMediaId, message);
+            createNotification(receiverId, actorUserId, "UPLOAD", "BATCH", batchId, message);
         }
     }
 
@@ -212,9 +212,9 @@ public class NotificationService {
         notificationMapper.markAsRead(notificationId, userId);
 
         if ("COMMENT".equalsIgnoreCase(row.getTargetType())) {
-            Long mediaId = notificationMapper.findMediaIdByCommentId(row.getTargetId());
-            if (mediaId != null) {
-                return "/feed/" + mediaId + "#comment-" + row.getTargetId();
+            Long batchId = notificationMapper.findMediaIdByCommentId(row.getTargetId());
+            if (batchId != null) {
+                return "/feed/" + batchId + "#comment-" + row.getTargetId();
             }
         }
         if ("REQUEST".equalsIgnoreCase(row.getTargetType())) {
@@ -226,7 +226,7 @@ public class NotificationService {
                 return "/requests/" + requestId;
             }
         }
-        if ("MEDIA".equalsIgnoreCase(row.getTargetType())) {
+        if ("BATCH".equalsIgnoreCase(row.getTargetType())) {
             return "/feed/" + row.getTargetId();
         }
         return "/feed";
@@ -299,11 +299,11 @@ public class NotificationService {
         if (notification == null || notification.getTargetId() == null) {
             return "/mypage";
         }
-        Long mediaId = notificationMapper.findMediaIdByCommentId(notification.getTargetId());
-        if (mediaId == null) {
+        Long batchId = notificationMapper.findMediaIdByCommentId(notification.getTargetId());
+        if (batchId == null) {
             return "/mypage";
         }
-        return "/feed/" + mediaId + "#comment-" + notification.getTargetId();
+        return "/feed/" + batchId + "#comment-" + notification.getTargetId();
     }
 
     private NotificationRow createNotification(Long receiverUserId,

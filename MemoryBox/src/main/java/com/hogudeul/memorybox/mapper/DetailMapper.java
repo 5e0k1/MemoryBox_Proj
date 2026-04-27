@@ -9,28 +9,31 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface DetailMapper {
 
+    MediaDetailRow findDetailByBatchId(@Param("batchId") Long batchId,
+                                       @Param("userId") Long userId);
+
     MediaDetailRow findDetailByMediaId(@Param("mediaId") Long mediaId,
                                        @Param("userId") Long userId);
 
     List<MediaDetailRow> findDetailsByMediaIds(@Param("mediaIds") List<Long> mediaIds,
                                                @Param("userId") Long userId);
 
-    List<CommentRow> findCommentsByMediaId(@Param("mediaId") Long mediaId);
+    List<CommentRow> findCommentsByBatchId(@Param("batchId") Long batchId);
 
     CommentRow findCommentById(@Param("commentId") Long commentId);
 
     Long selectNextCommentId();
 
     int insertComment(@Param("commentId") Long commentId,
-                      @Param("mediaId") Long mediaId,
+                      @Param("batchId") Long batchId,
                       @Param("parentId") Long parentId,
                       @Param("userId") Long userId,
                       @Param("content") String content);
 
-    int insertLike(@Param("mediaId") Long mediaId,
+    int insertLike(@Param("batchId") Long batchId,
                    @Param("userId") Long userId);
 
-    int deleteLike(@Param("mediaId") Long mediaId,
+    int deleteLike(@Param("batchId") Long batchId,
                    @Param("userId") Long userId);
 
     Long selectNextDownloadLogId();
@@ -38,21 +41,20 @@ public interface DetailMapper {
     int insertDownloadLog(@Param("dlId") Long dlId,
                           @Param("userId") Long userId,
                           @Param("mediaId") Long mediaId,
+                          @Param("batchId") Long batchId,
+                          @Param("downloadType") String downloadType,
                           @Param("ipAddr") String ipAddr,
                           @Param("userAgent") String userAgent,
                           @Param("successYn") String successYn,
                           @Param("failReason") String failReason);
 
-    int updateMediaMeta(@Param("mediaId") Long mediaId,
+    int updateBatchMeta(@Param("batchId") Long batchId,
                         @Param("userId") Long userId,
                         @Param("title") String title,
                         @Param("albumId") Long albumId);
 
-    int deleteMediaTags(@Param("mediaId") Long mediaId);
+    int deleteBatchTags(@Param("batchId") Long batchId);
 
-    Long selectNextMediaTagId();
-
-    int insertMediaTag(@Param("mdId") Long mdId,
-                       @Param("mediaId") Long mediaId,
+    int insertBatchTag(@Param("batchId") Long batchId,
                        @Param("tagId") Long tagId);
 }

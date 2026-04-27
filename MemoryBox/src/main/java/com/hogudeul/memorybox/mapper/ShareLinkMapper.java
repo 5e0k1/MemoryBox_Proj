@@ -17,8 +17,8 @@ public interface ShareLinkMapper {
     int revokeShareLink(@Param("shareId") Long shareId,
                         @Param("createdBy") Long createdBy);
 
-    ShareLink findByMediaIdAndCreatedBy(@Param("mediaId") Long mediaId,
+    ShareLink findByBatchIdAndCreatedBy(@Param("batchId") Long batchId,
                                         @Param("createdBy") Long createdBy);
 
-    List<ShareLink> findValidLinksByMediaId(@Param("mediaId") Long mediaId);
+    List<ShareLink> findValidLinksByBatchId(@Param("batchId") Long batchId);
 }

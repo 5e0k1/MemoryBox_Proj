@@ -34,9 +34,9 @@ public class ShareController {
         this.detailService = detailService;
     }
 
-    @PostMapping("/share/media/{mediaId}")
+    @PostMapping("/share/batch/{batchId}")
     @ResponseBody
-    public ResponseEntity<?> createShareLink(@PathVariable Long mediaId,
+    public ResponseEntity<?> createShareLink(@PathVariable Long batchId,
                                              @RequestBody(required = false) ShareLinkCreateRequest request,
                                              HttpSession session) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
@@ -46,7 +46,7 @@ public class ShareController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
         }
 
-        MediaDetailView detail = detailService.getMediaDetail(mediaId, loginUser.getUserId());
+        MediaDetailView detail = detailService.getMediaDetail(batchId, loginUser.getUserId());
         if (detail == null) {
             Map<String, Object> body = new HashMap<>();
             body.put("message", "공유할 미디어를 찾을 수 없습니다.");
@@ -58,13 +58,13 @@ public class ShareController {
         boolean allowDownload = request != null && Boolean.TRUE.equals(request.getAllowDownload());
         Integer expiresMinutes = request != null ? request.getExpiresMinutes() : null;
 
-        String memberUrl = shareLinkService.buildMemberShareUrl(mediaId);
+        String memberUrl = shareLinkService.buildMemberShareUrl(batchId);
         if (!guest) {
             return ResponseEntity.ok(new ShareLinkCreateResponse(memberUrl, null, null));
         }
 
         ShareLink shareLink = shareLinkService.createGuestShareLink(
-                mediaId,
+                batchId,
                 loginUser.getUserId(),
                 allowComments,
                 allowDownload,
@@ -87,7 +87,7 @@ public class ShareController {
             return "shareInvalid";
         }
 
-        MediaDetailView detail = detailService.getMediaDetail(shareLink.getMediaId(), null);
+        MediaDetailView detail = detailService.getMediaDetail(shareLink.getBatchId(), null);
         if (detail == null) {
             model.addAttribute("reason", "공유된 미디어를 찾을 수 없습니다.");
             return "shareInvalid";
@@ -95,7 +95,7 @@ public class ShareController {
 
         boolean showComments = "Y".equalsIgnoreCase(shareLink.getAllowComments());
         boolean allowDownload = "Y".equalsIgnoreCase(shareLink.getAllowDownload());
-        List<CommentView> comments = showComments ? detailService.getComments(shareLink.getMediaId(), null) : List.of();
+        List<CommentView> comments = showComments ? detailService.getComments(shareLink.getBatchId(), null) : List.of();
 
         model.addAttribute("detail", detail);
         model.addAttribute("comments", comments);

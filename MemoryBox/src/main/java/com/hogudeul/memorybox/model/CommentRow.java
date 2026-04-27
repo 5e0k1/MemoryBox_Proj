@@ -6,6 +6,7 @@ public class CommentRow {
 
     private Long commentId;
     private Long mediaId;
+    private Long batchId;
     private Long parentId;
     private Long userId;
     private String content;
@@ -26,6 +27,14 @@ public class CommentRow {
 
     public void setMediaId(Long mediaId) {
         this.mediaId = mediaId;
+    }
+
+    public Long getBatchId() {
+        return batchId;
+    }
+
+    public void setBatchId(Long batchId) {
+        this.batchId = batchId;
     }
 
     public Long getUserId() {

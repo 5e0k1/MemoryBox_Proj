@@ -10,100 +10,72 @@
         <result column="tag_scope" property="tagScope"/>
     </resultMap>
 
+    <select id="selectNextMediaBatchId" resultType="java.lang.Long">
+        SELECT COALESCE(MAX(batch_id), 0) + 1 FROM MEDIA_BATCH
+    </select>
+
     <select id="selectNextMediaItemId" resultType="java.lang.Long">
-        SELECT COALESCE(MAX(media_id), 0) + 1
-        FROM MEDIA_ITEMS
+        SELECT COALESCE(MAX(media_id), 0) + 1 FROM MEDIA_ITEMS
     </select>
 
     <select id="selectNextMediaVariantId" resultType="java.lang.Long">
-        SELECT COALESCE(MAX(variant_id), 0) + 1
-        FROM MEDIA_VARIANT
+        SELECT COALESCE(MAX(variant_id), 0) + 1 FROM MEDIA_VARIANT
     </select>
 
     <select id="selectNextTagId" resultType="java.lang.Long">
-        SELECT COALESCE(MAX(tag_id), 0) + 1
-        FROM TAG
+        SELECT COALESCE(MAX(tag_id), 0) + 1 FROM TAG
     </select>
 
-    <select id="selectNextMediaTagId" resultType="java.lang.Long">
-        SELECT COALESCE(MAX(md_id), 0) + 1
-        FROM MEDIA_TAG
-    </select>
+    <insert id="insertMediaBatch">
+        INSERT INTO MEDIA_BATCH (
+            batch_id, user_id, album_id, title, uploaded_at, taken_at, del_yn
+        ) VALUES (
+            #{batchId}, #{userId}, #{albumId}, #{title}, NOW(), #{takenAt}, 'N'
+        )
+    </insert>
+
+    <update id="updateBatchCoverAndCounts">
+        UPDATE MEDIA_BATCH
+        SET cover_media_id = #{coverMediaId},
+            media_count = #{mediaCount},
+            image_count = #{imageCount},
+            video_count = #{videoCount}
+        WHERE batch_id = #{batchId}
+    </update>
 
     <insert id="insertMediaItem" parameterType="com.hogudeul.memorybox.model.MediaItem">
         INSERT INTO MEDIA_ITEMS (
-            media_id,
-            user_id,
-            album_id,
-            media_type,
-            title,
-            uploaded_at,
-            taken_at,
-            del_yn
+            media_id, batch_id, user_id, album_id, media_type, title, uploaded_at, taken_at, sort_order, del_yn
         ) VALUES (
-            #{mediaId},
-            #{userId},
-            #{albumId},
-            #{mediaType},
-            #{title},
-            #{uploadedAt},
-            #{takenAt},
-            'N'
+            #{mediaId}, #{batchId}, #{userId}, #{albumId}, #{mediaType}, #{title}, #{uploadedAt}, #{takenAt}, #{sortOrder}, 'N'
         )
     </insert>
 
     <insert id="insertMediaVariant" parameterType="com.hogudeul.memorybox.model.MediaVariant">
         INSERT INTO MEDIA_VARIANT (
-            variant_id,
-            media_id,
-            variant_type,
-            storage_key,
-            file_org_name,
-            file_save_name,
-            extension,
-            mime_type,
-            file_size,
-            width,
-            height,
-            duration_sec,
-            created_at
+            variant_id, media_id, variant_type, storage_key, file_org_name, file_save_name, extension, mime_type,
+            file_size, width, height, duration_sec, created_at
         ) VALUES (
-            #{variantId},
-            #{mediaId},
-            #{variantType},
-            #{storageKey},
-            #{fileOrgName},
-            #{fileSaveName},
-            #{extension},
-            #{mimeType},
-            #{fileSize},
-            #{width},
-            #{height},
-            #{durationSec},
-            #{createdAt}
+            #{variantId}, #{mediaId}, #{variantType}, #{storageKey}, #{fileOrgName}, #{fileSaveName}, #{extension}, #{mimeType},
+            #{fileSize}, #{width}, #{height}, #{durationSec}, #{createdAt}
         )
     </insert>
 
     <delete id="deleteMediaVariantByType">
-        DELETE FROM MEDIA_VARIANT
-        WHERE media_id = #{mediaId}
-          AND variant_type = #{variantType}
+        DELETE FROM MEDIA_VARIANT WHERE media_id = #{mediaId} AND variant_type = #{variantType}
     </delete>
 
     <select id="findTagByNormalizedName" resultMap="TagMap">
         SELECT tag_id, user_id, tag_name, normalized_name, tag_scope
         FROM TAG
-        WHERE normalized_name = #{normalizedName}
-          AND del_yn = 'N'
-        LIMIT 1
+        WHERE normalized_name = #{normalizedName} AND del_yn = 'N' LIMIT 1
     </select>
 
     <select id="findActiveTagsByUserId" resultMap="TagMap">
         SELECT tag_id, user_id, tag_name, normalized_name, tag_scope
         FROM TAG
         WHERE del_yn = 'N'
-        ORDER BY CASE WHEN tag_scope = 'P' THEN 0 ELSE 1 END,
-                 tag_name ASC
+        ORDER BY CASE WHEN tag_scope = 'P' THEN 0 ELSE 1 END, tag_name ASC
     </select>
 
     <select id="findActiveTagsByIds" resultMap="TagMap">
@@ -114,42 +86,16 @@
           <foreach collection="tagIds" item="tagId" open="(" separator="," close=")">
               #{tagId}
           </foreach>
-        ORDER BY CASE WHEN tag_scope = 'P' THEN 0 ELSE 1 END,
-                 tag_name ASC
     </select>
 
     <insert id="insertTag" parameterType="com.hogudeul.memorybox.model.Tag">
-        INSERT INTO TAG (
-            tag_id,
-            user_id,
-            tag_name,
-            normalized_name,
-            created_at,
-            tag_scope,
-            del_yn
-        ) VALUES (
-            #{tagId},
-            #{userId},
-            #{tagName},
-            #{normalizedName},
-            NOW(),
-            'N',
-            'N'
-        )
+        INSERT INTO TAG (tag_id, user_id, tag_name, normalized_name, created_at, tag_scope, del_yn)
+        VALUES (#{tagId}, #{userId}, #{tagName}, #{normalizedName}, NOW(), 'N', 'N')
     </insert>
 
-    <insert id="insertMediaTag">
-        INSERT INTO MEDIA_TAG (
-            md_id,
-            media_id,
-            tag_id,
-            created_at
-        ) VALUES (
-            #{mdId},
-            #{mediaId},
-            #{tagId},
-            NOW()
-        )
+    <insert id="insertBatchTag">
+        INSERT IGNORE INTO BATCH_TAG (batch_id, tag_id, created_at)
+        VALUES (#{batchId}, #{tagId}, NOW())
     </insert>
 
 </mapper>

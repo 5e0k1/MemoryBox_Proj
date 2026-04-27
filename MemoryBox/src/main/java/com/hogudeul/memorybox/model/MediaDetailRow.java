@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 public class MediaDetailRow {
 
     private Long mediaId;
+    private Long batchId;
     private Long userId;
     private Long albumId;
     private String title;
@@ -31,6 +32,14 @@ public class MediaDetailRow {
 
     public void setMediaId(Long mediaId) {
         this.mediaId = mediaId;
+    }
+
+    public Long getBatchId() {
+        return batchId;
+    }
+
+    public void setBatchId(Long batchId) {
+        this.batchId = batchId;
     }
 
     public Long getUserId() {
