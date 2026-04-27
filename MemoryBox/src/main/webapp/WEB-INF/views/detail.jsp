@@ -287,7 +287,7 @@
                 <button type="submit" class="btn btn-primary">링크 생성</button>
                 <button type="button" class="btn btn-secondary" id="copyShareUrlBtn" disabled>링크 복사</button>
                 <button type="button" class="kakao-share-btn" id="kakaoShareBtn" disabled aria-label="카카오톡 공유">
-                    <img src="/kakaotalk_sharing_btn_medium.png" alt="카카오톡 공유하기">
+                    <img src="/images/kakaotalk_sharing_btn_medium.png" alt="카카오톡 공유하기">
                 </button>
             </div>
             <input type="text" id="shareUrlOutput" class="share-url-output" readonly placeholder="생성된 공유 링크가 여기에 표시됩니다.">

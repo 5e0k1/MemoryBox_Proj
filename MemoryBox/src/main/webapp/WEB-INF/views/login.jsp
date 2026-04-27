@@ -40,7 +40,7 @@
 
         <div class="kakao-login-wrap">
             <a class="kakao-login-btn" href="/auth/kakao/login" aria-label="카카오로 로그인">
-                <img src="/kakaotalk_sharing_btn_medium.png" alt="" aria-hidden="true">
+                <img src="/images/kakaotalk_sharing_btn_medium.png" alt="" aria-hidden="true">
                 <span>카카오로 로그인</span>
             </a>
         </div>
