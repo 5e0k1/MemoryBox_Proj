@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.nio.charset.StandardCharsets;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -35,10 +36,11 @@ public class KakaoAuthController {
     }
 
     @GetMapping("/auth/kakao/login")
-    public String login() {
+    public String login(@RequestParam(required = false) String state) {
         String authorizeUrl = UriComponentsBuilder.fromHttpUrl(KAKAO_AUTHORIZE_URL)
                 .queryParam("response_type", "code")
                 .queryParam("client_id", kakaoProperties.getClientId())
+                .queryParam("state",state)
                 .queryParam("redirect_uri", resolveLoginRedirectUri())
                 .toUriString();
         return "redirect:" + authorizeUrl;
@@ -47,8 +49,11 @@ public class KakaoAuthController {
     @GetMapping("/auth/kakao/callback")
     public String callback(@RequestParam(required = false) String code,
                            @RequestParam(required = false) String error,
+                           @RequestParam(required = false) String state,
                            HttpServletRequest request,
                            HttpServletResponse response) {
+        boolean rememberMe = state != null && state.contains("rememberMe=true");
+
         if (error != null) {
             return redirectLoginWithError("카카오 로그인에 실패했습니다. 다시 시도해 주세요.");
         }
@@ -73,7 +78,7 @@ public class KakaoAuthController {
         ));
         session.setMaxInactiveInterval(60 * 30);
         authService.markSessionAccessUpdatedNow(session);
-        authService.handleLoginSuccess(user.getUserId(), false, response);
+        authService.handleLoginSuccess(user.getUserId(), rememberMe, response);
         return "redirect:/feed";
     }
 

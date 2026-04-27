@@ -39,10 +39,10 @@
         </form>
 
         <div class="kakao-login-wrap">
-            <a class="kakao-login-btn" href="/auth/kakao/login" aria-label="카카오로 로그인">
-                <img src="/images/kakaotalk_sharing_btn_medium.png" alt="" aria-hidden="true">
+            <button type="button" class="kakao-login-btn" id="kakaoLoginBtn">
+                <img src="/images/kakaotalk_sharing_btn_medium.png" alt="">
                 <span>카카오로 로그인</span>
-            </a>
+            </button>
         </div>
 
         <section class="account-actions">
@@ -50,5 +50,18 @@
         </section>
     </section>
 </main>
+<script>
+    document.getElementById('kakaoLoginBtn').addEventListener('click', () => {
+
+        const rememberMe = document.getElementById("rememberMe").checked;
+
+        let state = 'rememberMe=' + rememberMe;
+
+        // 안전하게 하려면 인코딩
+        state = encodeURIComponent(state);
+
+        location.href = '/auth/kakao/login?state=' + state;
+    });
+</script>
 </body>
 </html>
