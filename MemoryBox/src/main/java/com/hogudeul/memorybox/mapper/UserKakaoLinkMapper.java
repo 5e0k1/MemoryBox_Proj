@@ -9,7 +9,13 @@ public interface UserKakaoLinkMapper {
 
     int countByUserId(@Param("userId") Long userId);
 
+    UserKakaoLink findByUserId(@Param("userId") Long userId);
+
+    UserKakaoLink findByKakaoUserId(@Param("kakaoUserId") Long kakaoUserId);
+
     int insert(UserKakaoLink link);
 
-    int update(UserKakaoLink link);
+    int updateByUserId(UserKakaoLink link);
+
+    int updateByKakaoUserId(UserKakaoLink link);
 }

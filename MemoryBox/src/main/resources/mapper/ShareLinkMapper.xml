@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hogudeul.memorybox.mapper.ShareLinkMapper">
+
+    <resultMap id="ShareLinkMap" type="com.hogudeul.memorybox.model.ShareLink">
+        <id column="share_id" property="shareId"/>
+        <result column="media_id" property="mediaId"/>
+        <result column="share_token" property="shareToken"/>
+        <result column="created_by" property="createdBy"/>
+        <result column="share_scope" property="shareScope"/>
+        <result column="allow_comments" property="allowComments"/>
+        <result column="allow_download" property="allowDownload"/>
+        <result column="expires_at" property="expiresAt"/>
+        <result column="revoked_yn" property="revokedYn"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <insert id="insertShareLink" parameterType="com.hogudeul.memorybox.model.ShareLink" useGeneratedKeys="true" keyProperty="shareId">
+        INSERT INTO SHARE_LINK (
+            media_id,
+            share_token,
+            created_by,
+            share_scope,
+            allow_comments,
+            allow_download,
+            expires_at,
+            revoked_yn,
+            created_at,
+            updated_at
+        ) VALUES (
+            #{mediaId},
+            #{shareToken},
+            #{createdBy},
+            #{shareScope},
+            #{allowComments},
+            #{allowDownload},
+            #{expiresAt},
+            #{revokedYn},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+    <select id="findByToken" resultMap="ShareLinkMap">
+        SELECT share_id,
+               media_id,
+               share_token,
+               created_by,
+               share_scope,
+               allow_comments,
+               allow_download,
+               expires_at,
+               revoked_yn,
+               created_at,
+               updated_at
+        FROM SHARE_LINK
+        WHERE share_token = #{token}
+        LIMIT 1
+    </select>
+
+    <select id="findActiveByToken" resultMap="ShareLinkMap">
+        SELECT share_id,
+               media_id,
+               share_token,
+               created_by,
+               share_scope,
+               allow_comments,
+               allow_download,
+               expires_at,
+               revoked_yn,
+               created_at,
+               updated_at
+        FROM SHARE_LINK
+        WHERE share_token = #{token}
+          AND revoked_yn = 'N'
+          AND expires_at > NOW()
+        LIMIT 1
+    </select>
+
+    <update id="revokeShareLink">
+        UPDATE SHARE_LINK
+        SET revoked_yn = 'Y',
+            updated_at = NOW()
+        WHERE share_id = #{shareId}
+          AND created_by = #{createdBy}
+          AND revoked_yn = 'N'
+    </update>
+
+    <select id="findByMediaIdAndCreatedBy" resultMap="ShareLinkMap">
+        SELECT share_id,
+               media_id,
+               share_token,
+               created_by,
+               share_scope,
+               allow_comments,
+               allow_download,
+               expires_at,
+               revoked_yn,
+               created_at,
+               updated_at
+        FROM SHARE_LINK
+        WHERE media_id = #{mediaId}
+          AND created_by = #{createdBy}
+        ORDER BY created_at DESC
+        LIMIT 1
+    </select>
+
+    <select id="findValidLinksByMediaId" resultMap="ShareLinkMap">
+        SELECT share_id,
+               media_id,
+               share_token,
+               created_by,
+               share_scope,
+               allow_comments,
+               allow_download,
+               expires_at,
+               revoked_yn,
+               created_at,
+               updated_at
+        FROM SHARE_LINK
+        WHERE media_id = #{mediaId}
+          AND revoked_yn = 'N'
+          AND expires_at > NOW()
+        ORDER BY created_at DESC
+    </select>
+</mapper>

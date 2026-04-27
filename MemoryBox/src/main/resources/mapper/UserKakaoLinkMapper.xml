@@ -2,10 +2,40 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.hogudeul.memorybox.mapper.UserKakaoLinkMapper">
 
+    <resultMap id="UserKakaoLinkMap" type="com.hogudeul.memorybox.model.UserKakaoLink">
+        <id column="user_id" property="userId"/>
+        <result column="kakao_user_id" property="kakaoUserId"/>
+        <result column="access_token" property="accessToken"/>
+        <result column="refresh_token" property="refreshToken"/>
+        <result column="access_token_expires_at" property="accessTokenExpiresAt"/>
+        <result column="refresh_token_expires_at" property="refreshTokenExpiresAt"/>
+        <result column="use_kakao_notify" property="useKakaoNotify"/>
+        <result column="kakao_nickname" property="kakaoNickname"/>
+        <result column="link_status" property="linkStatus"/>
+        <result column="last_login_at" property="lastLoginAt"/>
+        <result column="token_updated_at" property="tokenUpdatedAt"/>
+        <result column="linked_at" property="linkedAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
     <select id="countByUserId" resultType="int">
         SELECT COUNT(*)
         FROM USER_KAKAO_LINK
         WHERE user_id = #{userId}
+    </select>
+
+    <select id="findByUserId" resultMap="UserKakaoLinkMap">
+        SELECT *
+        FROM USER_KAKAO_LINK
+        WHERE user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <select id="findByKakaoUserId" resultMap="UserKakaoLinkMap">
+        SELECT *
+        FROM USER_KAKAO_LINK
+        WHERE kakao_user_id = #{kakaoUserId}
+        LIMIT 1
     </select>
 
     <insert id="insert" parameterType="com.hogudeul.memorybox.model.UserKakaoLink">
@@ -17,6 +47,10 @@
             access_token_expires_at,
             refresh_token_expires_at,
             use_kakao_notify,
+            kakao_nickname,
+            link_status,
+            last_login_at,
+            token_updated_at,
             linked_at,
             updated_at
         ) VALUES (
@@ -27,21 +61,67 @@
             #{accessTokenExpiresAt},
             #{refreshTokenExpiresAt},
             #{useKakaoNotify},
+            #{kakaoNickname},
+            #{linkStatus},
+            #{lastLoginAt},
+            #{tokenUpdatedAt},
             NOW(),
             NOW()
         )
     </insert>
 
-    <update id="update" parameterType="com.hogudeul.memorybox.model.UserKakaoLink">
+    <update id="updateByUserId" parameterType="com.hogudeul.memorybox.model.UserKakaoLink">
         UPDATE USER_KAKAO_LINK
-        SET kakao_user_id = #{kakaoUserId},
-            access_token = #{accessToken},
-            refresh_token = #{refreshToken},
+        SET access_token = #{accessToken},
             access_token_expires_at = #{accessTokenExpiresAt},
-            refresh_token_expires_at = #{refreshTokenExpiresAt},
-            use_kakao_notify = #{useKakaoNotify},
+            kakao_nickname = #{kakaoNickname},
+            last_login_at = #{lastLoginAt},
+            token_updated_at = #{tokenUpdatedAt},
+            use_kakao_notify = CASE
+                WHEN #{useKakaoNotify} IS NULL OR #{useKakaoNotify} = '' THEN use_kakao_notify
+                ELSE #{useKakaoNotify}
+            END,
+            link_status = CASE
+                WHEN #{linkStatus} IS NULL OR #{linkStatus} = '' THEN link_status
+                ELSE #{linkStatus}
+            END,
+            refresh_token = CASE
+                WHEN #{refreshToken} IS NULL OR #{refreshToken} = '' THEN refresh_token
+                ELSE #{refreshToken}
+            END,
+            refresh_token_expires_at = CASE
+                WHEN #{refreshToken} IS NULL OR #{refreshToken} = '' THEN refresh_token_expires_at
+                ELSE #{refreshTokenExpiresAt}
+            END,
             updated_at = NOW()
         WHERE user_id = #{userId}
+    </update>
+
+    <update id="updateByKakaoUserId" parameterType="com.hogudeul.memorybox.model.UserKakaoLink">
+        UPDATE USER_KAKAO_LINK
+        SET access_token = #{accessToken},
+            access_token_expires_at = #{accessTokenExpiresAt},
+            kakao_nickname = #{kakaoNickname},
+            last_login_at = #{lastLoginAt},
+            token_updated_at = #{tokenUpdatedAt},
+            use_kakao_notify = CASE
+                WHEN #{useKakaoNotify} IS NULL OR #{useKakaoNotify} = '' THEN use_kakao_notify
+                ELSE #{useKakaoNotify}
+            END,
+            link_status = CASE
+                WHEN #{linkStatus} IS NULL OR #{linkStatus} = '' THEN link_status
+                ELSE #{linkStatus}
+            END,
+            refresh_token = CASE
+                WHEN #{refreshToken} IS NULL OR #{refreshToken} = '' THEN refresh_token
+                ELSE #{refreshToken}
+            END,
+            refresh_token_expires_at = CASE
+                WHEN #{refreshToken} IS NULL OR #{refreshToken} = '' THEN refresh_token_expires_at
+                ELSE #{refreshTokenExpiresAt}
+            END,
+            updated_at = NOW()
+        WHERE kakao_user_id = #{kakaoUserId}
     </update>
 
 </mapper>

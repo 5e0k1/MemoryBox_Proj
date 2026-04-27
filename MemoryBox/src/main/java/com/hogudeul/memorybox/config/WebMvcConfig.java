@@ -25,17 +25,18 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/",
                         "/login",
+                        "/auth/kakao/**",
                         "/css/**",
                         "/js/**",
                         "/images/**",
-                        "/static/**",
                         "/manifest.json",
-                        "/service-worker.js",
+                        "/sw.js",
                         "/favicon.ico",
                         "/icon-192.png",
                         "/icon-512.png",
                         "/apple-touch-icon.png",
                         "/files/**",
+                        "/share/**",
                         "/error");
     }
 

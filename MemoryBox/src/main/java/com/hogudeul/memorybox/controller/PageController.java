@@ -8,6 +8,8 @@ import com.hogudeul.memorybox.dto.calendar.CalendarMonthDto;
 import com.hogudeul.memorybox.dto.CommentView;
 import com.hogudeul.memorybox.dto.FeedItemView;
 import com.hogudeul.memorybox.dto.MediaDetailView;
+import com.hogudeul.memorybox.config.AppProperties;
+import com.hogudeul.memorybox.config.KakaoProperties;
 import com.hogudeul.memorybox.service.DetailService;
 import com.hogudeul.memorybox.service.FeedService;
 import com.hogudeul.memorybox.service.NotificationService;
@@ -60,6 +62,8 @@ public class PageController {
     private final CalendarViewService calendarViewService;
     private final UserKakaoLinkService userKakaoLinkService;
     private final ObjectMapper objectMapper;
+    private final KakaoProperties kakaoProperties;
+    private final AppProperties appProperties;
 
     public PageController(FeedService feedService,
                           DetailService detailService,
@@ -67,7 +71,9 @@ public class PageController {
                           UploadService uploadService,
                           CalendarViewService calendarViewService,
                           UserKakaoLinkService userKakaoLinkService,
-                          ObjectMapper objectMapper) {
+                          ObjectMapper objectMapper,
+                          KakaoProperties kakaoProperties,
+                          AppProperties appProperties) {
         this.feedService = feedService;
         this.detailService = detailService;
         this.notificationService = notificationService;
@@ -75,6 +81,8 @@ public class PageController {
         this.calendarViewService = calendarViewService;
         this.userKakaoLinkService = userKakaoLinkService;
         this.objectMapper = objectMapper;
+        this.kakaoProperties = kakaoProperties;
+        this.appProperties = appProperties;
     }
 
     @GetMapping("/feed")
@@ -275,6 +283,9 @@ public class PageController {
         MediaDetailView detail = detailService.getMediaDetail(itemId, userId);
         model.addAttribute("loginUser", loginUser);
         addNotificationModel(model, userId);
+        model.addAttribute("currentMediaId", itemId);
+        model.addAttribute("kakaoJavascriptKey", kakaoProperties.getJavascriptKey());
+        model.addAttribute("shareBaseUrl", appProperties.getShare().getBaseUrl());
         model.addAttribute("info", info);
         model.addAttribute("error", error);
 

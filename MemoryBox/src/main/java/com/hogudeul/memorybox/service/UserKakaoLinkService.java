@@ -25,7 +25,7 @@ public class UserKakaoLinkService {
     public void upsert(UserKakaoLink link) {
         int count = userKakaoLinkMapper.countByUserId(link.getUserId());
         if (count > 0) {
-            userKakaoLinkMapper.update(link);
+            userKakaoLinkMapper.updateByUserId(link);
             return;
         }
         userKakaoLinkMapper.insert(link);
