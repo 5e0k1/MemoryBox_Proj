@@ -104,12 +104,18 @@
 .share-open-btn {
     width: 40px;
     height: 40px;
-    border: 2px solid #111827;
+    border: 1px solid #e5e7eb; /* 연한 회색 */
     border-radius: 10px;
-    background: #ffffff;
+    background: #f9fafb; /* 살짝 톤 다운 */
     cursor: pointer;
     font-size: 1.1rem;
     line-height: 1;
+    transition: all 0.15s ease;
+}
+
+.share-open-btn:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
 }
 
 .meta-line {
