@@ -54,6 +54,20 @@ body {
     color: var(--text);
 }
 
+.btn-ghost {
+    background: transparent;
+    border: 1px solid #cfd6df;
+    color: #4a5568;
+}
+
+.btn-ghost:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.btn-ghost:active {
+    background: rgba(0, 0, 0, 0.06);
+}
+
 .btn-text {
     color: var(--primary);
     background: transparent;

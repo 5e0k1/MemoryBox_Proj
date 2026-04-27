@@ -32,8 +32,13 @@
         </div>
 
         <div class="error-actions">
+
             <button class="btn btn-primary" onclick="location.href='/feed'">
-                홈으로 돌아가기
+                홈으로
+            </button>
+
+            <button class="btn btn-ghost" onclick="history.back()">
+                뒤로가기
             </button>
 
             <button class="btn btn-secondary" onclick="location.reload()">
