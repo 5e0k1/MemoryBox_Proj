@@ -159,25 +159,31 @@
         } else {
             viewerContent.dataset.animating = 'true';
             const offset = direction === 'next' ? 100 : -100;
+            const durationMs = 320;
+            const easing = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
             nextFrame.style.transform = `translateX(${offset}%)`;
-            nextFrame.style.transition = 'transform 220ms ease';
-            currentFrame.style.transition = 'transform 220ms ease';
+            nextFrame.style.opacity = '0.92';
+            nextFrame.style.transition = `transform ${durationMs}ms ${easing}, opacity ${durationMs}ms ease`;
+            currentFrame.style.transition = `transform ${durationMs}ms ${easing}, opacity ${durationMs}ms ease`;
 
             viewerContent.appendChild(nextFrame);
 
             requestAnimationFrame(() => {
                 currentFrame.style.transform = `translateX(${-offset}%)`;
+                currentFrame.style.opacity = '0.88';
                 nextFrame.style.transform = 'translateX(0)';
+                nextFrame.style.opacity = '1';
             });
 
             window.setTimeout(() => {
                 viewerContent.innerHTML = '';
                 nextFrame.style.transition = '';
                 nextFrame.style.transform = '';
+                nextFrame.style.opacity = '';
                 viewerContent.appendChild(nextFrame);
                 delete viewerContent.dataset.animating;
-            }, 230);
+            }, durationMs + 20);
         }
 
         currentIndex = index;
