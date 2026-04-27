@@ -115,10 +115,19 @@
         const data = getItemData(index);
         if (!data) return;
         currentIndex = index;
+        viewerContent.innerHTML = '';
         if (data.mediaType === 'VIDEO') {
-            viewerContent.innerHTML = `<video controls playsinline autoplay src="${data.previewUrl || data.mediumUrl}"></video>`;
+            const video = document.createElement('video');
+            video.controls = true;
+            video.playsInline = true;
+            video.autoplay = true;
+            video.src = data.previewUrl || data.mediumUrl || data.smallUrl || '';
+            viewerContent.appendChild(video);
         } else {
-            viewerContent.innerHTML = `<img src="${data.mediumUrl || data.smallUrl}" alt="viewer"/>`;
+            const image = document.createElement('img');
+            image.src = data.mediumUrl || data.smallUrl || '';
+            image.alt = 'viewer';
+            viewerContent.appendChild(image);
             [index - 1, index + 1, index + 2].forEach((i) => {
                 const d = getItemData(i);
                 if (d?.mediumUrl) {

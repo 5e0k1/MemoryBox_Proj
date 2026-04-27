@@ -273,18 +273,25 @@ public class PageController {
     }
 
     @GetMapping("/feed/{itemId}")
-    public String feedDetail(@PathVariable Long itemId,
+    public String feedDetail(@PathVariable String itemId,
                              @RequestParam(required = false) String info,
                              @RequestParam(required = false) String error,
                              Model model,
                              HttpSession session) {
+        Long batchId;
+        try {
+            batchId = Long.valueOf(itemId);
+        } catch (NumberFormatException e) {
+            return "redirect:/feed";
+        }
+
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         Long userId = loginUser != null ? loginUser.getUserId() : null;
 
-        MediaDetailView detail = detailService.getMediaDetail(itemId, userId);
+        MediaDetailView detail = detailService.getMediaDetail(batchId, userId);
         model.addAttribute("loginUser", loginUser);
         addNotificationModel(model, userId);
-        model.addAttribute("currentBatchId", itemId);
+        model.addAttribute("currentBatchId", batchId);
         model.addAttribute("kakaoJavascriptKey", kakaoProperties.getJavascriptKey());
         model.addAttribute("shareBaseUrl", appProperties.getShare().getBaseUrl());
         model.addAttribute("info", info);
@@ -295,8 +302,8 @@ public class PageController {
             return "detail";
         }
 
-        List<DetailMediaItemView> detailItems = detailService.getBatchMediaItems(itemId, userId);
-        List<CommentView> comments = detailService.getComments(itemId, userId);
+        List<DetailMediaItemView> detailItems = detailService.getBatchMediaItems(batchId, userId);
+        List<CommentView> comments = detailService.getComments(batchId, userId);
         model.addAttribute("detailItems", detailItems);
         model.addAttribute("detail", detail);
         model.addAttribute("comments", comments);
