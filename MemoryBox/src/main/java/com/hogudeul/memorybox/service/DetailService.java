@@ -1,6 +1,7 @@
 package com.hogudeul.memorybox.service;
 
 import com.hogudeul.memorybox.dto.CommentView;
+import com.hogudeul.memorybox.dto.DetailMediaItemView;
 import com.hogudeul.memorybox.dto.MediaDetailView;
 import com.hogudeul.memorybox.mapper.DetailMapper;
 import com.hogudeul.memorybox.mapper.UploadMapper;
@@ -108,6 +109,58 @@ public class DetailService {
                 !isBlank(row.getOriginalStorageKey()),
                 userId != null && userId.equals(row.getUserId())
         );
+    }
+
+
+    public List<DetailMediaItemView> getBatchMediaItems(Long batchId, Long userId) {
+        if (batchId == null) {
+            return List.of();
+        }
+        List<MediaDetailRow> rows = detailMapper.findMediaItemsByBatchId(batchId, userId);
+        List<DetailMediaItemView> items = new ArrayList<>();
+        for (MediaDetailRow row : rows) {
+            items.add(new DetailMediaItemView(
+                    row.getMediaId(),
+                    defaultText(row.getMediaType(), "IMAGE"),
+                    toPublicFileUrl(row.getSmallStorageKey()),
+                    toPublicFileUrl(row.getMediumStorageKey()),
+                    toPublicFileUrl(row.getPreviewStorageKey()),
+                    "/feed/media/" + row.getMediaId() + "/download",
+                    safeInt(row.getSortOrder())
+            ));
+        }
+        return items;
+    }
+
+    public List<DownloadFileInfo> getBatchDownloadFileInfos(Long batchId, Long userId) {
+        if (batchId == null) {
+            throw new DownloadException("유효하지 않은 게시물입니다.");
+        }
+        List<MediaDetailRow> rows = detailMapper.findDetailsByBatchId(batchId, userId);
+        if (rows == null || rows.isEmpty()) {
+            throw new DownloadException("다운로드할 파일이 없습니다.");
+        }
+        List<DownloadFileInfo> files = new ArrayList<>();
+        for (MediaDetailRow row : rows) {
+            if (!isBlank(row.getOriginalStorageKey())) {
+                files.add(toDownloadFileInfo(row));
+            }
+        }
+        if (files.isEmpty()) {
+            throw new DownloadException("원본 파일이 없습니다.");
+        }
+        return files;
+    }
+
+    @Transactional
+    public int deleteMediaItems(Long batchId, Long userId, List<Long> mediaIds) {
+        if (batchId == null || userId == null || mediaIds == null || mediaIds.isEmpty()) {
+            return 0;
+        }
+        if (detailMapper.findDetailByBatchId(batchId, userId) == null) {
+            return 0;
+        }
+        return detailMapper.softDeleteMediaItems(batchId, userId, mediaIds);
     }
 
     public List<CommentView> getComments(Long batchId, Long viewerUserId) {

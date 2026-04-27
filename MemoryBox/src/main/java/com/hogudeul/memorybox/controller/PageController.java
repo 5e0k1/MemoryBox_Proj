@@ -6,6 +6,7 @@ import com.hogudeul.memorybox.auth.LoginUserSession;
 import com.hogudeul.memorybox.calendar.CalendarViewService;
 import com.hogudeul.memorybox.dto.calendar.CalendarMonthDto;
 import com.hogudeul.memorybox.dto.CommentView;
+import com.hogudeul.memorybox.dto.DetailMediaItemView;
 import com.hogudeul.memorybox.dto.FeedItemView;
 import com.hogudeul.memorybox.dto.MediaDetailView;
 import com.hogudeul.memorybox.config.AppProperties;
@@ -283,7 +284,7 @@ public class PageController {
         MediaDetailView detail = detailService.getMediaDetail(itemId, userId);
         model.addAttribute("loginUser", loginUser);
         addNotificationModel(model, userId);
-        model.addAttribute("currentMediaId", itemId);
+        model.addAttribute("currentBatchId", itemId);
         model.addAttribute("kakaoJavascriptKey", kakaoProperties.getJavascriptKey());
         model.addAttribute("shareBaseUrl", appProperties.getShare().getBaseUrl());
         model.addAttribute("info", info);
@@ -294,7 +295,9 @@ public class PageController {
             return "detail";
         }
 
+        List<DetailMediaItemView> detailItems = detailService.getBatchMediaItems(itemId, userId);
         List<CommentView> comments = detailService.getComments(itemId, userId);
+        model.addAttribute("detailItems", detailItems);
         model.addAttribute("detail", detail);
         model.addAttribute("comments", comments);
         model.addAttribute("albums", uploadService.getActiveAlbums(userId));
@@ -394,6 +397,22 @@ public class PageController {
         return "redirect:/feed/" + itemId;
     }
 
+
+
+    @PostMapping(value = "/feed/{batchId}/delete-selected", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> deleteSelectedMedia(@PathVariable Long batchId,
+                                                                    @RequestBody DownloadZipRequest request,
+                                                                    HttpSession session) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        if (loginUser == null) {
+            return ResponseEntity.status(401).body(Map.of("success", false, "message", "로그인이 필요합니다."));
+        }
+        List<Long> mediaIds = request == null ? null : request.getMediaIds();
+        int deleted = detailService.deleteMediaItems(batchId, loginUser.getUserId(), mediaIds);
+        return ResponseEntity.ok(Map.of("success", deleted > 0, "deletedCount", deleted));
+    }
+
     @PostMapping("/api/feed/{itemId}/like")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> likeApi(@PathVariable Long itemId,
@@ -456,7 +475,7 @@ public class PageController {
         }
     }
 
-    @GetMapping("/feed/{itemId}/download")
+    @GetMapping("/feed/media/{itemId}/download")
     public ResponseEntity<Resource> downloadOriginal(@PathVariable Long itemId,
                                                      HttpServletRequest request,
                                                      HttpSession session) {
@@ -469,7 +488,7 @@ public class PageController {
 
         if (fileInfo == null) {
             return ResponseEntity.status(302)
-                    .header(HttpHeaders.LOCATION, "/feed/" + itemId + "?error="
+                    .header(HttpHeaders.LOCATION, "/feed?error="
                             + URLEncoder.encode("다운로드 가능한 원본 파일이 없습니다.", StandardCharsets.UTF_8))
                     .build();
         }
@@ -478,7 +497,7 @@ public class PageController {
             log.warn("Single download file not found. mediaId={}, userId={}, path={}",
                     itemId, loginUser.getUserId(), fileInfo.getFilePath());
             return ResponseEntity.status(302)
-                    .header(HttpHeaders.LOCATION, "/feed/" + itemId + "?error="
+                    .header(HttpHeaders.LOCATION, "/feed?error="
                             + URLEncoder.encode("원본 파일을 찾을 수 없습니다.", StandardCharsets.UTF_8))
                     .build();
         }
@@ -523,6 +542,37 @@ public class PageController {
                 itemId, loginUser.getUserId(), contentLength);
         Resource resource = new FileSystemResource(fileInfo.getFilePath());
         return responseBuilder.body(resource);
+    }
+
+
+
+    @GetMapping("/feed/{batchId}/download-all")
+    public ResponseEntity<StreamingResponseBody> downloadAllByBatch(@PathVariable Long batchId,
+                                                                    HttpServletRequest httpRequest,
+                                                                    HttpSession session) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        if (loginUser == null) {
+            return errorStreamingResponse(401, "로그인이 필요합니다.");
+        }
+        final List<DetailService.DownloadFileInfo> files;
+        try {
+            files = detailService.getBatchDownloadFileInfos(batchId, loginUser.getUserId());
+        } catch (DetailService.DownloadException e) {
+            return errorStreamingResponse(400, e.getMessage());
+        }
+        for (DetailService.DownloadFileInfo file : files) {
+            detailService.logDownloadAttempt(null, loginUser.getUserId(), httpRequest.getRemoteAddr(),
+                    httpRequest.getHeader(HttpHeaders.USER_AGENT), true, null);
+        }
+        String zipFileName = "memorybox_batch_" + LocalDateTime.now().format(ZIP_FILE_NAME_FORMAT) + ".zip";
+        String disposition = "attachment; filename=\"memorybox_batch.zip\"; filename*=UTF-8''"
+                + URLEncoder.encode(zipFileName, StandardCharsets.UTF_8).replace("+", "%20");
+
+        StreamingResponseBody body = outputStream -> detailService.streamZip(files, outputStream);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/zip"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition)
+                .body(body);
     }
 
     @PostMapping(value = "/feed/download-zip", consumes = MediaType.APPLICATION_JSON_VALUE)

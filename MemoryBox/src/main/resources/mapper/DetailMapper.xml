@@ -116,6 +116,52 @@
           AND mi.del_yn='N' AND u.del_yn='N' AND a.del_yn='N'
     </select>
 
+
+
+    <select id="findMediaItemsByBatchId" resultMap="MediaDetailRowMap">
+        SELECT mi.media_id, mi.batch_id, mi.user_id, mi.album_id, mi.title, mi.media_type,
+               mi.uploaded_at, mi.taken_at, mi.sort_order,
+               a.album_name, u.display_name,
+               medium_mv.storage_key AS medium_storage_key, small_mv.storage_key AS small_storage_key,
+               thumb_mv.storage_key AS thumb_storage_key, preview_mv.storage_key AS preview_storage_key,
+               original_mv.storage_key AS original_storage_key, original_mv.file_org_name AS original_file_name,
+               original_mv.mime_type AS original_mime_type,
+               0 AS like_count, 0 AS comment_count, 0 AS liked_by_me, '' AS tags_csv
+        FROM MEDIA_ITEMS mi
+                 JOIN USER u ON mi.user_id=u.user_id
+                 JOIN ALBUM a ON mi.album_id=a.album_id
+                 LEFT JOIN MEDIA_VARIANT medium_mv ON mi.media_id = medium_mv.media_id AND medium_mv.variant_type='MEDIUM'
+                 LEFT JOIN MEDIA_VARIANT small_mv ON mi.media_id = small_mv.media_id AND small_mv.variant_type='SMALL'
+                 LEFT JOIN MEDIA_VARIANT thumb_mv ON mi.media_id = thumb_mv.media_id AND thumb_mv.variant_type='THUMB'
+                 LEFT JOIN MEDIA_VARIANT preview_mv ON mi.media_id = preview_mv.media_id AND preview_mv.variant_type='PREVIEW'
+                 LEFT JOIN MEDIA_VARIANT original_mv ON mi.media_id = original_mv.media_id AND original_mv.variant_type='ORIGINAL'
+        WHERE mi.batch_id=#{batchId}
+          AND mi.del_yn='N' AND u.del_yn='N' AND a.del_yn='N'
+        ORDER BY mi.sort_order ASC, mi.media_id ASC
+    </select>
+
+    <select id="findDetailsByBatchId" resultMap="MediaDetailRowMap">
+        SELECT mi.media_id, mi.batch_id, mi.user_id, mi.album_id, mi.title, mi.media_type,
+               mi.uploaded_at, mi.taken_at, mi.sort_order,
+               a.album_name, u.display_name,
+               medium_mv.storage_key AS medium_storage_key, small_mv.storage_key AS small_storage_key,
+               thumb_mv.storage_key AS thumb_storage_key, preview_mv.storage_key AS preview_storage_key,
+               original_mv.storage_key AS original_storage_key, original_mv.file_org_name AS original_file_name,
+               original_mv.mime_type AS original_mime_type,
+               0 AS like_count, 0 AS comment_count, 0 AS liked_by_me, '' AS tags_csv
+        FROM MEDIA_ITEMS mi
+                 JOIN USER u ON mi.user_id=u.user_id
+                 JOIN ALBUM a ON mi.album_id=a.album_id
+                 LEFT JOIN MEDIA_VARIANT medium_mv ON mi.media_id = medium_mv.media_id AND medium_mv.variant_type='MEDIUM'
+                 LEFT JOIN MEDIA_VARIANT small_mv ON mi.media_id = small_mv.media_id AND small_mv.variant_type='SMALL'
+                 LEFT JOIN MEDIA_VARIANT thumb_mv ON mi.media_id = thumb_mv.media_id AND thumb_mv.variant_type='THUMB'
+                 LEFT JOIN MEDIA_VARIANT preview_mv ON mi.media_id = preview_mv.media_id AND preview_mv.variant_type='PREVIEW'
+                 LEFT JOIN MEDIA_VARIANT original_mv ON mi.media_id = original_mv.media_id AND original_mv.variant_type='ORIGINAL'
+        WHERE mi.batch_id=#{batchId}
+          AND mi.del_yn='N' AND u.del_yn='N' AND a.del_yn='N'
+        ORDER BY mi.sort_order ASC, mi.media_id ASC
+    </select>
+
     <select id="findCommentsByBatchId" resultMap="CommentRowMap">
         SELECT c.comment_id, c.batch_id, c.parent_id, c.user_id, c.content, c.created_at, u.display_name
         FROM COMMENT c JOIN USER u ON c.user_id=u.user_id
@@ -152,5 +198,18 @@
 
     <delete id="deleteBatchTags">DELETE FROM BATCH_TAG WHERE batch_id=#{batchId}</delete>
     <insert id="insertBatchTag">INSERT IGNORE INTO BATCH_TAG (batch_id, tag_id, created_at) VALUES (#{batchId}, #{tagId}, NOW())</insert>
+
+
+    <update id="softDeleteMediaItems">
+        UPDATE MEDIA_ITEMS
+        SET del_yn='Y', del_at=NOW()
+        WHERE batch_id=#{batchId}
+          AND user_id=#{userId}
+          AND del_yn='N'
+          AND media_id IN
+          <foreach collection="mediaIds" item="mediaId" open="(" separator="," close=")">
+              #{mediaId}
+          </foreach>
+    </update>
 
 </mapper>

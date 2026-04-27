@@ -25,6 +25,7 @@ public class MediaDetailRow {
     private Integer commentCount;
     private Integer likedByMe;
     private String tagsCsv;
+    private Integer sortOrder;
 
     public Long getMediaId() {
         return mediaId;
@@ -184,6 +185,14 @@ public class MediaDetailRow {
 
     public void setLikedByMe(Integer likedByMe) {
         this.likedByMe = likedByMe;
+    }
+
+    public Integer getSortOrder() {
+        return sortOrder;
+    }
+
+    public void setSortOrder(Integer sortOrder) {
+        this.sortOrder = sortOrder;
     }
 
     public String getTagsCsv() {

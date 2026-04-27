@@ -18,6 +18,9 @@ public interface DetailMapper {
     List<MediaDetailRow> findDetailsByMediaIds(@Param("mediaIds") List<Long> mediaIds,
                                                @Param("userId") Long userId);
 
+    List<MediaDetailRow> findMediaItemsByBatchId(@Param("batchId") Long batchId,
+                                                  @Param("userId") Long userId);
+
     List<CommentRow> findCommentsByBatchId(@Param("batchId") Long batchId);
 
     CommentRow findCommentById(@Param("commentId") Long commentId);
@@ -38,6 +41,9 @@ public interface DetailMapper {
 
     Long selectNextDownloadLogId();
 
+    List<MediaDetailRow> findDetailsByBatchId(@Param("batchId") Long batchId,
+                                           @Param("userId") Long userId);
+
     int insertDownloadLog(@Param("dlId") Long dlId,
                           @Param("userId") Long userId,
                           @Param("mediaId") Long mediaId,
@@ -57,4 +63,9 @@ public interface DetailMapper {
 
     int insertBatchTag(@Param("batchId") Long batchId,
                        @Param("tagId") Long tagId);
+
+    int softDeleteMediaItems(@Param("batchId") Long batchId,
+                             @Param("userId") Long userId,
+                             @Param("mediaIds") List<Long> mediaIds);
 }
+
