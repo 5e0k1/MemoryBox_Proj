@@ -243,18 +243,52 @@
                 <article class="feed-card" data-media-type="${item.mediaType}" data-item-id="${item.id}" data-detail-url="/feed/${item.id}">
                     <a class="thumb-link" href="/feed/${item.id}" aria-label="${item.title} 상세보기">
                         <c:choose>
-                            <c:when test="${item.mediaType eq 'video'}">
-                                <video class="feed-preview-video"
-                                       src="${item.previewUrl}"
-                                       poster="${item.thumbnailUrl}"
-                                       muted
-                                       playsinline
-                                       loop
-                                       preload="none"
-                                       data-has-preview="${not empty item.previewUrl}"></video>
+                            <c:when test="${not empty item.mediaItems}">
+                                <div class="feed-slider" data-slider>
+                                    <div class="feed-slider-track" data-slider-track>
+                                        <c:forEach var="media" items="${item.mediaItems}" varStatus="status">
+                                            <div class="feed-slide" data-slide-index="${status.index}">
+                                                <c:choose>
+                                                    <c:when test="${media.mediaType eq 'video'}">
+                                                        <video class="feed-preview-video"
+                                                               src="${media.previewUrl}"
+                                                               poster="${media.smallUrl}"
+                                                               muted
+                                                               playsinline
+                                                               loop
+                                                               preload="none"
+                                                               data-has-preview="${not empty media.previewUrl}"></video>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <img src="${media.smallUrl}" alt="${item.title} 썸네일" loading="lazy">
+                                                    </c:otherwise>
+                                                </c:choose>
+                                            </div>
+                                        </c:forEach>
+                                    </div>
+                                    <c:if test="${fn:length(item.mediaItems) gt 1}">
+                                        <button type="button" class="slider-nav prev" data-action="slide-prev" aria-label="이전 미디어">‹</button>
+                                        <button type="button" class="slider-nav next" data-action="slide-next" aria-label="다음 미디어">›</button>
+                                        <span class="slide-counter" data-slide-counter>1 / ${fn:length(item.mediaItems)}</span>
+                                    </c:if>
+                                </div>
                             </c:when>
                             <c:otherwise>
-                                <img src="${item.thumbnailUrl}" alt="${item.title} 썸네일" loading="lazy">
+                                <c:choose>
+                                    <c:when test="${item.mediaType eq 'video'}">
+                                        <video class="feed-preview-video"
+                                               src="${item.previewUrl}"
+                                               poster="${item.thumbnailUrl}"
+                                               muted
+                                               playsinline
+                                               loop
+                                               preload="none"
+                                               data-has-preview="${not empty item.previewUrl}"></video>
+                                    </c:when>
+                                    <c:otherwise>
+                                        <img src="${item.thumbnailUrl}" alt="${item.title} 썸네일" loading="lazy">
+                                    </c:otherwise>
+                                </c:choose>
                             </c:otherwise>
                         </c:choose>
                         <span class="media-badge ${item.mediaType}" data-full-text="${item.mediaType eq 'video' ? 'Video' : 'Photo'}" data-short-text="${item.mediaType eq 'video' ? 'V' : 'P'}">${item.mediaType eq 'video' ? 'Video' : 'Photo'}</span>

@@ -19,6 +19,17 @@
         <result column="tags_csv" property="tagsCsv"/>
     </resultMap>
 
+    <resultMap id="FeedMediaRowMap" type="com.hogudeul.memorybox.model.FeedMediaRow">
+        <result column="batch_id" property="batchId"/>
+        <id column="media_id" property="mediaId"/>
+        <result column="media_type" property="mediaType"/>
+        <result column="small_storage_key" property="smallStorageKey"/>
+        <result column="medium_storage_key" property="mediumStorageKey"/>
+        <result column="preview_storage_key" property="previewStorageKey"/>
+        <result column="original_file_name" property="originalFileName"/>
+        <result column="sort_order" property="sortOrder"/>
+    </resultMap>
+
     <sql id="FeedBaseFrom">
         FROM MEDIA_BATCH mb
                  JOIN MEDIA_ITEMS cover ON cover.media_id = mb.cover_media_id AND cover.del_yn = 'N'
@@ -98,4 +109,27 @@
         AND cover.media_type='IMAGE'
         ORDER BY mb.uploaded_at DESC
     </select>
+
+    <select id="findMediaItemsByBatchIds" resultMap="FeedMediaRowMap">
+        SELECT mi.batch_id,
+               mi.media_id,
+               mi.media_type,
+               small_mv.storage_key AS small_storage_key,
+               medium_mv.storage_key AS medium_storage_key,
+               preview_mv.storage_key AS preview_storage_key,
+               original_mv.file_org_name AS original_file_name,
+               mi.sort_order
+        FROM MEDIA_ITEMS mi
+                 LEFT JOIN MEDIA_VARIANT small_mv ON mi.media_id = small_mv.media_id AND small_mv.variant_type = 'SMALL'
+                 LEFT JOIN MEDIA_VARIANT medium_mv ON mi.media_id = medium_mv.media_id AND medium_mv.variant_type = 'MEDIUM'
+                 LEFT JOIN MEDIA_VARIANT preview_mv ON mi.media_id = preview_mv.media_id AND preview_mv.variant_type = 'PREVIEW'
+                 LEFT JOIN MEDIA_VARIANT original_mv ON mi.media_id = original_mv.media_id AND original_mv.variant_type = 'ORIGINAL'
+        WHERE mi.del_yn='N'
+          AND mi.batch_id IN
+          <foreach collection="batchIds" item="batchId" open="(" separator="," close=")">
+              #{batchId}
+          </foreach>
+        ORDER BY mi.batch_id ASC, mi.sort_order ASC, mi.media_id ASC
+    </select>
+
 </mapper>

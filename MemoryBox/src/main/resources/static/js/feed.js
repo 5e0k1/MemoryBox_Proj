@@ -263,7 +263,51 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = detailUrl;
     };
 
+    const initCardSlider = (card) => {
+        const slider = card.querySelector('[data-slider]');
+        if (!slider) return;
+        const track = slider.querySelector('[data-slider-track]');
+        const slides = Array.from(slider.querySelectorAll('.feed-slide'));
+        const counter = slider.querySelector('[data-slide-counter]');
+        if (!track || slides.length <= 1) return;
+
+        let currentIndex = 0;
+        const moveTo = (nextIndex) => {
+            const safeIndex = (nextIndex + slides.length) % slides.length;
+            currentIndex = safeIndex;
+            track.style.transform = `translateX(-${safeIndex * 100}%)`;
+            if (counter) counter.textContent = `${safeIndex + 1} / ${slides.length}`;
+        };
+
+        slider.querySelector('[data-action="slide-prev"]')?.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            moveTo(currentIndex - 1);
+        });
+        slider.querySelector('[data-action="slide-next"]')?.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            moveTo(currentIndex + 1);
+        });
+
+        let touchStartX = null;
+        slider.addEventListener('touchstart', (event) => {
+            touchStartX = event.changedTouches?.[0]?.clientX ?? null;
+        }, { passive: true });
+        slider.addEventListener('touchend', (event) => {
+            if (touchStartX == null) return;
+            const endX = event.changedTouches?.[0]?.clientX ?? touchStartX;
+            const delta = endX - touchStartX;
+            touchStartX = null;
+            if (Math.abs(delta) < 30) return;
+            moveTo(delta > 0 ? currentIndex - 1 : currentIndex + 1);
+        }, { passive: true });
+
+        moveTo(0);
+    };
+
     const bindCardEvents = (card) => {
+        initCardSlider(card);
         let longPressTimer;
         let longPressTriggered = false;
         let suppressContextMenuUntil = 0;
@@ -347,14 +391,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const title = item.title || '(제목 없음)';
         const likedClass = item.likedByMe ? 'is-liked' : '';
         const likedIcon = item.likedByMe ? '❤' : '♡';
+        const mediaItems = Array.isArray(item.mediaItems) && item.mediaItems.length > 0
+            ? item.mediaItems
+            : [{ mediaType: item.mediaType, smallUrl: item.thumbnailUrl, previewUrl: item.previewUrl }];
 
-        const mediaHtml = item.mediaType === 'video'
-            ? `<video class="feed-preview-video" src="${item.previewUrl || ''}" poster="${item.thumbnailUrl || ''}" muted playsinline loop preload="none" data-has-preview="${item.previewUrl ? 'true' : 'false'}"></video>`
-            : `<img src="${item.thumbnailUrl}" alt="${escapeHtml(title)} 썸네일" loading="lazy">`;
+        const slideHtml = mediaItems.map((media) => {
+            if (media.mediaType === 'video') {
+                return `<div class="feed-slide"><video class="feed-preview-video" src="${media.previewUrl || ''}" poster="${media.smallUrl || item.thumbnailUrl || ''}" muted playsinline loop preload="none" data-has-preview="${media.previewUrl ? 'true' : 'false'}"></video></div>`;
+            }
+            return `<div class="feed-slide"><img src="${media.smallUrl || item.thumbnailUrl || ''}" alt="${escapeHtml(title)} 썸네일" loading="lazy"></div>`;
+        }).join('');
+
+        const sliderControl = mediaItems.length > 1
+            ? `<button type="button" class="slider-nav prev" data-action="slide-prev" aria-label="이전 미디어">‹</button>
+               <button type="button" class="slider-nav next" data-action="slide-next" aria-label="다음 미디어">›</button>
+               <span class="slide-counter" data-slide-counter>1 / ${mediaItems.length}</span>`
+            : '';
 
         return `<article class="feed-card" data-media-type="${item.mediaType}" data-item-id="${item.id}" data-detail-url="/feed/${item.id}">
             <a class="thumb-link" href="/feed/${item.id}" aria-label="${escapeHtml(title)} 상세보기">
-                ${mediaHtml}
+                <div class="feed-slider" data-slider>
+                    <div class="feed-slider-track" data-slider-track>
+                        ${slideHtml}
+                    </div>
+                    ${sliderControl}
+                </div>
                 <span class="media-badge ${item.mediaType}" data-full-text="${mediaLabel}" data-short-text="${item.mediaType === 'video' ? 'V' : 'P'}">${mediaLabel}</span>
                 ${item.recent ? `<span class="new-badge" data-full-text="New" data-short-text="N">New</span>` : ""}
                 <span class="select-check" aria-hidden="true">✔</span>

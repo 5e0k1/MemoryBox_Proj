@@ -1,5 +1,6 @@
 package com.hogudeul.memorybox.mapper;
 
+import com.hogudeul.memorybox.model.FeedMediaRow;
 import com.hogudeul.memorybox.model.FeedRow;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
@@ -28,4 +29,7 @@ public interface FeedMapper {
                       @Param("mineOnly") boolean mineOnly);
 
     List<FeedRow> findImageFeedRows();
+
+    List<FeedMediaRow> findMediaItemsByBatchIds(@Param("batchIds") List<Long> batchIds);
 }
+

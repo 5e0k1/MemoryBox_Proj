@@ -1,7 +1,9 @@
 package com.hogudeul.memorybox.service;
 
 import com.hogudeul.memorybox.dto.FeedItemView;
+import com.hogudeul.memorybox.dto.FeedMediaItemView;
 import com.hogudeul.memorybox.mapper.FeedMapper;
+import com.hogudeul.memorybox.model.FeedMediaRow;
 import com.hogudeul.memorybox.model.FeedRow;
 import com.hogudeul.memorybox.storage.StorageUrlResolver;
 import java.time.LocalDateTime;
@@ -117,11 +119,14 @@ public class FeedService {
 
     private List<FeedItemView> toView(List<FeedRow> rows) {
         List<FeedItemView> items = new ArrayList<>();
+        List<Long> batchIds = rows.stream().map(FeedRow::getMediaId).filter(id -> id != null).toList();
+        java.util.Map<Long, java.util.List<FeedMediaItemView>> mediaByBatch = buildMediaItemsMap(batchIds);
 
         for (FeedRow row : rows) {
             String[] tags = parseTags(row.getTagsCsv());
             LocalDateTime displayAt = row.getTakenAt() != null ? row.getTakenAt() : row.getUploadedAt();
             int shotYear = displayAt != null ? displayAt.getYear() : 0;
+            List<FeedMediaItemView> mediaItems = mediaByBatch.getOrDefault(row.getMediaId(), java.util.List.of());
 
             items.add(new FeedItemView(
                     row.getMediaId(),
@@ -140,11 +145,35 @@ public class FeedService {
                     timeDisplayService.formatTakenDate(row.getTakenAt()),
                     formatDateTime(displayAt),
                     timeDisplayService.formatRelativeUploadedAt(row.getUploadedAt()),
-                    timeDisplayService.isNew(row.getUploadedAt())
+                    timeDisplayService.isNew(row.getUploadedAt()),
+                    mediaItems
             ));
         }
 
         return items;
+    }
+
+
+    private java.util.Map<Long, java.util.List<FeedMediaItemView>> buildMediaItemsMap(List<Long> batchIds) {
+        if (batchIds == null || batchIds.isEmpty()) {
+            return java.util.Map.of();
+        }
+        List<FeedMediaRow> mediaRows = feedMapper.findMediaItemsByBatchIds(batchIds);
+        java.util.Map<Long, java.util.List<FeedMediaItemView>> grouped = new java.util.LinkedHashMap<>();
+        for (FeedMediaRow row : mediaRows) {
+            grouped.computeIfAbsent(row.getBatchId(), key -> new ArrayList<>()).add(
+                    new FeedMediaItemView(
+                            row.getMediaId(),
+                            toUiMediaType(row.getMediaType()),
+                            toPublicFileUrl(row.getSmallStorageKey()),
+                            toPublicFileUrl(row.getMediumStorageKey()),
+                            toPublicFileUrl(row.getPreviewStorageKey()),
+                            defaultText(row.getOriginalFileName(), ""),
+                            safeInt(row.getSortOrder())
+                    )
+            );
+        }
+        return grouped;
     }
 
     private String normalizeFilter(String value) {
