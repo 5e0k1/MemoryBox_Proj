@@ -554,6 +554,7 @@
 .grid-item.is-selected { outline:2px solid #2563eb; }
 
 .viewer-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:1200; display:grid; place-items:center; }
+.viewer-backdrop[hidden] { display:none !important; }
 .viewer-panel { width:min(100%, 760px); background:#0f172a; border-radius:14px; padding:12px; position:relative; }
 .viewer-content { min-height:280px; max-height:70vh; display:grid; place-items:center; }
 .viewer-content img, .viewer-content video { max-width:100%; max-height:70vh; }
