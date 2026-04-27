@@ -4,8 +4,8 @@ server:
 spring:
   datasource:
     url: ${DB_URL:jdbc:mariadb://localhost:3306/memorybox_local}
-    username: ${DB_USERNAME:mbx_local_user}
-    password: ${DB_PASSWORD:change_this_local_password}
+    username: ${DB_USERNAME:memorybox}
+    password: ${DB_PASSWORD:mb1234}
     driver-class-name: org.mariadb.jdbc.Driver
 
 logging:
