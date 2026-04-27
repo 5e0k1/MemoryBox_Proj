@@ -38,6 +38,13 @@
             <button type="submit" class="btn btn-primary">로그인</button>
         </form>
 
+        <div class="kakao-login-wrap">
+            <a class="kakao-login-btn" href="/auth/kakao/login" aria-label="카카오로 로그인">
+                <img src="/kakaotalk_sharing_btn_medium.png" alt="" aria-hidden="true">
+                <span>카카오로 로그인</span>
+            </a>
+        </div>
+
         <section class="account-actions">
             <p class="hint">관리자가 등록한 계정으로만 로그인할 수 있습니다.</p>
         </section>

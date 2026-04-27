@@ -46,6 +46,30 @@
     padding-top: 16px;
 }
 
+.kakao-login-wrap {
+    margin-top: 12px;
+}
+
+.kakao-login-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 11px 12px;
+    border-radius: 10px;
+    background: #fee500;
+    border: 1px solid #f4d300;
+    color: #181600;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.kakao-login-btn img {
+    width: 20px;
+    height: 20px;
+}
+
 .hint {
     margin: 0 0 10px;
     color: var(--muted);

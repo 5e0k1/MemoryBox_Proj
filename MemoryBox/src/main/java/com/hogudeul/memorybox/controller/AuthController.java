@@ -33,7 +33,8 @@ public class AuthController {
                             HttpSession session,
                             HttpServletRequest request,
                             HttpServletResponse response,
-                            @RequestParam(required = false) String redirect) {
+                            @RequestParam(required = false) String redirect,
+                            @RequestParam(required = false) String kakaoError) {
         String redirectTarget = resolveRedirectTarget(redirect);
 
         if (session != null && session.getAttribute("loginUser") != null) {
@@ -51,6 +52,9 @@ public class AuthController {
 
         if ("true".equals(request.getParameter("expired"))) {
             model.addAttribute("globalError", "세션이 만료되었거나 로그인이 필요합니다.");
+        }
+        if (kakaoError != null && !kakaoError.isBlank()) {
+            model.addAttribute("globalError", kakaoError);
         }
         model.addAttribute("redirect", redirectTarget);
         return "login";

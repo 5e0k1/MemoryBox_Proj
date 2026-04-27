@@ -1,6 +1,7 @@
 package com.hogudeul.memorybox.service;
 
 import com.hogudeul.memorybox.config.KakaoProperties;
+import com.hogudeul.memorybox.dto.KakaoUserInfo;
 import com.hogudeul.memorybox.dto.KakaoTokenResponse;
 import com.hogudeul.memorybox.dto.KakaoUserResponse;
 import org.slf4j.Logger;
@@ -31,14 +32,14 @@ public class KakaoService {
         this.restTemplate = new RestTemplate();
     }
 
-    public KakaoTokenResponse requestToken(String code) {
+    public KakaoTokenResponse requestToken(String code, String redirectUri) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         body.add("grant_type", "authorization_code");
         body.add("client_id", kakaoProperties.getClientId());
-        body.add("redirect_uri", kakaoProperties.getRedirectUri());
+        body.add("redirect_uri", redirectUri);
         body.add("code", code);
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
@@ -60,7 +61,7 @@ public class KakaoService {
         }
     }
 
-    public KakaoUserResponse requestUserInfo(String accessToken) {
+    public KakaoUserInfo requestUserInfo(String accessToken) {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
 
@@ -73,7 +74,15 @@ public class KakaoService {
                     request,
                     KakaoUserResponse.class
             );
-            return response.getBody();
+            KakaoUserResponse body = response.getBody();
+            if (body == null || body.getId() == null) {
+                return null;
+            }
+            String nickname = null;
+            if (body.getKakaoAccount() != null && body.getKakaoAccount().getProfile() != null) {
+                nickname = body.getKakaoAccount().getProfile().getNickname();
+            }
+            return new KakaoUserInfo(body.getId(), nickname);
         } catch (RestClientResponseException e) {
             log.error("Kakao user API failed. status: {}, body: {}", e.getRawStatusCode(), e.getResponseBodyAsString());
             return null;
