@@ -78,7 +78,7 @@
         <button type="button" class="viewer-nav next" id="viewerNextBtn">›</button>
         <div class="viewer-content" id="viewerContent"></div>
         <div class="viewer-footer">
-            <span id="viewerCounter">1 / 1</span>
+            <span id="viewerCounter"><span id="viewerCurrent">1</span> / <span id="viewerTotal">1</span></span>
             <a class="btn btn-secondary" id="viewerDownloadBtn" href="#">원본 다운로드</a>
         </div>
     </section>
@@ -98,10 +98,11 @@
     if (!grid) return;
     const batchId = document.getElementById('detailLayout').dataset.batchId;
     const items = Array.from(grid.querySelectorAll('.grid-item'));
-    const totalItems = Number(grid.dataset.totalCount || items.length) || items.length;
+    const totalItems = items.length || 1;
     const viewerBackdrop = document.getElementById('viewerBackdrop');
     const viewerContent = document.getElementById('viewerContent');
-    const viewerCounter = document.getElementById('viewerCounter');
+    const viewerCurrent = document.getElementById('viewerCurrent');
+    const viewerTotal = document.getElementById('viewerTotal');
     const viewerDownloadBtn = document.getElementById('viewerDownloadBtn');
     const selectionBar = document.getElementById('selectionBar');
     const selectedCount = document.getElementById('selectedCount');
@@ -127,60 +128,36 @@
         return image;
     };
 
-    const preloadNearbyImages = (index) => {
-        [index - 1, index + 1, index + 2].forEach((i) => {
-            const d = getItemData(i);
-            if (d?.mediumUrl) {
-                const img = new Image();
-                img.src = d.mediumUrl;
-            }
+    const createViewerTrack = () => {
+        const track = document.createElement('div');
+        track.className = 'viewer-track';
+        items.forEach((_, index) => {
+            const data = getItemData(index);
+            if (!data) return;
+            const slide = document.createElement('div');
+            slide.className = 'viewer-slide';
+            slide.appendChild(createViewerMedia(data));
+            track.appendChild(slide);
         });
+        return track;
     };
 
-    const renderViewer = (index, animateDirection) => {
+    const renderViewer = (index) => {
         const data = getItemData(index);
         if (!data) return;
-        const previousIndex = currentIndex;
-        const shouldAnimate = animateDirection && previousIndex !== index && !viewerContent.dataset.animating;
-
-        const nextFrame = document.createElement('div');
-        nextFrame.className = 'viewer-media-frame';
-        nextFrame.appendChild(createViewerMedia(data));
-
-        if (shouldAnimate && viewerContent.firstElementChild) {
-            viewerContent.dataset.animating = 'true';
-            const currentFrame = viewerContent.firstElementChild;
-            const offset = animateDirection === 'next' ? 100 : -100;
-
-            nextFrame.style.transform = `translateX(${offset}%)`;
-            nextFrame.style.transition = 'transform 220ms ease';
-            currentFrame.style.transition = 'transform 220ms ease';
-            viewerContent.appendChild(nextFrame);
-
-            requestAnimationFrame(() => {
-                currentFrame.style.transform = `translateX(${-offset}%)`;
-                nextFrame.style.transform = 'translateX(0)';
-            });
-
-            window.setTimeout(() => {
-                viewerContent.innerHTML = '';
-                nextFrame.style.transition = '';
-                nextFrame.style.transform = '';
-                viewerContent.appendChild(nextFrame);
-                delete viewerContent.dataset.animating;
-            }, 230);
-        } else {
-            viewerContent.innerHTML = '';
-            viewerContent.appendChild(nextFrame);
-        }
-
         currentIndex = index;
-        viewerCounter.textContent = `${index + 1} / ${totalItems}`;
+        const track = viewerContent.querySelector('.viewer-track');
+        if (track) {
+            track.style.transform = `translateX(-${index * 100}%)`;
+        }
+        viewerCurrent.textContent = String(index + 1);
+        viewerTotal.textContent = String(totalItems);
         viewerDownloadBtn.href = data.downloadUrl;
-        preloadNearbyImages(index);
     };
 
     const openViewer = (index) => {
+        viewerContent.innerHTML = '';
+        viewerContent.appendChild(createViewerTrack());
         viewerBackdrop.hidden = false;
         document.body.classList.add('modal-open');
         renderViewer(index);
@@ -218,8 +195,8 @@
     });
 
     document.getElementById('viewerCloseBtn').addEventListener('click', closeViewer);
-    document.getElementById('viewerPrevBtn').addEventListener('click', () => renderViewer((currentIndex - 1 + items.length) % items.length, 'prev'));
-    document.getElementById('viewerNextBtn').addEventListener('click', () => renderViewer((currentIndex + 1) % items.length, 'next'));
+    document.getElementById('viewerPrevBtn').addEventListener('click', () => renderViewer((currentIndex - 1 + items.length) % items.length));
+    document.getElementById('viewerNextBtn').addEventListener('click', () => renderViewer((currentIndex + 1) % items.length));
     viewerBackdrop.addEventListener('click', (e) => { if (e.target === viewerBackdrop) closeViewer(); });
 
     let touchX = null;
@@ -229,10 +206,7 @@
         const diff = e.changedTouches[0].clientX - touchX;
         touchX = null;
         if (Math.abs(diff) < 30) return;
-        renderViewer(
-            diff > 0 ? (currentIndex - 1 + items.length) % items.length : (currentIndex + 1) % items.length,
-            diff > 0 ? 'prev' : 'next'
-        );
+        renderViewer(diff > 0 ? (currentIndex - 1 + items.length) % items.length : (currentIndex + 1) % items.length);
     }, {passive:true});
 
     document.getElementById('cancelSelectBtn').addEventListener('click', () => {
