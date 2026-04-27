@@ -127,11 +127,11 @@
             video.controls = true;
             video.playsInline = true;
             video.autoplay = true;
-            video.src = data.previewUrl || data.mediumUrl || data.smallUrl || data.thumbUrl || '';
+            video.src = data.previewUrl || data.thumbUrl || data.mediumUrl || data.smallUrl || '';
             return video;
         }
         const image = document.createElement('img');
-        image.src = data.mediumUrl || data.smallUrl || data.thumbUrl || '';
+        image.src = data.thumbUrl || data.mediumUrl || data.smallUrl || '';
         image.alt = 'viewer';
         return image;
     };
