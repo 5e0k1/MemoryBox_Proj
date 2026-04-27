@@ -121,54 +121,75 @@
 
     const getItemData = (index) => mediaEntries[index];
 
-    const createViewerMedia = (data) => {
+    const createViewerMedia = (index, data) => {
+        const button = items[index];
+        const thumbElement = button?.querySelector('img, video');
+        const thumbElementSrc = thumbElement?.getAttribute('src') || '';
         if (data.mediaType === 'VIDEO') {
             const video = document.createElement('video');
             video.controls = true;
             video.playsInline = true;
             video.autoplay = true;
-            video.src = data.previewUrl || data.thumbUrl || data.mediumUrl || data.smallUrl || '';
+            video.src = data.previewUrl || thumbElementSrc || data.thumbUrl || data.mediumUrl || data.smallUrl || '';
             return video;
         }
         const image = document.createElement('img');
-        image.src = data.thumbUrl || data.mediumUrl || data.smallUrl || '';
+        image.src = thumbElementSrc || data.thumbUrl || data.mediumUrl || data.smallUrl || '';
         image.alt = 'viewer';
         return image;
     };
 
-    const createViewerTrack = () => {
-        const track = document.createElement('div');
-        track.className = 'viewer-track';
-        items.forEach((_, index) => {
-            const data = getItemData(index);
-            if (!data) return;
-            const slide = document.createElement('div');
-            slide.className = 'viewer-slide';
-            slide.appendChild(createViewerMedia(data));
-            track.appendChild(slide);
-        });
-        return track;
+    const createViewerFrame = (index, data) => {
+        const frame = document.createElement('div');
+        frame.className = 'viewer-media-frame';
+        frame.appendChild(createViewerMedia(index, data));
+        return frame;
     };
 
-    const renderViewer = (index) => {
+    const renderViewer = (index, direction) => {
         const data = getItemData(index);
         if (!data) return;
-        currentIndex = index;
-        const track = viewerContent.querySelector('.viewer-track');
-        if (track) {
-            track.style.transform = `translateX(-${index * 100}%)`;
+        const nextFrame = createViewerFrame(index, data);
+        const currentFrame = viewerContent.querySelector('.viewer-media-frame');
+        const isAnimated = (direction === 'next' || direction === 'prev') && currentFrame && !viewerContent.dataset.animating;
+
+        if (!isAnimated) {
+            viewerContent.innerHTML = '';
+            viewerContent.appendChild(nextFrame);
+        } else {
+            viewerContent.dataset.animating = 'true';
+            const offset = direction === 'next' ? 100 : -100;
+
+            nextFrame.style.transform = `translateX(${offset}%)`;
+            nextFrame.style.transition = 'transform 220ms ease';
+            currentFrame.style.transition = 'transform 220ms ease';
+
+            viewerContent.appendChild(nextFrame);
+
+            requestAnimationFrame(() => {
+                currentFrame.style.transform = `translateX(${-offset}%)`;
+                nextFrame.style.transform = 'translateX(0)';
+            });
+
+            window.setTimeout(() => {
+                viewerContent.innerHTML = '';
+                nextFrame.style.transition = '';
+                nextFrame.style.transform = '';
+                viewerContent.appendChild(nextFrame);
+                delete viewerContent.dataset.animating;
+            }, 230);
         }
+
+        currentIndex = index;
         viewerCurrent.textContent = String(index + 1);
         viewerTotal.textContent = String(totalItems);
         viewerDownloadBtn.href = data.downloadUrl;
     };
 
     const openViewer = (index) => {
-        viewerContent.innerHTML = '';
-        viewerContent.appendChild(createViewerTrack());
         viewerBackdrop.hidden = false;
         document.body.classList.add('modal-open');
-        renderViewer(index);
+        renderViewer(index, 'none');
     };
 
     const closeViewer = () => {
@@ -203,8 +224,8 @@
     });
 
     document.getElementById('viewerCloseBtn').addEventListener('click', closeViewer);
-    document.getElementById('viewerPrevBtn').addEventListener('click', () => renderViewer((currentIndex - 1 + items.length) % items.length));
-    document.getElementById('viewerNextBtn').addEventListener('click', () => renderViewer((currentIndex + 1) % items.length));
+    document.getElementById('viewerPrevBtn').addEventListener('click', () => renderViewer((currentIndex - 1 + items.length) % items.length, 'prev'));
+    document.getElementById('viewerNextBtn').addEventListener('click', () => renderViewer((currentIndex + 1) % items.length, 'next'));
     viewerBackdrop.addEventListener('click', (e) => { if (e.target === viewerBackdrop) closeViewer(); });
 
     let touchX = null;
@@ -214,7 +235,10 @@
         const diff = e.changedTouches[0].clientX - touchX;
         touchX = null;
         if (Math.abs(diff) < 30) return;
-        renderViewer(diff > 0 ? (currentIndex - 1 + items.length) % items.length : (currentIndex + 1) % items.length);
+        renderViewer(
+            diff > 0 ? (currentIndex - 1 + items.length) % items.length : (currentIndex + 1) % items.length,
+            diff > 0 ? 'prev' : 'next'
+        );
     }, {passive:true});
 
     document.getElementById('cancelSelectBtn').addEventListener('click', () => {
