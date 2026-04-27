@@ -20,8 +20,8 @@
     </resultMap>
 
     <resultMap id="FeedMediaRowMap" type="com.hogudeul.memorybox.model.FeedMediaRow">
-        <result column="batch_id" property="batchId"/>
         <id column="media_id" property="mediaId"/>
+        <result column="batch_id" property="batchId"/>
         <result column="media_type" property="mediaType"/>
         <result column="small_storage_key" property="smallStorageKey"/>
         <result column="medium_storage_key" property="mediumStorageKey"/>
