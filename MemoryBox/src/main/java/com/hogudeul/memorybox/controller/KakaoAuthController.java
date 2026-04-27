@@ -9,6 +9,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.nio.charset.StandardCharsets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -18,6 +20,7 @@ import org.springframework.web.util.UriUtils;
 @Controller
 public class KakaoAuthController {
 
+    private static final Logger log = LoggerFactory.getLogger(KakaoAuthController.class);
     private static final String KAKAO_AUTHORIZE_URL = "https://kauth.kakao.com/oauth/authorize";
     private final KakaoProperties kakaoProperties;
     private final KakaoAuthService kakaoAuthService;
@@ -55,6 +58,8 @@ public class KakaoAuthController {
 
         KakaoAuthService.KakaoLoginResult loginResult = kakaoAuthService.authenticate(code);
         if (!loginResult.isSuccess()) {
+            log.info("[kakao-auth] callback failed. failureCode={}, message={}",
+                    loginResult.getFailureCode(), loginResult.getMessage());
             return redirectLoginWithError(loginResult.getMessage());
         }
 
