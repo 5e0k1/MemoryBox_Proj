@@ -96,9 +96,17 @@
 (() => {
     const grid = document.getElementById('batchGrid');
     if (!grid) return;
-    const batchId = document.getElementById('detailLayout').dataset.batchId;
     const items = Array.from(grid.querySelectorAll('.grid-item'));
     const totalItems = items.length || 1;
+    const mediaEntries = items.map((button) => ({
+        mediaId: button.dataset.mediaId,
+        mediaType: button.dataset.mediaType,
+        smallUrl: button.dataset.smallUrl,
+        mediumUrl: button.dataset.mediumUrl,
+        previewUrl: button.dataset.previewUrl,
+        downloadUrl: button.dataset.downloadUrl,
+        thumbUrl: button.querySelector('img, video')?.getAttribute('src') || ''
+    }));
     const viewerBackdrop = document.getElementById('viewerBackdrop');
     const viewerContent = document.getElementById('viewerContent');
     const viewerCurrent = document.getElementById('viewerCurrent');
@@ -111,7 +119,7 @@
     let selectionMode = false;
     const selected = new Set();
 
-    const getItemData = (index) => items[index]?.dataset;
+    const getItemData = (index) => mediaEntries[index];
 
     const createViewerMedia = (data) => {
         if (data.mediaType === 'VIDEO') {
@@ -119,11 +127,11 @@
             video.controls = true;
             video.playsInline = true;
             video.autoplay = true;
-            video.src = data.previewUrl || data.mediumUrl || data.smallUrl || '';
+            video.src = data.previewUrl || data.mediumUrl || data.smallUrl || data.thumbUrl || '';
             return video;
         }
         const image = document.createElement('img');
-        image.src = data.mediumUrl || data.smallUrl || '';
+        image.src = data.mediumUrl || data.smallUrl || data.thumbUrl || '';
         image.alt = 'viewer';
         return image;
     };
