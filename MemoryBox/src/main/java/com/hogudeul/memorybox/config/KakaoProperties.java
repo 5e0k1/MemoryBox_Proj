@@ -9,6 +9,7 @@ public class KakaoProperties {
 
     private String clientId;
     private String redirectUri;
+    private String loginRedirectUri;
     private String javascriptKey;
 
     public String getClientId() {
@@ -33,5 +34,13 @@ public class KakaoProperties {
 
     public void setJavascriptKey(String javascriptKey) {
         this.javascriptKey = javascriptKey;
+    }
+
+    public String getLoginRedirectUri() {
+        return loginRedirectUri;
+    }
+
+    public void setLoginRedirectUri(String loginRedirectUri) {
+        this.loginRedirectUri = loginRedirectUri;
     }
 }

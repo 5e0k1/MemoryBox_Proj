@@ -12,6 +12,7 @@ public class MediaDetailView {
     private final String albumName;
     private final String authorName;
     private final String displayImageUrl;
+    private final String shareImageUrl;
     private final String originalVideoUrl;
     private final String videoThumbnailUrl;
     private final String displayVariantType;
@@ -33,6 +34,7 @@ public class MediaDetailView {
                            String albumName,
                            String authorName,
                            String displayImageUrl,
+                           String shareImageUrl,
                            String originalVideoUrl,
                            String videoThumbnailUrl,
                            String displayVariantType,
@@ -53,6 +55,7 @@ public class MediaDetailView {
         this.albumName = albumName;
         this.authorName = authorName;
         this.displayImageUrl = displayImageUrl;
+        this.shareImageUrl = shareImageUrl;
         this.originalVideoUrl = originalVideoUrl;
         this.videoThumbnailUrl = videoThumbnailUrl;
         this.displayVariantType = displayVariantType;
@@ -75,6 +78,7 @@ public class MediaDetailView {
     public String getAlbumName() { return albumName; }
     public String getAuthorName() { return authorName; }
     public String getDisplayImageUrl() { return displayImageUrl; }
+    public String getShareImageUrl() { return shareImageUrl; }
     public String getOriginalVideoUrl() { return originalVideoUrl; }
     public String getVideoThumbnailUrl() { return videoThumbnailUrl; }
     public String getDisplayVariantType() { return displayVariantType; }

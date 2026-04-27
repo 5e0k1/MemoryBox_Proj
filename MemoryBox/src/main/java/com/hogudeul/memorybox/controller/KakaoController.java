@@ -2,8 +2,8 @@ package com.hogudeul.memorybox.controller;
 
 import com.hogudeul.memorybox.auth.LoginUserSession;
 import com.hogudeul.memorybox.config.KakaoProperties;
+import com.hogudeul.memorybox.dto.KakaoUserInfo;
 import com.hogudeul.memorybox.dto.KakaoTokenResponse;
-import com.hogudeul.memorybox.dto.KakaoUserResponse;
 import com.hogudeul.memorybox.model.UserKakaoLink;
 import com.hogudeul.memorybox.service.KakaoService;
 import com.hogudeul.memorybox.service.UserKakaoLinkService;
@@ -55,7 +55,7 @@ public class KakaoController {
         Long userId = loginUser.getUserId();
         log.info("Kakao authorization code received: {}", code);
 
-        KakaoTokenResponse tokenResponse = kakaoService.requestToken(code);
+        KakaoTokenResponse tokenResponse = kakaoService.requestToken(code, kakaoProperties.getRedirectUri());
         if (tokenResponse == null) {
             log.warn("Kakao token response is null. userId={}", userId);
             return "redirect:/mypage";
@@ -65,13 +65,13 @@ public class KakaoController {
                 maskToken(tokenResponse.getAccessToken()),
                 maskToken(tokenResponse.getRefreshToken()));
 
-        KakaoUserResponse userResponse = kakaoService.requestUserInfo(tokenResponse.getAccessToken());
-        if (userResponse == null || userResponse.getId() == null) {
+        KakaoUserInfo userInfo = kakaoService.requestUserInfo(tokenResponse.getAccessToken());
+        if (userInfo == null || userInfo.getKakaoUserId() == null) {
             log.warn("Kakao user info response is invalid. userId={}", userId);
             return "redirect:/mypage";
         }
 
-        Long kakaoUserId = userResponse.getId();
+        Long kakaoUserId = userInfo.getKakaoUserId();
         log.info("Kakao user info received. kakaoUserId={}", kakaoUserId);
 
         UserKakaoLink link = new UserKakaoLink();

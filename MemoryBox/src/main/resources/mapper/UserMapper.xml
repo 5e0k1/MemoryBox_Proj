@@ -50,6 +50,14 @@
         LIMIT 1
     </select>
 
+    <select id="findActiveByDisplayName" resultMap="UserAccountMap">
+        SELECT
+        <include refid="userColumns"/>
+        FROM `USER`
+        WHERE display_name = #{displayName}
+          AND del_yn = 'N'
+    </select>
+
     <select id="findByRememberTokenHash" resultMap="UserAccountMap">
         SELECT
         <include refid="userColumns"/>

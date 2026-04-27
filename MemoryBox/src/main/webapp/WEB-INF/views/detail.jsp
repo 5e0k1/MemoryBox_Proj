@@ -14,7 +14,7 @@
 </head>
 <body class="page page-detail">
 <c:set var="shareTitleValue" value="${not empty detail ? detail.title : ''}" />
-<c:set var="shareImageValue" value="${not empty detail ? (detail.mediaType eq 'VIDEO' ? detail.videoThumbnailUrl : detail.displayImageUrl) : ''}" />
+<c:set var="shareImageValue" value="${not empty detail ? detail.shareImageUrl : ''}" />
 <main class="detail-layout"
       id="detailLayout"
       data-media-id="${currentMediaId}"
@@ -287,7 +287,7 @@
                 <button type="submit" class="btn btn-primary">링크 생성</button>
                 <button type="button" class="btn btn-secondary" id="copyShareUrlBtn" disabled>링크 복사</button>
                 <button type="button" class="kakao-share-btn" id="kakaoShareBtn" disabled aria-label="카카오톡 공유">
-                    <img src="/kakaotalk_sharing_btn_medium.png" alt="카카오톡 공유하기">
+                    <img src="/images/kakaotalk_sharing_btn_medium.png" alt="카카오톡 공유하기">
                 </button>
             </div>
             <input type="text" id="shareUrlOutput" class="share-url-output" readonly placeholder="생성된 공유 링크가 여기에 표시됩니다.">
@@ -398,6 +398,7 @@
     const shareBaseUrl = (detailLayout?.dataset?.shareBaseUrl || '').trim();
     const shareTitle = (detailLayout?.dataset?.shareTitle || '').trim();
     const shareImageFromData = (detailLayout?.dataset?.shareImageUrl || '').trim();
+    const fallbackImageUrl = '/images/default-image.png';
     let currentShareUrl = '';
     let currentShareType = 'member';
     const kakaoReady = (() => {
@@ -432,21 +433,34 @@
         return normalizedBase + normalizedPath;
     };
 
+    const isCloudFrontUrl = (value) => /^https?:\/\/[^/]*cloudfront\.net\//i.test(value || '');
+    const isLocalhostUrl = (value) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(value || '');
+
+    const toSmallVariantUrl = (value) => {
+        if (!value) return '';
+        const absoluteUrl = toAbsoluteUrl(value);
+        if (absoluteUrl.includes('/small/')) {
+            return absoluteUrl;
+        }
+        if (isCloudFrontUrl(absoluteUrl) && absoluteUrl.includes('/medium/')) {
+            return absoluteUrl.replace('/medium/', '/small/');
+        }
+        return '';
+    };
+
     const resolveShareImageUrl = () => {
-        if (shareImageFromData) {
-            return toAbsoluteUrl(shareImageFromData);
-        }
-
-        const mediaImg = document.querySelector('.media-panel img.detail-image');
-        if (mediaImg?.getAttribute('src')) {
-            return toAbsoluteUrl(mediaImg.getAttribute('src'));
-        }
-
-        const mediaVideo = document.querySelector('.media-panel video.detail-image');
-        if (mediaVideo?.getAttribute('poster')) {
-            return toAbsoluteUrl(mediaVideo.getAttribute('poster'));
-        }
-        return toAbsoluteUrl('/icon-512.png');
+        const smallUrl = toSmallVariantUrl(shareImageFromData);
+        const absoluteFallbackImageUrl = toAbsoluteUrl(fallbackImageUrl);
+        const shareImageUrl = (!smallUrl || isLocalhostUrl(smallUrl))
+                ? absoluteFallbackImageUrl
+                : smallUrl;
+        console.log('[share-kakao] image candidates', {
+            shareImageFromData: shareImageFromData,
+            smallUrl: smallUrl,
+            fallbackImageUrl: absoluteFallbackImageUrl,
+            shareImageUrl: shareImageUrl
+        });
+        return shareImageUrl;
     };
 
     const updateGuestOptionVisibility = () => {
@@ -527,12 +541,19 @@
                 return;
             }
 
-            const generatedUrl = isGuest ? data.guestUrl : data.memberUrl;
-            shareUrlOutput.value = generatedUrl || '';
-            currentShareUrl = generatedUrl || '';
+            const memberUrl = toAbsoluteUrl(data.memberUrl || '');
+            const guestUrl = toAbsoluteUrl(data.guestUrl || '');
+            const selectedShareUrl = isGuest ? guestUrl : memberUrl;
+            shareUrlOutput.value = selectedShareUrl || '';
+            currentShareUrl = selectedShareUrl || '';
             currentShareType = isGuest ? 'guest' : 'member';
-            copyShareUrlBtn.disabled = !generatedUrl;
-            kakaoShareBtn.disabled = !generatedUrl || !kakaoReady;
+            copyShareUrlBtn.disabled = !selectedShareUrl;
+            kakaoShareBtn.disabled = !selectedShareUrl || !kakaoReady;
+            console.log('[share-kakao] share link response', {
+                memberUrl: memberUrl,
+                guestUrl: guestUrl,
+                selectedShareUrl: selectedShareUrl
+            });
             shareFeedback.textContent = isGuest
                     ? '게스트 공유 링크가 생성되었습니다.'
                     : '회원 공유 링크가 준비되었습니다.';
@@ -568,12 +589,21 @@
             return;
         }
 
+        const selectedShareUrl = toAbsoluteUrl(currentShareUrl);
+        if (!selectedShareUrl) {
+            shareFeedback.textContent = '먼저 공유 링크를 생성해 주세요.';
+            return;
+        }
+
         const resolvedTitle = shareTitle || 'MemoryBox 공유 사진';
         const description = currentShareType === 'guest'
                 ? '공유된 사진/영상을 확인해보세요.'
                 : 'MemoryBox에서 사진/영상을 확인해보세요.';
         const shareImageUrl = resolveShareImageUrl();
-        const absoluteShareUrl = toAbsoluteUrl(currentShareUrl);
+        console.log('[share-kakao] send payload', {
+            selectedShareUrl: selectedShareUrl,
+            shareImageUrl: shareImageUrl
+        });
 
         try {
             window.Kakao.Share.sendDefault({
@@ -583,16 +613,16 @@
                     description: description,
                     imageUrl: shareImageUrl,
                     link: {
-                        mobileWebUrl: absoluteShareUrl,
-                        webUrl: absoluteShareUrl
+                        mobileWebUrl: selectedShareUrl,
+                        webUrl: selectedShareUrl
                     }
                 },
                 buttons: [
                     {
                         title: '보러가기',
                         link: {
-                            mobileWebUrl: absoluteShareUrl,
-                            webUrl: absoluteShareUrl
+                            mobileWebUrl: selectedShareUrl,
+                            webUrl: selectedShareUrl
                         }
                     }
                 ]
