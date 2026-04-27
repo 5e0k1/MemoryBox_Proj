@@ -79,8 +79,30 @@ public class KakaoService {
                 return null;
             }
             String nickname = null;
+            String nicknameSource = "none";
             if (body.getKakaoAccount() != null && body.getKakaoAccount().getProfile() != null) {
                 nickname = body.getKakaoAccount().getProfile().getNickname();
+                if (nickname != null && !nickname.isBlank()) {
+                    nicknameSource = "kakao_account.profile.nickname";
+                }
+            }
+            if ((nickname == null || nickname.isBlank()) && body.getProperties() != null) {
+                nickname = body.getProperties().getNickname();
+                if (nickname != null && !nickname.isBlank()) {
+                    nicknameSource = "properties.nickname";
+                }
+            }
+            if (nickname == null || nickname.isBlank()) {
+                Boolean needsAgreement = body.getKakaoAccount() != null
+                        ? body.getKakaoAccount().getProfileNicknameNeedsAgreement()
+                        : null;
+                log.info("Kakao user nickname missing. kakaoUserId={}, profileNicknameNeedsAgreement={}, propertiesPresent={}, kakaoAccountPresent={}",
+                        body.getId(),
+                        needsAgreement,
+                        body.getProperties() != null,
+                        body.getKakaoAccount() != null);
+            } else {
+                log.info("Kakao user nickname resolved. kakaoUserId={}, source={}", body.getId(), nicknameSource);
             }
             return new KakaoUserInfo(body.getId(), nickname);
         } catch (RestClientResponseException e) {
