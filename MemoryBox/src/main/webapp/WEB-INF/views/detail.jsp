@@ -42,10 +42,10 @@
                             data-media-id="${item.mediaId}"
                             data-index="${status.index}"
                             data-media-type="${item.mediaType}"
-                            data-small-url="${item.smallUrl}"
-                            data-medium-url="${item.mediumUrl}"
-                            data-preview-url="${item.previewUrl}"
-                            data-download-url="${item.downloadUrl}">
+                            data-small-url="${fn:escapeXml(item.smallUrl)}"
+                            data-medium-url="${fn:escapeXml(item.mediumUrl)}"
+                            data-preview-url="${fn:escapeXml(item.previewUrl)}"
+                            data-download-url="${fn:escapeXml(item.downloadUrl)}">
                         <c:choose>
                             <c:when test="${item.mediaType eq 'VIDEO'}">
                                 <video src="${item.previewUrl}" muted playsinline preload="metadata"></video>
@@ -89,7 +89,6 @@
     <div>
         <button type="button" class="btn btn-secondary" id="cancelSelectBtn">취소</button>
         <button type="button" class="btn btn-secondary" id="downloadSelectBtn">선택 다운로드</button>
-        <button type="button" class="btn" id="deleteSelectBtn">선택 삭제</button>
     </div>
 </div>
 
@@ -207,16 +206,6 @@
         URL.revokeObjectURL(url);
     });
 
-    document.getElementById('deleteSelectBtn').addEventListener('click', async () => {
-        if (selected.size === 0) return;
-        if (!confirm('선택한 파일을 삭제할까요?')) return;
-        const res = await fetch(`/feed/${batchId}/delete-selected`, {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({mediaIds: Array.from(selected, (v) => Number(v))})
-        });
-        if (!res.ok) { alert('삭제 실패'); return; }
-        location.reload();
-    });
 })();
 </script>
 </body>
