@@ -114,6 +114,15 @@
     const viewerDownloadBtn = document.getElementById('viewerDownloadBtn');
     const selectionBar = document.getElementById('selectionBar');
     const selectedCount = document.getElementById('selectedCount');
+    const viewerCloseBtn = document.getElementById('viewerCloseBtn');
+    const viewerPrevBtn = document.getElementById('viewerPrevBtn');
+    const viewerNextBtn = document.getElementById('viewerNextBtn');
+    const cancelSelectBtn = document.getElementById('cancelSelectBtn');
+    const downloadSelectBtn = document.getElementById('downloadSelectBtn');
+
+    if (!viewerBackdrop || !viewerContent || !viewerCurrent || !viewerTotal || !viewerDownloadBtn ||
+        !selectionBar || !selectedCount || !viewerCloseBtn || !viewerPrevBtn || !viewerNextBtn ||
+        !cancelSelectBtn || !downloadSelectBtn) return;
 
     let currentIndex = 0;
     let selectionMode = false;
@@ -253,9 +262,9 @@
         });
     });
 
-    document.getElementById('viewerCloseBtn').addEventListener('click', closeViewer);
-    document.getElementById('viewerPrevBtn').addEventListener('click', () => renderViewer((currentIndex - 1 + items.length) % items.length, 'prev'));
-    document.getElementById('viewerNextBtn').addEventListener('click', () => renderViewer((currentIndex + 1) % items.length, 'next'));
+    viewerCloseBtn.addEventListener('click', closeViewer);
+    viewerPrevBtn.addEventListener('click', () => renderViewer((currentIndex - 1 + items.length) % items.length, 'prev'));
+    viewerNextBtn.addEventListener('click', () => renderViewer((currentIndex + 1) % items.length, 'next'));
     viewerBackdrop.addEventListener('click', (e) => { if (e.target === viewerBackdrop) closeViewer(); });
 
     const swipeState = {
@@ -266,14 +275,14 @@
         neighborFrame: null
     };
 
-    const clearDragPreview = () => {
+    const clearDragPreview = ({keepNeighborFrame = false} = {}) => {
         const currentFrame = viewerContent.querySelector('.viewer-media-frame');
         if (currentFrame) {
             currentFrame.style.transition = '';
             currentFrame.style.transform = '';
             currentFrame.style.opacity = '';
         }
-        if (swipeState.neighborFrame) swipeState.neighborFrame.remove();
+        if (swipeState.neighborFrame && !keepNeighborFrame) swipeState.neighborFrame.remove();
         swipeState.dragging = false;
         swipeState.deltaX = 0;
         swipeState.direction = null;
@@ -354,18 +363,18 @@
             swipeState.neighborFrame.style.transform = '';
             swipeState.neighborFrame.style.opacity = '';
             viewerContent.appendChild(swipeState.neighborFrame);
-            clearDragPreview();
+            clearDragPreview({keepNeighborFrame: true});
             delete viewerContent.dataset.animating;
             updateViewerMeta(nextIndex, getItemData(nextIndex));
         }, 300);
     }, {passive:true});
     viewerContent.addEventListener('touchcancel', clearDragPreview, {passive:true});
 
-    document.getElementById('cancelSelectBtn').addEventListener('click', () => {
+    cancelSelectBtn.addEventListener('click', () => {
         selectionMode = false; selected.clear(); syncSelectionUi();
     });
 
-    document.getElementById('downloadSelectBtn').addEventListener('click', async () => {
+    downloadSelectBtn.addEventListener('click', async () => {
         if (selected.size === 0) return;
         const mediaIds = Array.from(selected, (v) => Number(v));
         if (mediaIds.length === 1) {
