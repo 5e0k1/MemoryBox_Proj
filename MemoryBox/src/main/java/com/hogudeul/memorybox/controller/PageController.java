@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.HashMap;
@@ -611,29 +610,6 @@ public class PageController {
         return ResponseEntity.status(302)
                 .header(HttpHeaders.LOCATION, preparedZip.getDownloadUrl())
                 .build();
-    }
-
-    @GetMapping("/download/zip/{fileName}")
-    public ResponseEntity<Resource> downloadPreparedZip(@PathVariable String fileName, HttpSession session) {
-        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
-        if (loginUser == null) {
-            return ResponseEntity.status(401).build();
-        }
-        Path zipPath = zipDownloadService.resolveZipForDownload(fileName);
-        String disposition = buildAttachmentContentDisposition(fileName, "download.zip");
-        long contentLength;
-        try {
-            contentLength = Files.size(zipPath);
-        } catch (IOException e) {
-            contentLength = -1L;
-        }
-        ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType("application/zip"))
-                .header(HttpHeaders.CONTENT_DISPOSITION, disposition);
-        if (contentLength >= 0) {
-            responseBuilder.contentLength(contentLength);
-        }
-        return responseBuilder.body(new FileSystemResource(zipPath));
     }
 
     private String buildAttachmentContentDisposition(String utf8FileName, String fallbackName) {

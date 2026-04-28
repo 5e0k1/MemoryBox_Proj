@@ -1223,6 +1223,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchDownloadSelectBtn.disabled = true;
         if (mediaIds.length === 1) {
             window.location.href = `/feed/media/${mediaIds[0]}/download`;
+            searchDownloadSelectBtn.disabled = false;
             return;
         }
         try {
@@ -1243,6 +1244,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = payload.downloadUrl;
         } catch (error) {
             window.alert('압축 파일 생성 실패');
+        } finally {
             searchDownloadSelectBtn.disabled = false;
         }
     });

@@ -521,6 +521,7 @@
         if (mediaIds.length === 1) {
             const target = items.find((i) => i.dataset.mediaId === String(mediaIds[0]));
             if (target) window.location.href = target.dataset.downloadUrl;
+            downloadSelectBtn.disabled = false;
             return;
         }
         try {
@@ -538,6 +539,7 @@
             window.location.href = payload.downloadUrl;
         } catch (e) {
             alert('압축 파일 생성 실패');
+        } finally {
             downloadSelectBtn.disabled = false;
         }
     });

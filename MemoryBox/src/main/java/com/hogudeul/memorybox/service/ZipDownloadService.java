@@ -58,7 +58,7 @@ public class ZipDownloadService {
         }
 
         writeZipFile(files, zipPath);
-        return new PreparedZip(fileName, "/download/zip/" + fileName);
+        return new PreparedZip(fileName, "/temp/zip/" + fileName);
     }
 
     public Path resolveZipForDownload(String fileName) {
