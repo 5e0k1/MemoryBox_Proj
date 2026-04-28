@@ -159,8 +159,8 @@
         } else {
             viewerContent.dataset.animating = 'true';
             const offset = direction === 'next' ? 100 : -100;
-            const durationMs = 320;
-            const easing = 'cubic-bezier(0.22, 1, 0.36, 1)';
+            const durationMs = 420;
+            const easing = 'cubic-bezier(0.25, 0.8, 0.25, 1)';
 
             nextFrame.style.transform = `translateX(${offset}%)`;
             nextFrame.style.opacity = '0.92';
