@@ -219,17 +219,24 @@
     items.forEach((btn, index) => {
         let timer = null;
         let longPressTriggered = false;
+        let suppressContextMenuUntil = 0;
         btn.addEventListener('touchstart', () => {
             longPressTriggered = false;
             timer = setTimeout(() => {
                 longPressTriggered = true;
+                suppressContextMenuUntil = Date.now() + 900;
                 selectionMode = true;
                 toggleSelection(btn);
             }, 500);
         }, {passive:true});
         btn.addEventListener('touchmove', () => { if (timer) clearTimeout(timer); }, {passive:true});
         btn.addEventListener('touchend', () => { if (timer) clearTimeout(timer); }, {passive:true});
-        btn.addEventListener('contextmenu', (e) => { e.preventDefault(); selectionMode = true; toggleSelection(btn); });
+        btn.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (Date.now() < suppressContextMenuUntil) return;
+            selectionMode = true;
+            toggleSelection(btn);
+        });
         btn.addEventListener('click', (e) => {
             if (longPressTriggered) {
                 e.preventDefault();
