@@ -218,12 +218,24 @@
 
     items.forEach((btn, index) => {
         let timer = null;
+        let longPressTriggered = false;
         btn.addEventListener('touchstart', () => {
-            timer = setTimeout(() => { selectionMode = true; toggleSelection(btn); }, 500);
+            longPressTriggered = false;
+            timer = setTimeout(() => {
+                longPressTriggered = true;
+                selectionMode = true;
+                toggleSelection(btn);
+            }, 500);
         }, {passive:true});
+        btn.addEventListener('touchmove', () => { if (timer) clearTimeout(timer); }, {passive:true});
         btn.addEventListener('touchend', () => { if (timer) clearTimeout(timer); }, {passive:true});
         btn.addEventListener('contextmenu', (e) => { e.preventDefault(); selectionMode = true; toggleSelection(btn); });
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+            if (longPressTriggered) {
+                e.preventDefault();
+                longPressTriggered = false;
+                return;
+            }
             if (selectionMode) { toggleSelection(btn); return; }
             openViewer(index);
         });

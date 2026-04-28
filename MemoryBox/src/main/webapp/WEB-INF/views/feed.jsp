@@ -228,19 +228,12 @@
             </label>
         </div>
 
-        <div class="mobile-selection-bar" id="mobileSelectionBar" aria-live="polite" hidden>
-            <span><strong id="selectedCount">0</strong>개 선택됨</span>
-            <div class="selection-actions">
-                <button type="button" class="btn btn-secondary" id="cancelSelectionBtn">취소</button>
-                <button type="button" class="btn" id="downloadSelectedBtn">다운로드</button>
-            </div>
-        </div>
     </div>
 
     <section id="feedGrid" class="feed-grid columns-1" aria-live="polite">
         <c:if test="${mode ne 'search'}">
             <c:forEach var="item" items="${feedItems}">
-                <article class="feed-card" data-media-type="${item.mediaType}" data-item-id="${item.id}" data-detail-url="/feed/${item.id}">
+                <article class="feed-card" data-media-type="${item.mediaType}" data-batch-id="${item.id}" data-detail-url="/feed/${item.id}">
                     <a class="thumb-link" href="/feed/${item.id}" aria-label="${item.title} 상세보기">
                         <c:choose>
                             <c:when test="${not empty item.mediaItems}">
@@ -293,7 +286,6 @@
                         </c:choose>
                         <span class="media-badge ${item.mediaType}" data-full-text="${item.mediaType eq 'video' ? 'Video' : 'Photo'}" data-short-text="${item.mediaType eq 'video' ? 'V' : 'P'}">${item.mediaType eq 'video' ? 'Video' : 'Photo'}</span>
                         <c:if test="${item.recent}"><span class="new-badge" data-full-text="New" data-short-text="N">New</span></c:if>
-                        <span class="select-check" aria-hidden="true">✔</span>
                         <div class="overlay-meta overlay-bottom"><p>${item.author}</p></div>
                     </a>
                     <button type="button" class="like-toggle-btn ${item.likedByMe ? 'is-liked' : ''}" data-action="like-toggle" aria-label="좋아요 토글" aria-pressed="${item.likedByMe}">
