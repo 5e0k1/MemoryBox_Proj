@@ -248,15 +248,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         let touchStartX = null;
+        let touchStartY = null;
         slider.addEventListener('touchstart', (event) => {
             touchStartX = event.changedTouches?.[0]?.clientX ?? null;
+            touchStartY = event.changedTouches?.[0]?.clientY ?? null;
         }, { passive: true });
         slider.addEventListener('touchend', (event) => {
-            if (touchStartX == null) return;
+            if (touchStartX == null || touchStartY == null) return;
             const endX = event.changedTouches?.[0]?.clientX ?? touchStartX;
+            const endY = event.changedTouches?.[0]?.clientY ?? touchStartY;
             const delta = endX - touchStartX;
+            const deltaY = endY - touchStartY;
             touchStartX = null;
+            touchStartY = null;
             if (Math.abs(delta) < 30) return;
+            if (Math.abs(delta) <= Math.abs(deltaY)) return;
             moveTo(delta > 0 ? currentIndex - 1 : currentIndex + 1);
         }, { passive: true });
 
