@@ -78,8 +78,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let photoViewerItems = [];
     let photoViewerIndex = 0;
     let longPressTimer = null;
+    let longPressTriggered = false;
     const selectedPhotoIds = new Set();
     let selectingPhotoMode = false;
+    let searchViewerHistoryActive = false;
 
     const isAlbumPickerMode = () => isSearchMode && state.selectedAlbum === null;
 
@@ -212,6 +214,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isSearchMode) return;
         state.selectedAlbum = null;
         resetSearchFilters();
+        selectingPhotoMode = false;
+        selectedPhotoIds.clear();
         if (grid) grid.innerHTML = '';
         updateCountUI(0, 0);
         hasMore = false;
@@ -222,6 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (floatingHead) floatingHead.hidden = true;
         if (controlPanel) controlPanel.hidden = true;
         if (feedEndMessage) feedEndMessage.hidden = true;
+        if (searchSelectionBar) searchSelectionBar.hidden = true;
     };
 
     const enterAlbumView = async (albumName) => {
@@ -233,6 +238,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (searchModeTabs) searchModeTabs.hidden = false;
         if (floatingHead) floatingHead.hidden = false;
         if (controlPanel) controlPanel.hidden = false;
+        selectingPhotoMode = false;
+        selectedPhotoIds.clear();
+        if (searchSelectedCount) searchSelectedCount.textContent = '0';
+        if (searchSelectionBar) searchSelectionBar.hidden = true;
         resetSearchFilters();
         await reloadFromFirstPage();
     };
@@ -242,6 +251,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleCardClick = (event, card) => {
         if (isSearchMode && state.searchMode === 'photo') {
             if (isActionElement(event.target)) return;
+            if (longPressTriggered) {
+                event.preventDefault();
+                longPressTriggered = false;
+                return;
+            }
+            if (selectingPhotoMode) {
+                event.preventDefault();
+                togglePhotoSelect(card);
+                return;
+            }
             const mediaId = card.dataset.mediaId;
             const items = JSON.parse(card.dataset.batchItems || '[]');
             const currentIndex = Math.max(0, items.findIndex((item) => String(item.mediaId) === String(mediaId)));
@@ -314,18 +333,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (isSearchMode && state.searchMode === 'photo') {
-            card.addEventListener('pointerdown', () => {
+            card.addEventListener('contextmenu', (event) => {
+                event.preventDefault();
+            });
+            card.addEventListener('touchstart', () => {
+                longPressTriggered = false;
                 longPressTimer = window.setTimeout(() => {
+                    longPressTriggered = true;
                     selectingPhotoMode = true;
                     togglePhotoSelect(card);
-                }, 420);
-            });
-            card.addEventListener('pointerup', () => {
+                }, 500);
+            }, { passive: true });
+            card.addEventListener('touchmove', () => {
                 if (longPressTimer) window.clearTimeout(longPressTimer);
-            });
-            card.addEventListener('pointerleave', () => {
+            }, { passive: true });
+            card.addEventListener('touchend', () => {
                 if (longPressTimer) window.clearTimeout(longPressTimer);
-            });
+            }, { passive: true });
             return;
         }
 
@@ -451,6 +475,10 @@ document.addEventListener('DOMContentLoaded', () => {
         photoViewerItems = items || [];
         photoViewerIndex = Math.max(0, index || 0);
         if (!searchViewerBackdrop || photoViewerItems.length === 0) return;
+        if (!searchViewerHistoryActive) {
+            history.pushState({ searchViewerOpen: true }, '', window.location.href);
+            searchViewerHistoryActive = true;
+        }
         searchViewerBackdrop.hidden = false;
         document.body.classList.add('modal-open');
         renderSearchViewer();
@@ -460,6 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!searchViewerBackdrop) return;
         searchViewerBackdrop.hidden = true;
         document.body.classList.remove('modal-open');
+        searchViewerHistoryActive = false;
     };
 
     const togglePhotoSelect = (card) => {
@@ -467,6 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!mediaId) return;
         if (selectedPhotoIds.has(mediaId)) selectedPhotoIds.delete(mediaId);
         else selectedPhotoIds.add(mediaId);
+        if (selectedPhotoIds.size === 0) selectingPhotoMode = false;
         card.classList.toggle('is-selected', selectedPhotoIds.has(mediaId));
         if (searchSelectedCount) searchSelectedCount.textContent = String(selectedPhotoIds.size);
         if (searchSelectionBar) searchSelectionBar.hidden = !selectingPhotoMode;
@@ -638,7 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 grid.classList.toggle('is-photo-mode', isSearchMode && state.searchMode === 'photo');
                 grid.insertAdjacentHTML('beforeend', items.map(cardBuilder).join(''));
                 Array.from(grid.querySelectorAll('.feed-card')).slice(-items.length).forEach(bindCardEvents);
-                updateBadgeLabels(state.columns);
+                applyColumn(state.columns);
                 initPreviewAutoplay();
                 page += 1;
             }
@@ -1093,6 +1123,11 @@ document.addEventListener('DOMContentLoaded', () => {
     searchViewerCloseBtn?.addEventListener('click', closeSearchViewer);
     searchViewerBackdrop?.addEventListener('click', (event) => {
         if (event.target === searchViewerBackdrop) closeSearchViewer();
+    });
+    window.addEventListener('popstate', () => {
+        if (searchViewerBackdrop && !searchViewerBackdrop.hidden) {
+            closeSearchViewer();
+        }
     });
     searchViewerPrevBtn?.addEventListener('click', () => {
         if (photoViewerItems.length === 0) return;

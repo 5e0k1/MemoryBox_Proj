@@ -229,6 +229,7 @@
     let currentIndex = 0;
     let selectionMode = false;
     const selected = new Set();
+    let viewerHistoryActive = false;
 
     const getItemData = (index) => mediaEntries[index];
 
@@ -309,6 +310,10 @@
     };
 
     const openViewer = (index) => {
+        if (!viewerHistoryActive) {
+            history.pushState({detailViewerOpen: true}, '', window.location.href);
+            viewerHistoryActive = true;
+        }
         viewerBackdrop.hidden = false;
         document.body.classList.add('modal-open');
         renderViewer(index, 'none');
@@ -317,6 +322,7 @@
     const closeViewer = () => {
         viewerBackdrop.hidden = true;
         document.body.classList.remove('modal-open');
+        viewerHistoryActive = false;
     };
 
     const syncSelectionUi = () => {
@@ -368,6 +374,11 @@
     viewerPrevBtn.addEventListener('click', () => renderViewer((currentIndex - 1 + items.length) % items.length, 'prev'));
     viewerNextBtn.addEventListener('click', () => renderViewer((currentIndex + 1) % items.length, 'next'));
     viewerBackdrop.addEventListener('click', (e) => { if (e.target === viewerBackdrop) closeViewer(); });
+    window.addEventListener('popstate', () => {
+        if (!viewerBackdrop.hidden) {
+            closeViewer();
+        }
+    });
 
     const swipeState = {
         dragging: false,

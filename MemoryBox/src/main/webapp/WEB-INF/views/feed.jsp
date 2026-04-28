@@ -365,26 +365,28 @@
     </section>
 </div>
 
-<div class="viewer-backdrop" id="searchViewerBackdrop" hidden>
-    <section class="viewer-panel">
-        <button type="button" class="viewer-close" id="searchViewerCloseBtn">✕</button>
-        <button type="button" class="viewer-nav prev" id="searchViewerPrevBtn">‹</button>
-        <button type="button" class="viewer-nav next" id="searchViewerNextBtn">›</button>
-        <div class="viewer-content" id="searchViewerContent"></div>
-        <div class="viewer-footer">
-            <span id="searchViewerCounter"><span id="searchViewerCurrent">1</span> / <span id="searchViewerTotal">1</span></span>
-            <a class="btn btn-secondary" id="searchViewerDownloadBtn" href="#">원본 다운로드</a>
-        </div>
-    </section>
-</div>
-
-<div class="selection-bar" id="searchSelectionBar" hidden>
-    <span><strong id="searchSelectedCount">0</strong>개 선택됨</span>
-    <div class="selection-actions">
-        <button type="button" class="btn btn-secondary" id="searchCancelSelectBtn">취소</button>
-        <button type="button" class="btn btn-secondary" id="searchDownloadSelectBtn">선택 다운로드</button>
+<c:if test="${mode eq 'search'}">
+    <div class="viewer-backdrop" id="searchViewerBackdrop" hidden>
+        <section class="viewer-panel">
+            <button type="button" class="viewer-close" id="searchViewerCloseBtn">✕</button>
+            <button type="button" class="viewer-nav prev" id="searchViewerPrevBtn">‹</button>
+            <button type="button" class="viewer-nav next" id="searchViewerNextBtn">›</button>
+            <div class="viewer-content" id="searchViewerContent"></div>
+            <div class="viewer-footer">
+                <span id="searchViewerCounter"><span id="searchViewerCurrent">1</span> / <span id="searchViewerTotal">1</span></span>
+                <a class="btn btn-secondary" id="searchViewerDownloadBtn" href="#">원본 다운로드</a>
+            </div>
+        </section>
     </div>
-</div>
+
+    <div class="selection-bar" id="searchSelectionBar" hidden>
+        <span><strong id="searchSelectedCount">0</strong>개 선택됨</span>
+        <div class="selection-actions">
+            <button type="button" class="btn btn-secondary" id="searchCancelSelectBtn">취소</button>
+            <button type="button" class="btn btn-secondary" id="searchDownloadSelectBtn">선택 다운로드</button>
+        </div>
+    </div>
+</c:if>
 <script src="/js/feed.js"></script>
 <script src="/js/push.js"></script>
 </body>
