@@ -1138,7 +1138,15 @@ body.modal-open {
 .back-thumb {
     display: grid;
     place-items: center;
+    align-content: center;
+    gap: 8px;
     background: linear-gradient(180deg, #eaf2ff 0%, #e0edff 100%);
+}
+
+.back-thumb-label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #1d4ed8;
 }
 
 .back-meta {
@@ -1168,11 +1176,12 @@ body.modal-open {
     font-size: 0.95rem;
 }
 
-.feed-grid.columns-3 .feed-card.is-nav-card .back-meta p {
+.feed-grid.columns-3 .feed-card.is-nav-card .back-meta,
+.feed-grid.columns-5 .feed-card.is-nav-card .back-meta {
     display: none;
 }
 
-.feed-grid.columns-5 .feed-card.is-nav-card .back-meta {
+.feed-grid.columns-1 .feed-card.is-nav-card .back-thumb-label {
     display: none;
 }
 
@@ -1556,4 +1565,8 @@ body.modal-open {
     color: #fff;
     padding: 10px 12px;
     border-radius: 12px;
+}
+
+.selection-bar[hidden] {
+    display: none !important;
 }

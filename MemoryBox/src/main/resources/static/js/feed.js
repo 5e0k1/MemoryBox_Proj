@@ -195,6 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button type="button" class="back-album-btn" aria-label="앨범 선택으로 돌아가기">
                 <span class="thumb-link back-thumb" aria-hidden="true">
                     <span class="back-album-icon">↩</span>
+                    <span class="back-thumb-label">이전</span>
                 </span>
                 <div class="feed-meta back-meta">
                     <h2>이전</h2>
