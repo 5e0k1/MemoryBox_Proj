@@ -67,6 +67,15 @@
         LIMIT 1
     </select>
 
+    <select id="findByRememberTokenLegacyRaw" resultMap="UserAccountMap">
+        SELECT
+        <include refid="userColumns"/>
+        FROM `USER`
+        WHERE remember_token_hash = #{rawToken}
+          AND del_yn = 'N'
+        LIMIT 1
+    </select>
+
     <update id="updateLastLoginAt">
         UPDATE `USER`
         SET last_login_at = NOW(),

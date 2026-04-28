@@ -16,6 +16,7 @@ public interface UserMapper {
     List<UserAccount> findActiveByDisplayName(@Param("displayName") String displayName);
 
     UserAccount findByRememberTokenHash(@Param("rememberTokenHash") String rememberTokenHash);
+    UserAccount findByRememberTokenLegacyRaw(@Param("rawToken") String rawToken);
 
     int updateLastLoginAt(@Param("userId") Long userId);
 

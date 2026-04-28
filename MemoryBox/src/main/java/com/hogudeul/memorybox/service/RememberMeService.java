@@ -60,6 +60,12 @@ public class RememberMeService {
         String tokenHash = sha256(rawToken);
         UserAccount user = userMapper.findByRememberTokenHash(tokenHash);
         if (user == null) {
+            user = userMapper.findByRememberTokenLegacyRaw(rawToken);
+            if (user != null && user.getRememberTokenExpiresAt() != null && user.getRememberTokenExpiresAt().isAfter(LocalDateTime.now())) {
+                userMapper.updateRememberToken(user.getUserId(), tokenHash, user.getRememberTokenExpiresAt());
+            }
+        }
+        if (user == null) {
             expireRememberCookie(response);
             return null;
         }

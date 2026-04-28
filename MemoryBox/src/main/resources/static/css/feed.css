@@ -194,6 +194,7 @@
     overflow: hidden;
     position: relative;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .feed-card.is-selected {
@@ -384,6 +385,12 @@
     font-size: 0.74rem;
     color: #334155;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.like-toggle-btn,
+.comment-meta-btn,
+.like-meta-btn {
+    -webkit-tap-highlight-color: transparent;
 }
 .meta-btn.is-liked {
     color: #be123c;
@@ -1183,6 +1190,16 @@ body.modal-open {
 
 .feed-grid.columns-1 .feed-card.is-nav-card .back-thumb-label {
     display: none;
+}
+
+.feed-grid.columns-5 .feed-card.is-nav-card .back-thumb-label {
+    display: none;
+}
+
+.feed-grid.columns-3 .feed-card.is-nav-card .back-thumb {
+    align-content: end;
+    padding-bottom: 10px;
+    gap: 10px;
 }
 
 .back-album-icon {

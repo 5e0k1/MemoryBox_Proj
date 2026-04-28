@@ -212,6 +212,20 @@ document.addEventListener('DOMContentLoaded', () => {
         grid.insertAdjacentHTML('afterbegin', buildBackCardHtml());
     };
 
+    const updateAlbumPickerCountLabels = () => {
+        if (!albumPickerGrid) return;
+        const isPhotoSearchMode = state.searchMode === 'photo';
+        albumPickerGrid.querySelectorAll('.album-picker-card').forEach((card) => {
+            const countLabel = card.querySelector('[data-album-count-label]');
+            if (!countLabel) return;
+            if (isPhotoSearchMode) {
+                countLabel.textContent = `사진 ${card.dataset.photoCount || 0}개 영상 ${card.dataset.videoCount || 0}개`;
+                return;
+            }
+            countLabel.textContent = `${card.dataset.feedCount || 0}개의 피드`;
+        });
+    };
+
     const enterAlbumPicker = () => {
         if (!isSearchMode) return;
         state.selectedAlbum = null;
@@ -229,6 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (controlPanel) controlPanel.hidden = true;
         if (feedEndMessage) feedEndMessage.hidden = true;
         if (searchSelectionBar) searchSelectionBar.hidden = true;
+        updateAlbumPickerCountLabels();
     };
 
     const enterAlbumView = async (albumName) => {
@@ -252,6 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const handleCardClick = (event, card) => {
         if (isSearchMode && state.searchMode === 'photo') {
+            event.preventDefault();
             if (isActionElement(event.target)) return;
             if (longPressTriggered) {
                 event.preventDefault();
@@ -460,7 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const batchItems = encodeURIComponent(JSON.stringify(item.batchMediaItems || []));
         const moreCount = Math.max(0, Number(item.batchMediaCount || 0) - 1);
         return `<article class="feed-card photo-item-card" data-media-id="${item.id}" data-batch-id="${item.batchId}" data-batch-items='${batchItems}'>
-            <a class="thumb-link" href="#" aria-label="${escapeHtml(item.title || '')}">
+            <a class="thumb-link" href="javascript:void(0)" aria-label="${escapeHtml(item.title || '')}">
                 <img src="${item.smallUrl || ''}" alt="${escapeHtml(item.title || '')}" loading="lazy">
                 ${moreCount > 0 ? `<span class="compact-batch-count">+${moreCount}</span>` : ''}
             </a>
@@ -767,6 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectingPhotoMode = false;
         selectedPhotoIds.clear();
         if (searchSelectionBar) searchSelectionBar.hidden = true;
+        updateAlbumPickerCountLabels();
         reloadFromFirstPage();
     }));
     albumFilter?.addEventListener('change', reloadFromFirstPage);

@@ -528,6 +528,62 @@
         });
     });
 
+    const detailLayout = document.getElementById('detailLayout');
+    const batchId = detailLayout?.dataset.batchId;
+    const likeForm = document.querySelector('.engagement-row .inline-form');
+    const commentForms = document.querySelectorAll('.comment-form, .reply-form');
+
+    const refreshWithoutHistoryStack = () => {
+        const currentUrl = window.location.pathname + window.location.search;
+        window.location.replace(currentUrl);
+    };
+
+    likeForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!batchId) return;
+        const action = likeForm.querySelector('input[name="action"]')?.value || 'like';
+        const params = new URLSearchParams();
+        params.set('action', action);
+        const response = await fetch(`/api/feed/${batchId}/like`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+            body: params.toString()
+        });
+        if (!response.ok) {
+            alert('좋아요 처리 중 오류가 발생했습니다.');
+            return;
+        }
+        refreshWithoutHistoryStack();
+    });
+
+    commentForms.forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!batchId) return;
+            const textarea = form.querySelector('textarea[name="content"]');
+            const content = (textarea?.value || '').trim();
+            if (!content) {
+                alert('댓글 내용을 입력해 주세요.');
+                return;
+            }
+            const params = new URLSearchParams();
+            params.set('content', content);
+            const parentId = form.querySelector('input[name="parentId"]')?.value;
+            if (parentId) params.set('parentId', parentId);
+
+            const response = await fetch(`/api/feed/${batchId}/comments`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+                body: params.toString()
+            });
+            if (!response.ok) {
+                alert('댓글 처리 중 오류가 발생했습니다.');
+                return;
+            }
+            refreshWithoutHistoryStack();
+        });
+    });
+
     if (shareOpenBtn && shareModal && shareForm && shareCloseBtn && shareBackdrop &&
         guestOptionWrap && shareCreateBtn && shareCopyBtn && shareUrlOutput && shareFeedback) {
         const closeShareModal = () => {
