@@ -146,7 +146,15 @@
         return frame;
     };
 
+    const updateViewerMeta = (index, data) => {
+        currentIndex = index;
+        viewerCurrent.textContent = String(index + 1);
+        viewerTotal.textContent = String(totalItems);
+        viewerDownloadBtn.href = data.downloadUrl;
+    };
+
     const renderViewer = (index, direction) => {
+        if ((direction === 'next' || direction === 'prev') && viewerContent.dataset.animating) return;
         const data = getItemData(index);
         if (!data) return;
         const nextFrame = createViewerFrame(index, data);
@@ -186,10 +194,7 @@
             }, durationMs + 20);
         }
 
-        currentIndex = index;
-        viewerCurrent.textContent = String(index + 1);
-        viewerTotal.textContent = String(totalItems);
-        viewerDownloadBtn.href = data.downloadUrl;
+        updateViewerMeta(index, data);
     };
 
     const openViewer = (index) => {
@@ -253,18 +258,108 @@
     document.getElementById('viewerNextBtn').addEventListener('click', () => renderViewer((currentIndex + 1) % items.length, 'next'));
     viewerBackdrop.addEventListener('click', (e) => { if (e.target === viewerBackdrop) closeViewer(); });
 
-    let touchX = null;
-    viewerContent.addEventListener('touchstart', (e) => { touchX = e.changedTouches[0].clientX; }, {passive:true});
-    viewerContent.addEventListener('touchend', (e) => {
-        if (touchX == null) return;
-        const diff = e.changedTouches[0].clientX - touchX;
-        touchX = null;
-        if (Math.abs(diff) < 30) return;
-        renderViewer(
-            diff > 0 ? (currentIndex - 1 + items.length) % items.length : (currentIndex + 1) % items.length,
-            diff > 0 ? 'prev' : 'next'
-        );
+    const swipeState = {
+        dragging: false,
+        startX: 0,
+        deltaX: 0,
+        direction: null,
+        neighborFrame: null
+    };
+
+    const clearDragPreview = () => {
+        const currentFrame = viewerContent.querySelector('.viewer-media-frame');
+        if (currentFrame) {
+            currentFrame.style.transition = '';
+            currentFrame.style.transform = '';
+            currentFrame.style.opacity = '';
+        }
+        if (swipeState.neighborFrame) swipeState.neighborFrame.remove();
+        swipeState.dragging = false;
+        swipeState.deltaX = 0;
+        swipeState.direction = null;
+        swipeState.neighborFrame = null;
+    };
+
+    viewerContent.addEventListener('touchstart', (e) => {
+        if (viewerContent.dataset.animating || e.touches.length !== 1) return;
+        swipeState.dragging = true;
+        swipeState.startX = e.touches[0].clientX;
+        swipeState.deltaX = 0;
+        swipeState.direction = null;
+        if (swipeState.neighborFrame) swipeState.neighborFrame.remove();
+        swipeState.neighborFrame = null;
     }, {passive:true});
+    viewerContent.addEventListener('touchmove', (e) => {
+        if (!swipeState.dragging) return;
+        const currentFrame = viewerContent.querySelector('.viewer-media-frame');
+        if (!currentFrame) return;
+        const contentWidth = Math.max(viewerContent.clientWidth, 1);
+        swipeState.deltaX = e.touches[0].clientX - swipeState.startX;
+        const direction = swipeState.deltaX > 0 ? 'prev' : 'next';
+        if (!swipeState.direction) swipeState.direction = direction;
+        if (!swipeState.neighborFrame || swipeState.direction !== direction) {
+            if (swipeState.neighborFrame) swipeState.neighborFrame.remove();
+            const neighborIndex = direction === 'prev'
+                ? (currentIndex - 1 + items.length) % items.length
+                : (currentIndex + 1) % items.length;
+            swipeState.neighborFrame = createViewerFrame(neighborIndex, getItemData(neighborIndex));
+            swipeState.neighborFrame.style.transform = `translateX(${direction === 'next' ? 100 : -100}%)`;
+            swipeState.neighborFrame.style.opacity = '0.95';
+            viewerContent.appendChild(swipeState.neighborFrame);
+            swipeState.direction = direction;
+        }
+
+        const moveX = swipeState.deltaX;
+        const nextOffset = (direction === 'next' ? contentWidth : -contentWidth) + moveX;
+        currentFrame.style.transition = 'none';
+        currentFrame.style.transform = `translateX(${moveX}px)`;
+        currentFrame.style.opacity = String(Math.max(0.72, 1 - Math.abs(moveX) / (contentWidth * 1.6)));
+        swipeState.neighborFrame.style.transition = 'none';
+        swipeState.neighborFrame.style.transform = `translateX(${nextOffset}px)`;
+    }, {passive:true});
+    viewerContent.addEventListener('touchend', (e) => {
+        if (!swipeState.dragging) return;
+        const currentFrame = viewerContent.querySelector('.viewer-media-frame');
+        const diff = swipeState.deltaX || (e.changedTouches[0].clientX - swipeState.startX);
+        const threshold = Math.max(48, viewerContent.clientWidth * 0.16);
+        if (!currentFrame || !swipeState.neighborFrame || Math.abs(diff) < threshold) {
+            if (currentFrame) {
+                currentFrame.style.transition = 'transform 240ms ease, opacity 240ms ease';
+                currentFrame.style.transform = 'translateX(0)';
+                currentFrame.style.opacity = '1';
+            }
+            if (swipeState.neighborFrame) {
+                swipeState.neighborFrame.style.transition = 'transform 240ms ease, opacity 240ms ease';
+                swipeState.neighborFrame.style.transform = `translateX(${diff > 0 ? -100 : 100}%)`;
+            }
+            window.setTimeout(clearDragPreview, 250);
+            return;
+        }
+
+        const direction = diff > 0 ? 'prev' : 'next';
+        const nextIndex = direction === 'prev'
+            ? (currentIndex - 1 + items.length) % items.length
+            : (currentIndex + 1) % items.length;
+        viewerContent.dataset.animating = 'true';
+        currentFrame.style.transition = 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease';
+        swipeState.neighborFrame.style.transition = 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease';
+        currentFrame.style.transform = `translateX(${direction === 'next' ? -100 : 100}%)`;
+        currentFrame.style.opacity = '0.82';
+        swipeState.neighborFrame.style.transform = 'translateX(0)';
+        swipeState.neighborFrame.style.opacity = '1';
+
+        window.setTimeout(() => {
+            viewerContent.innerHTML = '';
+            swipeState.neighborFrame.style.transition = '';
+            swipeState.neighborFrame.style.transform = '';
+            swipeState.neighborFrame.style.opacity = '';
+            viewerContent.appendChild(swipeState.neighborFrame);
+            clearDragPreview();
+            delete viewerContent.dataset.animating;
+            updateViewerMeta(nextIndex, getItemData(nextIndex));
+        }, 300);
+    }, {passive:true});
+    viewerContent.addEventListener('touchcancel', clearDragPreview, {passive:true});
 
     document.getElementById('cancelSelectBtn').addEventListener('click', () => {
         selectionMode = false; selected.clear(); syncSelectionUi();
