@@ -9,6 +9,7 @@ public class StorageProperties {
 
     private String type = "local";
     private String localRoot = "uploads/";
+    private String tempRoot = "tmp/";
     private String publicBaseUrl = "/files";
     private final S3 s3 = new S3();
     private final CloudFront cloudfront = new CloudFront();
@@ -35,6 +36,14 @@ public class StorageProperties {
 
     public void setPublicBaseUrl(String publicBaseUrl) {
         this.publicBaseUrl = publicBaseUrl;
+    }
+
+    public String getTempRoot() {
+        return tempRoot;
+    }
+
+    public void setTempRoot(String tempRoot) {
+        this.tempRoot = tempRoot;
     }
 
     public S3 getS3() {

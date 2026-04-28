@@ -495,24 +495,51 @@
         selectionMode = false; selected.clear(); syncSelectionUi();
     });
 
+    const withPreparingAlert = async (job) => {
+        if (window.Swal && typeof window.Swal.fire === 'function') {
+            window.Swal.fire({
+                title: '압축 파일 준비 중...',
+                text: '파일을 묶는 중입니다. 잠시만 기다려주세요.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => window.Swal.showLoading()
+            });
+        }
+        try {
+            return await job();
+        } finally {
+            if (window.Swal && typeof window.Swal.close === 'function') {
+                window.Swal.close();
+            }
+        }
+    };
+
     downloadSelectBtn.addEventListener('click', async () => {
         if (selected.size === 0) return;
-        window.alert('다운로드가 완료될 때 까지 페이지에서 기다려주세요.');
+        downloadSelectBtn.disabled = true;
         const mediaIds = Array.from(selected, (v) => Number(v));
         if (mediaIds.length === 1) {
             const target = items.find((i) => i.dataset.mediaId === String(mediaIds[0]));
             if (target) window.location.href = target.dataset.downloadUrl;
             return;
         }
-        const res = await fetch('/feed/download-zip', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({mediaIds})
-        });
-        if (!res.ok) { alert('다운로드 실패'); return; }
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'memorybox_selected.zip'; a.click();
-        URL.revokeObjectURL(url);
+        try {
+            const payload = await withPreparingAlert(async () => {
+                const res = await fetch('/download/zip/prepare', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({mediaIds})
+                });
+                if (!res.ok) throw new Error('zip prepare failed');
+                return res.json();
+            });
+            selectionMode = false;
+            selected.clear();
+            syncSelectionUi();
+            window.location.href = payload.downloadUrl;
+        } catch (e) {
+            alert('압축 파일 생성 실패');
+            downloadSelectBtn.disabled = false;
+        }
     });
 
     document.querySelectorAll('.reply-toggle-btn').forEach((btn) => {
