@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const albumPickerGrid = document.getElementById('albumPickerGrid');
     const selectedAlbumHeader = document.getElementById('selectedAlbumHeader');
     const selectedAlbumTitle = document.getElementById('selectedAlbumTitle');
+    const searchModeTabs = document.getElementById('searchModeTabs');
+    const searchModeButtons = document.querySelectorAll('.search-mode-btn');
     const floatingHead = document.getElementById('floatingHead');
     const controlPanel = isSearchMode ? document.querySelector('.control-panel') : null;
     const sortOption = document.getElementById('sortOption');
@@ -43,6 +45,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const commentParentIdInput = document.getElementById('commentParentId');
     const commentSheetInput = document.getElementById('commentSheetInput');
     const commentReplyCancelBtn = document.getElementById('commentReplyCancelBtn');
+    const searchViewerBackdrop = document.getElementById('searchViewerBackdrop');
+    const searchViewerContent = document.getElementById('searchViewerContent');
+    const searchViewerCurrent = document.getElementById('searchViewerCurrent');
+    const searchViewerTotal = document.getElementById('searchViewerTotal');
+    const searchViewerDownloadBtn = document.getElementById('searchViewerDownloadBtn');
+    const searchViewerCloseBtn = document.getElementById('searchViewerCloseBtn');
+    const searchViewerPrevBtn = document.getElementById('searchViewerPrevBtn');
+    const searchViewerNextBtn = document.getElementById('searchViewerNextBtn');
+    const searchSelectionBar = document.getElementById('searchSelectionBar');
+    const searchSelectedCount = document.getElementById('searchSelectedCount');
+    const searchCancelSelectBtn = document.getElementById('searchCancelSelectBtn');
+    const searchDownloadSelectBtn = document.getElementById('searchDownloadSelectBtn');
 
     const likePendingIds = new Set();
     let loading = false;
@@ -58,8 +72,14 @@ document.addEventListener('DOMContentLoaded', () => {
         columns: isSearchMode ? '3' : '1',
         sort: 'uploaded_desc',
         scrollTop: 0,
-        selectedAlbum: isSearchMode ? null : '전체'
+        selectedAlbum: isSearchMode ? null : '전체',
+        searchMode: 'feed'
     };
+    let photoViewerItems = [];
+    let photoViewerIndex = 0;
+    let longPressTimer = null;
+    const selectedPhotoIds = new Set();
+    let selectingPhotoMode = false;
 
     const isAlbumPickerMode = () => isSearchMode && state.selectedAlbum === null;
 
@@ -142,6 +162,12 @@ document.addEventListener('DOMContentLoaded', () => {
         grid.classList.add(`columns-${columns}`);
         colButtons.forEach((b) => b.classList.toggle('is-active', b.dataset.columns === columns));
         updateBadgeLabels(columns);
+        const compact = columns === '3' || columns === '5';
+        getCards().forEach((card) => {
+            card.classList.toggle('compact-card', compact && state.searchMode === 'feed');
+            const countNode = card.querySelector('.compact-batch-count');
+            if (countNode) countNode.hidden = !(compact && state.searchMode === 'feed');
+        });
     };
 
     const saveFeedState = () => {
@@ -192,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
         page = 1;
         if (albumPickerSection) albumPickerSection.hidden = false;
         if (selectedAlbumHeader) selectedAlbumHeader.hidden = true;
+        if (searchModeTabs) searchModeTabs.hidden = true;
         if (floatingHead) floatingHead.hidden = true;
         if (controlPanel) controlPanel.hidden = true;
         if (feedEndMessage) feedEndMessage.hidden = true;
@@ -203,6 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedAlbumTitle) selectedAlbumTitle.textContent = state.selectedAlbum;
         if (albumPickerSection) albumPickerSection.hidden = true;
         if (selectedAlbumHeader) selectedAlbumHeader.hidden = false;
+        if (searchModeTabs) searchModeTabs.hidden = false;
         if (floatingHead) floatingHead.hidden = false;
         if (controlPanel) controlPanel.hidden = false;
         resetSearchFilters();
@@ -212,6 +240,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const isActionElement = (target) => Boolean(target.closest('[data-action], button, input, textarea, select, .modal-close-btn'));
 
     const handleCardClick = (event, card) => {
+        if (isSearchMode && state.searchMode === 'photo') {
+            if (isActionElement(event.target)) return;
+            const mediaId = card.dataset.mediaId;
+            const items = JSON.parse(card.dataset.batchItems || '[]');
+            const currentIndex = Math.max(0, items.findIndex((item) => String(item.mediaId) === String(mediaId)));
+            openSearchViewer(items, currentIndex);
+            return;
+        }
         const detailUrl = card.dataset.detailUrl;
         if (!detailUrl) return;
         if (isActionElement(event.target)) return;
@@ -270,10 +306,28 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const bindCardEvents = (card) => {
-        initCardSlider(card);
+        if (!(isSearchMode && state.searchMode === 'photo')) {
+            initCardSlider(card);
+        }
         card.addEventListener('click', (event) => {
             handleCardClick(event, card);
         });
+
+        if (isSearchMode && state.searchMode === 'photo') {
+            card.addEventListener('pointerdown', () => {
+                longPressTimer = window.setTimeout(() => {
+                    selectingPhotoMode = true;
+                    togglePhotoSelect(card);
+                }, 420);
+            });
+            card.addEventListener('pointerup', () => {
+                if (longPressTimer) window.clearTimeout(longPressTimer);
+            });
+            card.addEventListener('pointerleave', () => {
+                if (longPressTimer) window.clearTimeout(longPressTimer);
+            });
+            return;
+        }
 
         card.querySelectorAll('[data-action="like-toggle"]').forEach((button) => {
             button.addEventListener('click', (event) => {
@@ -299,6 +353,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const params = new URLSearchParams();
         params.set('page', String(page));
         params.set('size', String(pageSize));
+        if (isSearchMode) {
+            params.set('viewMode', state.searchMode);
+        }
         if (isSearchMode) {
             if (state.selectedAlbum === null) return params;
             if (state.selectedAlbum !== '전체') params.set('album', state.selectedAlbum);
@@ -339,6 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
                <span class="slide-counter" data-slide-counter>1 / ${mediaItems.length}</span>`
             : '';
 
+        const compactBadge = mediaItems.length > 1 ? `<span class="compact-batch-count" hidden>+${mediaItems.length - 1}</span>` : '';
         return `<article class="feed-card" data-media-type="${item.mediaType}" data-batch-id="${item.id}" data-detail-url="/feed/${item.id}">
             <a class="thumb-link" href="/feed/${item.id}" aria-label="${escapeHtml(title)} 상세보기">
                 <div class="feed-slider" data-slider>
@@ -350,6 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span class="media-badge ${item.mediaType}" data-full-text="${mediaLabel}" data-short-text="${item.mediaType === 'video' ? 'V' : 'P'}">${mediaLabel}</span>
                 ${item.recent ? `<span class="new-badge" data-full-text="New" data-short-text="N">New</span>` : ""}
                 <div class="overlay-meta overlay-bottom"><p>${escapeHtml(item.author || '')}</p></div>
+                ${compactBadge}
             </a>
             <button type="button" class="like-toggle-btn ${likedClass}" data-action="like-toggle" aria-label="좋아요 토글" aria-pressed="${item.likedByMe}"><span class="heart">${likedIcon}</span></button>
             <div class="feed-meta">
@@ -362,6 +421,55 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
         </article>`;
+    };
+
+    const buildPhotoCardHtml = (item) => {
+        const batchItems = escapeHtml(JSON.stringify(item.batchMediaItems || []));
+        const moreCount = Math.max(0, Number(item.batchMediaCount || 0) - 1);
+        return `<article class="feed-card photo-item-card" data-media-id="${item.id}" data-batch-id="${item.batchId}" data-batch-items='${batchItems}'>
+            <a class="thumb-link" href="#" aria-label="${escapeHtml(item.title || '')}">
+                <img src="${item.smallUrl || ''}" alt="${escapeHtml(item.title || '')}" loading="lazy">
+                ${moreCount > 0 ? `<span class="compact-batch-count">+${moreCount}</span>` : ''}
+            </a>
+        </article>`;
+    };
+
+    const renderSearchViewer = () => {
+        if (!searchViewerContent || photoViewerItems.length === 0) return;
+        const item = photoViewerItems[photoViewerIndex];
+        const mediaUrl = item.mediumUrl || item.smallUrl || '';
+        const html = item.mediaType === 'video'
+            ? `<video src="${mediaUrl}" controls autoplay playsinline></video>`
+            : `<img src="${mediaUrl}" alt="viewer">`;
+        searchViewerContent.innerHTML = html;
+        if (searchViewerCurrent) searchViewerCurrent.textContent = String(photoViewerIndex + 1);
+        if (searchViewerTotal) searchViewerTotal.textContent = String(photoViewerItems.length);
+        if (searchViewerDownloadBtn) searchViewerDownloadBtn.href = `/feed/media/${item.mediaId}/download`;
+    };
+
+    const openSearchViewer = (items, index) => {
+        photoViewerItems = items || [];
+        photoViewerIndex = Math.max(0, index || 0);
+        if (!searchViewerBackdrop || photoViewerItems.length === 0) return;
+        searchViewerBackdrop.hidden = false;
+        document.body.classList.add('modal-open');
+        renderSearchViewer();
+    };
+
+    const closeSearchViewer = () => {
+        if (!searchViewerBackdrop) return;
+        searchViewerBackdrop.hidden = true;
+        document.body.classList.remove('modal-open');
+    };
+
+    const togglePhotoSelect = (card) => {
+        const mediaId = card.dataset.mediaId;
+        if (!mediaId) return;
+        if (selectedPhotoIds.has(mediaId)) selectedPhotoIds.delete(mediaId);
+        else selectedPhotoIds.add(mediaId);
+        card.classList.toggle('is-selected', selectedPhotoIds.has(mediaId));
+        if (searchSelectedCount) searchSelectedCount.textContent = String(selectedPhotoIds.size);
+        if (searchSelectionBar) searchSelectionBar.hidden = !selectingPhotoMode;
     };
 
     const escapeHtml = (raw) => (raw || '')
@@ -526,7 +634,9 @@ document.addEventListener('DOMContentLoaded', () => {
             hasMore = Boolean(payload.hasMore);
             if (items.length > 0) {
                 if (feedEndMessage) feedEndMessage.hidden = true;
-                grid.insertAdjacentHTML('beforeend', items.map(buildCardHtml).join(''));
+                const cardBuilder = isSearchMode && state.searchMode === 'photo' ? buildPhotoCardHtml : buildCardHtml;
+                grid.classList.toggle('is-photo-mode', isSearchMode && state.searchMode === 'photo');
+                grid.insertAdjacentHTML('beforeend', items.map(cardBuilder).join(''));
                 Array.from(grid.querySelectorAll('.feed-card')).slice(-items.length).forEach(bindCardEvents);
                 updateBadgeLabels(state.columns);
                 initPreviewAutoplay();
@@ -589,6 +699,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     colButtons.forEach((button) => button.addEventListener('click', () => applyColumn(button.dataset.columns)));
+    searchModeButtons.forEach((button) => button.addEventListener('click', () => {
+        searchModeButtons.forEach((b) => b.classList.remove('is-active'));
+        button.classList.add('is-active');
+        state.searchMode = button.dataset.searchMode || 'feed';
+        selectingPhotoMode = false;
+        selectedPhotoIds.clear();
+        if (searchSelectionBar) searchSelectionBar.hidden = true;
+        reloadFromFirstPage();
+    }));
     albumFilter?.addEventListener('change', reloadFromFirstPage);
     authorFilter?.addEventListener('change', reloadFromFirstPage);
     sortOption?.addEventListener('change', () => {
@@ -970,4 +1089,47 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isSearchMode) enterAlbumPicker();
     initCalendarWidget();
     if (isFeedMode) window.addEventListener('beforeunload', saveFeedState);
+
+    searchViewerCloseBtn?.addEventListener('click', closeSearchViewer);
+    searchViewerBackdrop?.addEventListener('click', (event) => {
+        if (event.target === searchViewerBackdrop) closeSearchViewer();
+    });
+    searchViewerPrevBtn?.addEventListener('click', () => {
+        if (photoViewerItems.length === 0) return;
+        photoViewerIndex = (photoViewerIndex - 1 + photoViewerItems.length) % photoViewerItems.length;
+        renderSearchViewer();
+    });
+    searchViewerNextBtn?.addEventListener('click', () => {
+        if (photoViewerItems.length === 0) return;
+        photoViewerIndex = (photoViewerIndex + 1) % photoViewerItems.length;
+        renderSearchViewer();
+    });
+    searchCancelSelectBtn?.addEventListener('click', () => {
+        selectingPhotoMode = false;
+        selectedPhotoIds.clear();
+        getCards().forEach((card) => card.classList.remove('is-selected'));
+        if (searchSelectionBar) searchSelectionBar.hidden = true;
+        if (searchSelectedCount) searchSelectedCount.textContent = '0';
+    });
+    searchDownloadSelectBtn?.addEventListener('click', async () => {
+        const mediaIds = Array.from(selectedPhotoIds, (value) => Number(value));
+        if (mediaIds.length === 0) return;
+        if (mediaIds.length === 1) {
+            window.location.href = `/feed/media/${mediaIds[0]}/download`;
+            return;
+        }
+        const res = await fetch('/feed/download-zip', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({mediaIds})
+        });
+        if (!res.ok) return;
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'memorybox_selected.zip';
+        a.click();
+        URL.revokeObjectURL(url);
+    });
 });

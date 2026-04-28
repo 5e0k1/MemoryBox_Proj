@@ -151,6 +151,11 @@
     </c:if>
 
     <c:if test="${mode eq 'search'}">
+        <section class="search-mode-tabs" id="searchModeTabs" hidden>
+            <button type="button" class="search-mode-btn is-active" data-search-mode="feed">피드</button>
+            <button type="button" class="search-mode-btn" data-search-mode="photo">사진</button>
+        </section>
+
         <section class="album-picker-section" id="albumPickerSection">
             <header class="album-picker-header">
                 <h2>앨범 선택</h2>
@@ -358,6 +363,27 @@
             <div class="modal-actions"><button type="button" class="btn btn-secondary modal-cancel" id="cancelPasswordModalBtn">취소</button><button type="submit" class="btn btn-primary">수정</button></div>
         </form>
     </section>
+</div>
+
+<div class="viewer-backdrop" id="searchViewerBackdrop" hidden>
+    <section class="viewer-panel">
+        <button type="button" class="viewer-close" id="searchViewerCloseBtn">✕</button>
+        <button type="button" class="viewer-nav prev" id="searchViewerPrevBtn">‹</button>
+        <button type="button" class="viewer-nav next" id="searchViewerNextBtn">›</button>
+        <div class="viewer-content" id="searchViewerContent"></div>
+        <div class="viewer-footer">
+            <span id="searchViewerCounter"><span id="searchViewerCurrent">1</span> / <span id="searchViewerTotal">1</span></span>
+            <a class="btn btn-secondary" id="searchViewerDownloadBtn" href="#">원본 다운로드</a>
+        </div>
+    </section>
+</div>
+
+<div class="selection-bar" id="searchSelectionBar" hidden>
+    <span><strong id="searchSelectedCount">0</strong>개 선택됨</span>
+    <div class="selection-actions">
+        <button type="button" class="btn btn-secondary" id="searchCancelSelectBtn">취소</button>
+        <button type="button" class="btn btn-secondary" id="searchDownloadSelectBtn">선택 다운로드</button>
+    </div>
 </div>
 <script src="/js/feed.js"></script>
 <script src="/js/push.js"></script>

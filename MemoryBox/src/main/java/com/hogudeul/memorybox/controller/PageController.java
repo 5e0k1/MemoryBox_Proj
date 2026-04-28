@@ -248,6 +248,7 @@ public class PageController {
     @ResponseBody
     public Map<String, Object> feedItemsApi(@RequestParam(defaultValue = "1") int page,
                                             @RequestParam(defaultValue = "24") int size,
+                                            @RequestParam(required = false, defaultValue = "feed") String viewMode,
                                             @RequestParam(required = false) String type,
                                             @RequestParam(required = false) String author,
                                             @RequestParam(required = false) String album,
@@ -259,9 +260,13 @@ public class PageController {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         Long userId = loginUser != null ? loginUser.getUserId() : null;
         int safeSize = Math.max(1, Math.min(size, 60));
-        List<FeedItemView> items = feedService.getFeedItems(type, author, album, tag, sort,
-                userId, likesOnly, mineOnly, page, safeSize);
-        int totalCount = feedService.getFeedItemCount(type, author, album, tag, userId, likesOnly, mineOnly);
+        boolean photoMode = "photo".equalsIgnoreCase(viewMode);
+        List<?> items = photoMode
+                ? feedService.getSearchMediaItems(type, author, album, tag, sort, userId, likesOnly, mineOnly, page, safeSize)
+                : feedService.getFeedItems(type, author, album, tag, sort, userId, likesOnly, mineOnly, page, safeSize);
+        int totalCount = photoMode
+                ? feedService.countSearchMediaItems(type, author, album, tag, userId, likesOnly, mineOnly)
+                : feedService.getFeedItemCount(type, author, album, tag, userId, likesOnly, mineOnly);
         int loadedCount = Math.min(totalCount, Math.max(0, (page - 1) * safeSize + items.size()));
 
         Map<String, Object> response = new HashMap<>();
