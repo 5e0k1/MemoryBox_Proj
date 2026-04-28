@@ -123,8 +123,8 @@ public class PageController {
         for (String album : albums) {
             String albumFilter = "전체".equals(album) ? null : album;
             int feedCount = feedService.getFeedItemCount(null, null, albumFilter, null, userId, false, false);
-            int photoCount = feedService.getFeedItemCount("photo", null, albumFilter, null, userId, false, false);
-            int videoCount = feedService.getFeedItemCount("video", null, albumFilter, null, userId, false, false);
+            int photoCount = feedService.countSearchMediaItems("photo", null, albumFilter, null, userId, false, false);
+            int videoCount = feedService.countSearchMediaItems("video", null, albumFilter, null, userId, false, false);
             albumFeedCounts.put(album, feedCount);
             albumPhotoCounts.put(album, photoCount);
             albumVideoCounts.put(album, videoCount);

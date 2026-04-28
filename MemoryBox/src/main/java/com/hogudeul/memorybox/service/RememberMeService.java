@@ -2,7 +2,9 @@ package com.hogudeul.memorybox.service;
 
 import com.hogudeul.memorybox.auth.LoginUserSession;
 import com.hogudeul.memorybox.config.AuthProperties;
+import com.hogudeul.memorybox.mapper.RememberMeTokenMapper;
 import com.hogudeul.memorybox.mapper.UserMapper;
+import com.hogudeul.memorybox.model.RememberMeToken;
 import com.hogudeul.memorybox.model.UserAccount;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,10 +27,14 @@ public class RememberMeService {
     public static final String LAST_ACCESS_UPDATED_AT_SESSION_KEY = "lastAccessUpdatedAt";
 
     private final UserMapper userMapper;
+    private final RememberMeTokenMapper rememberMeTokenMapper;
     private final AuthProperties authProperties;
 
-    public RememberMeService(UserMapper userMapper, AuthProperties authProperties) {
+    public RememberMeService(UserMapper userMapper,
+                             RememberMeTokenMapper rememberMeTokenMapper,
+                             AuthProperties authProperties) {
         this.userMapper = userMapper;
+        this.rememberMeTokenMapper = rememberMeTokenMapper;
         this.authProperties = authProperties;
     }
 
@@ -38,16 +44,23 @@ public class RememberMeService {
         String tokenHash = sha256(rawToken);
         LocalDateTime expiresAt = LocalDateTime.now().plusDays(authProperties.getRememberDays());
 
-        userMapper.updateRememberToken(userId, tokenHash, expiresAt);
+        rememberMeTokenMapper.insertToken(userId, tokenHash, expiresAt);
         addRememberCookie(response, rawToken, authProperties.getRememberDays() * 24 * 60 * 60);
     }
 
     @Transactional
-    public void clearRememberMeToken(Long userId, HttpServletResponse response) {
-        if (userId != null) {
-            userMapper.clearRememberToken(userId);
+    public void clearRememberMeTokenByCurrentCookie(HttpServletRequest request, HttpServletResponse response) {
+        String rawToken = request == null ? null : getRememberCookieValue(request);
+        if (rawToken != null && !rawToken.isBlank()) {
+            rememberMeTokenMapper.revokeTokenByHash(sha256(rawToken));
         }
         expireRememberCookie(response);
+    }
+
+    @Transactional
+    public void revokeAllRememberMeTokens(Long userId) {
+        if (userId == null) return;
+        rememberMeTokenMapper.revokeAllTokensByUserId(userId);
     }
 
     @Transactional
@@ -57,29 +70,20 @@ public class RememberMeService {
             return null;
         }
 
-        String tokenHash = sha256(rawToken);
-        UserAccount user = userMapper.findByRememberTokenHash(tokenHash);
-        if (user == null) {
-            user = userMapper.findByRememberTokenLegacyRaw(rawToken);
-            if (user != null && user.getRememberTokenExpiresAt() != null && user.getRememberTokenExpiresAt().isAfter(LocalDateTime.now())) {
-                userMapper.updateRememberToken(user.getUserId(), tokenHash, user.getRememberTokenExpiresAt());
-            }
-        }
-        if (user == null) {
+        RememberMeToken token = rememberMeTokenMapper.findActiveToken(sha256(rawToken));
+        if (token == null) {
             expireRememberCookie(response);
             return null;
         }
 
-        if (user.getRememberTokenExpiresAt() == null || user.getRememberTokenExpiresAt().isBefore(LocalDateTime.now())) {
-            userMapper.clearRememberToken(user.getUserId());
+        UserAccount user = userMapper.findByUserId(token.getUserId());
+        if (user == null || !"N".equalsIgnoreCase(user.getDelYn())) {
+            rememberMeTokenMapper.revokeTokenByHash(token.getTokenHash());
             expireRememberCookie(response);
             return null;
         }
 
-        // 자동 로그인 시 토큰을 즉시 재발급(회전)하면, 세션이 만료된 직후 동시에 들어온 요청들 간
-        // 레이스 컨디션으로 이전 토큰이 무효화되어 간헐적으로 자동로그인이 풀릴 수 있다.
-        // (예: 요청 A가 토큰 회전 성공 후, 요청 B가 아직 이전 쿠키로 검증 시도)
-        // 따라서 자동 로그인 성공 시에는 기존 토큰을 유지하고, 만료 시점까지 동일 토큰을 사용한다.
+        rememberMeTokenMapper.updateLastUsedAt(token.getTokenId());
         userMapper.updateLastAccessAt(user.getUserId());
 
         return new LoginUserSession(user.getUserId(), user.getLoginId(), user.getDisplayName(), user.getRole());
