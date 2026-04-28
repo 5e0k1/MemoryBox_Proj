@@ -10,6 +10,7 @@
     <%@ include file="/WEB-INF/views/common/head-icons.jspf" %>
     <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/feed.css">
+    <link rel="stylesheet" href="/css/sweetalert2/sweetalert2.min.css">
 </head>
 <body class="page page-feed" data-mode="${empty mode ? 'feed' : mode}">
 <main class="feed-layout with-bottom-nav">
@@ -391,6 +392,7 @@
         </div>
     </div>
 </c:if>
+<script src="/js/sweetalert2/sweetalert2.all.min.js"></script>
 <script src="/js/feed.js"></script>
 <script src="/js/push.js"></script>
 </body>

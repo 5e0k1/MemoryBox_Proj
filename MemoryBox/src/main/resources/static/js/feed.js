@@ -1198,7 +1198,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (searchSelectionBar) searchSelectionBar.hidden = true;
         if (searchSelectedCount) searchSelectedCount.textContent = '0';
     });
+    const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+    const triggerBrowserDownload = (url) => {
+        if (!url) return;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '';
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        window.setTimeout(() => a.remove(), 1000);
+    };
+
     const withPreparingAlert = async (job) => {
+        const startedAt = Date.now();
         if (window.Swal && typeof window.Swal.fire === 'function') {
             window.Swal.fire({
                 title: '압축 파일 준비 중...',
@@ -1211,6 +1225,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             return await job();
         } finally {
+            const elapsed = Date.now() - startedAt;
+            if (elapsed < 300) {
+                await wait(300 - elapsed);
+            }
             if (window.Swal && typeof window.Swal.close === 'function') {
                 window.Swal.close();
             }
@@ -1222,7 +1240,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mediaIds.length === 0) return;
         searchDownloadSelectBtn.disabled = true;
         if (mediaIds.length === 1) {
-            window.location.href = `/feed/media/${mediaIds[0]}/download`;
+            triggerBrowserDownload(`/feed/media/${mediaIds[0]}/download`);
             searchDownloadSelectBtn.disabled = false;
             return;
         }
@@ -1241,7 +1259,7 @@ document.addEventListener('DOMContentLoaded', () => {
             getCards().forEach((card) => card.classList.remove('is-selected'));
             if (searchSelectionBar) searchSelectionBar.hidden = true;
             if (searchSelectedCount) searchSelectedCount.textContent = '0';
-            window.location.href = payload.downloadUrl;
+            triggerBrowserDownload(payload.downloadUrl);
         } catch (error) {
             window.alert('압축 파일 생성 실패');
         } finally {

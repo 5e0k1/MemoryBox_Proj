@@ -10,6 +10,7 @@
     <%@ include file="/WEB-INF/views/common/head-icons.jspf" %>
     <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/detail.css">
+    <link rel="stylesheet" href="/css/sweetalert2/sweetalert2.min.css">
 </head>
 <body class="page page-detail">
 <main class="detail-layout" id="detailLayout" data-batch-id="${currentBatchId}">
@@ -185,6 +186,7 @@
     </div>
 </div>
 
+<script src="/js/sweetalert2/sweetalert2.all.min.js"></script>
 <script>
 (() => {
     const grid = document.getElementById('batchGrid');
@@ -497,7 +499,21 @@
         selectionMode = false; selected.clear(); syncSelectionUi();
     });
 
+    const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+    const triggerBrowserDownload = (url) => {
+        if (!url) return;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '';
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        window.setTimeout(() => a.remove(), 1000);
+    };
+
     const withPreparingAlert = async (job) => {
+        const startedAt = Date.now();
         if (window.Swal && typeof window.Swal.fire === 'function') {
             window.Swal.fire({
                 title: '압축 파일 준비 중...',
@@ -510,6 +526,10 @@
         try {
             return await job();
         } finally {
+            const elapsed = Date.now() - startedAt;
+            if (elapsed < 300) {
+                await wait(300 - elapsed);
+            }
             if (window.Swal && typeof window.Swal.close === 'function') {
                 window.Swal.close();
             }
@@ -522,7 +542,7 @@
         const mediaIds = Array.from(selected, (v) => Number(v));
         if (mediaIds.length === 1) {
             const target = items.find((i) => i.dataset.mediaId === String(mediaIds[0]));
-            if (target) window.location.href = target.dataset.downloadUrl;
+            if (target) triggerBrowserDownload(target.dataset.downloadUrl);
             downloadSelectBtn.disabled = false;
             return;
         }
@@ -538,7 +558,7 @@
             selectionMode = false;
             selected.clear();
             syncSelectionUi();
-            window.location.href = payload.downloadUrl;
+            triggerBrowserDownload(payload.downloadUrl);
         } catch (e) {
             alert('압축 파일 생성 실패');
         } finally {
@@ -563,7 +583,7 @@
                 }
                 return res.json();
             });
-            window.location.href = payload.downloadUrl;
+            triggerBrowserDownload(payload.downloadUrl);
         } catch (e) {
             alert(e.message || 'ZIP 생성에 실패했습니다.');
         } finally {

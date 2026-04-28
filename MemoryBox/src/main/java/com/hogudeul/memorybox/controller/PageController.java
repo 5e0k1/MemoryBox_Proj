@@ -518,18 +518,9 @@ public class PageController {
                     .build();
         }
 
-        MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
-        if (fileInfo.getMimeType() != null && !fileInfo.getMimeType().isBlank()) {
-            try {
-                mediaType = MediaType.parseMediaType(fileInfo.getMimeType());
-            } catch (Exception ex) {
-                log.warn("Invalid mime type for download. mediaId={}, mimeType={}", itemId, fileInfo.getMimeType());
-            }
-        }
-
         String contentDisposition = buildAttachmentContentDisposition(fileInfo.getFileName(), "download");
-        log.debug("Single download headers prepared. mediaId={}, userId={}, mimeType={}, fileName={}",
-                itemId, loginUser.getUserId(), mediaType, fileInfo.getFileName());
+        log.debug("Single download headers prepared. mediaId={}, userId={}, fileName={}",
+                itemId, loginUser.getUserId(), fileInfo.getFileName());
 
         detailService.logDownloadAttempt(
                 itemId,
@@ -548,7 +539,7 @@ public class PageController {
         }
 
         ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
-                .contentType(mediaType)
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition);
         if (contentLength >= 0) {
             responseBuilder.contentLength(contentLength);
