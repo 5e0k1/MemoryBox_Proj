@@ -11,13 +11,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     private final LoginCheckInterceptor loginCheckInterceptor;
     private final String localStorageRoot;
-    private final String tempStorageRoot;
 
     public WebMvcConfig(LoginCheckInterceptor loginCheckInterceptor,
                         StorageProperties storageProperties) {
         this.loginCheckInterceptor = loginCheckInterceptor;
         this.localStorageRoot = storageProperties.getLocalRoot();
-        this.tempStorageRoot = storageProperties.getTempRoot();
     }
 
     @Override
@@ -38,7 +36,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/icon-512.png",
                         "/apple-touch-icon.png",
                         "/files/**",
-                        "/temp/zip/**",
                         "/share/**",
                         "/error");
     }
@@ -50,11 +47,5 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 : localStorageRoot + "/";
         registry.addResourceHandler("/files/**")
                 .addResourceLocations("file:" + normalizedRoot);
-
-        String normalizedTempRoot = tempStorageRoot.endsWith("/") || tempStorageRoot.endsWith("\\")
-                ? tempStorageRoot
-                : tempStorageRoot + "/";
-        registry.addResourceHandler("/temp/zip/**")
-                .addResourceLocations("file:" + normalizedTempRoot + "zip/");
     }
 }

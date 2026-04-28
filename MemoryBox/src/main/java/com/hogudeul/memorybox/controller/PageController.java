@@ -598,20 +598,6 @@ public class PageController {
         }
     }
 
-    @GetMapping("/feed/{batchId}/download-all")
-    public ResponseEntity<Void> downloadAllByBatch(@PathVariable Long batchId,
-                                                    HttpSession session) {
-        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
-        if (loginUser == null) {
-            return ResponseEntity.status(401).build();
-        }
-        ZipDownloadService.PreparedZip preparedZip =
-                zipDownloadService.prepareZip(loginUser.getUserId(), batchId, null);
-        return ResponseEntity.status(302)
-                .header(HttpHeaders.LOCATION, preparedZip.getDownloadUrl())
-                .build();
-    }
-
     private String buildAttachmentContentDisposition(String utf8FileName, String fallbackName) {
         String normalizedFileName = (utf8FileName == null || utf8FileName.isBlank())
                 ? fallbackName
