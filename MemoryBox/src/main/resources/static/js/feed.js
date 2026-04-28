@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedPhotoIds = new Set();
     let selectingPhotoMode = false;
     let searchViewerHistoryActive = false;
+    let commentSheetHistoryActive = false;
 
     const isAlbumPickerMode = () => isSearchMode && state.selectedAlbum === null;
 
@@ -263,7 +264,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             const mediaId = card.dataset.mediaId;
-            const items = JSON.parse(card.dataset.batchItems || '[]');
+            const rawBatchItems = card.dataset.batchItems || '';
+            let items = [];
+            try {
+                items = JSON.parse(decodeURIComponent(rawBatchItems));
+            } catch (_) {
+                items = [];
+            }
+            if (!Array.isArray(items) || items.length === 0) return;
             const currentIndex = Math.max(0, items.findIndex((item) => String(item.mediaId) === String(mediaId)));
             openSearchViewer(items, currentIndex);
             return;
@@ -449,7 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const buildPhotoCardHtml = (item) => {
-        const batchItems = escapeHtml(JSON.stringify(item.batchMediaItems || []));
+        const batchItems = encodeURIComponent(JSON.stringify(item.batchMediaItems || []));
         const moreCount = Math.max(0, Number(item.batchMediaCount || 0) - 1);
         return `<article class="feed-card photo-item-card" data-media-id="${item.id}" data-batch-id="${item.batchId}" data-batch-items='${batchItems}'>
             <a class="thumb-link" href="#" aria-label="${escapeHtml(item.title || '')}">
@@ -486,6 +494,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const closeSearchViewer = () => {
+        if (!searchViewerBackdrop) return;
+        if (searchViewerHistoryActive) {
+            history.back();
+            return;
+        }
+        closeSearchViewerFromPopState();
+    };
+
+    const closeSearchViewerFromPopState = () => {
         if (!searchViewerBackdrop) return;
         searchViewerBackdrop.hidden = true;
         document.body.classList.remove('modal-open');
@@ -616,6 +633,10 @@ document.addEventListener('DOMContentLoaded', () => {
         commentSheetBody.innerHTML = '<p class="comment-empty">댓글을 불러오는 중...</p>';
         commentSheetBackdrop.hidden = false;
         document.body.classList.add('modal-open');
+        if (!commentSheetHistoryActive) {
+            history.pushState({ commentSheetOpen: true }, '', window.location.href);
+            commentSheetHistoryActive = true;
+        }
 
         try {
             const response = await fetch(`/api/feed/${mediaId}/comments`);
@@ -637,6 +658,14 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const closeCommentSheet = () => {
+        if (commentSheetHistoryActive) {
+            history.back();
+            return;
+        }
+        closeCommentSheetFromPopState();
+    };
+
+    const closeCommentSheetFromPopState = () => {
         if (!commentSheetBackdrop) return;
         commentSheetBackdrop.hidden = true;
         document.body.classList.remove('modal-open');
@@ -645,6 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
         commentReplyCancelBtn.hidden = true;
         commentSheetInput.value = '';
         commentSheetInput.placeholder = '댓글을 입력해 주세요';
+        commentSheetHistoryActive = false;
     };
 
     const loadNextPage = async () => {
@@ -1126,8 +1156,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.target === searchViewerBackdrop) closeSearchViewer();
     });
     window.addEventListener('popstate', () => {
+        if (commentSheetBackdrop && !commentSheetBackdrop.hidden) {
+            closeCommentSheetFromPopState();
+            return;
+        }
         if (searchViewerBackdrop && !searchViewerBackdrop.hidden) {
-            closeSearchViewer();
+            closeSearchViewerFromPopState();
         }
     });
     searchViewerPrevBtn?.addEventListener('click', () => {
@@ -1150,6 +1184,7 @@ document.addEventListener('DOMContentLoaded', () => {
     searchDownloadSelectBtn?.addEventListener('click', async () => {
         const mediaIds = Array.from(selectedPhotoIds, (value) => Number(value));
         if (mediaIds.length === 0) return;
+        window.alert('다운로드가 완료될 때 까지 페이지에서 기다려주세요.');
         if (mediaIds.length === 1) {
             window.location.href = `/feed/media/${mediaIds[0]}/download`;
             return;

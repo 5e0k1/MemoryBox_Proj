@@ -1508,7 +1508,7 @@ body.modal-open {
 
 .feed-grid.columns-5.is-photo-mode { --photo-columns: 5; }
 .feed-grid.columns-3.is-photo-mode { --photo-columns: 3; }
-.feed-grid.columns-1.is-photo-mode { --photo-columns: 3; }
+.feed-grid.columns-1.is-photo-mode { --photo-columns: 1; }
 
 .feed-card.photo-item-card .feed-meta,
 .feed-card.photo-item-card .like-toggle-btn,

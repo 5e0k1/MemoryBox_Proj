@@ -320,6 +320,14 @@
     };
 
     const closeViewer = () => {
+        if (viewerHistoryActive) {
+            history.back();
+            return;
+        }
+        closeViewerFromPopState();
+    };
+
+    const closeViewerFromPopState = () => {
         viewerBackdrop.hidden = true;
         document.body.classList.remove('modal-open');
         viewerHistoryActive = false;
@@ -376,7 +384,7 @@
     viewerBackdrop.addEventListener('click', (e) => { if (e.target === viewerBackdrop) closeViewer(); });
     window.addEventListener('popstate', () => {
         if (!viewerBackdrop.hidden) {
-            closeViewer();
+            closeViewerFromPopState();
         }
     });
 
@@ -489,6 +497,7 @@
 
     downloadSelectBtn.addEventListener('click', async () => {
         if (selected.size === 0) return;
+        window.alert('다운로드가 완료될 때 까지 페이지에서 기다려주세요.');
         const mediaIds = Array.from(selected, (v) => Number(v));
         if (mediaIds.length === 1) {
             const target = items.find((i) => i.dataset.mediaId === String(mediaIds[0]));
