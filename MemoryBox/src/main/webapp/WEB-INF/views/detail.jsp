@@ -179,15 +179,15 @@
             const durationMs = 420;
             const easing = 'cubic-bezier(0.25, 0.8, 0.25, 1)';
 
-            nextFrame.style.transform = `translateX(${offset}%)`;
+            nextFrame.style.transform = 'translateX(' + offset + '%)';
             nextFrame.style.opacity = '0.92';
-            nextFrame.style.transition = `transform ${durationMs}ms ${easing}, opacity ${durationMs}ms ease`;
-            currentFrame.style.transition = `transform ${durationMs}ms ${easing}, opacity ${durationMs}ms ease`;
+            nextFrame.style.transition = 'transform ' + durationMs + 'ms ' + easing + ', opacity ' + durationMs + 'ms ease';
+            currentFrame.style.transition = 'transform ' + durationMs + 'ms ' + easing + ', opacity ' + durationMs + 'ms ease';
 
             viewerContent.appendChild(nextFrame);
 
             requestAnimationFrame(() => {
-                currentFrame.style.transform = `translateX(${-offset}%)`;
+                currentFrame.style.transform = 'translateX(' + (-offset) + '%)';
                 currentFrame.style.opacity = '0.88';
                 nextFrame.style.transform = 'translateX(0)';
                 nextFrame.style.opacity = '1';
@@ -312,7 +312,7 @@
                 ? (currentIndex - 1 + items.length) % items.length
                 : (currentIndex + 1) % items.length;
             swipeState.neighborFrame = createViewerFrame(neighborIndex, getItemData(neighborIndex));
-            swipeState.neighborFrame.style.transform = `translateX(${direction === 'next' ? 100 : -100}%)`;
+            swipeState.neighborFrame.style.transform = 'translateX(' + (direction === 'next' ? 100 : -100) + '%)';
             swipeState.neighborFrame.style.opacity = '0.95';
             viewerContent.appendChild(swipeState.neighborFrame);
             swipeState.direction = direction;
@@ -321,10 +321,10 @@
         const moveX = swipeState.deltaX;
         const nextOffset = (direction === 'next' ? contentWidth : -contentWidth) + moveX;
         currentFrame.style.transition = 'none';
-        currentFrame.style.transform = `translateX(${moveX}px)`;
+        currentFrame.style.transform = 'translateX(' + moveX + 'px)';
         currentFrame.style.opacity = String(Math.max(0.72, 1 - Math.abs(moveX) / (contentWidth * 1.6)));
         swipeState.neighborFrame.style.transition = 'none';
-        swipeState.neighborFrame.style.transform = `translateX(${nextOffset}px)`;
+        swipeState.neighborFrame.style.transform = 'translateX(' + nextOffset + 'px)';
     }, {passive:true});
     viewerContent.addEventListener('touchend', (e) => {
         if (!swipeState.dragging) return;
@@ -339,7 +339,7 @@
             }
             if (swipeState.neighborFrame) {
                 swipeState.neighborFrame.style.transition = 'transform 240ms ease, opacity 240ms ease';
-                swipeState.neighborFrame.style.transform = `translateX(${diff > 0 ? -100 : 100}%)`;
+                swipeState.neighborFrame.style.transform = 'translateX(' + (diff > 0 ? -100 : 100) + '%)';
             }
             window.setTimeout(clearDragPreview, 250);
             return;
@@ -352,7 +352,7 @@
         viewerContent.dataset.animating = 'true';
         currentFrame.style.transition = 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease';
         swipeState.neighborFrame.style.transition = 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease';
-        currentFrame.style.transform = `translateX(${direction === 'next' ? -100 : 100}%)`;
+        currentFrame.style.transform = 'translateX(' + (direction === 'next' ? -100 : 100) + '%)';
         currentFrame.style.opacity = '0.82';
         swipeState.neighborFrame.style.transform = 'translateX(0)';
         swipeState.neighborFrame.style.opacity = '1';
