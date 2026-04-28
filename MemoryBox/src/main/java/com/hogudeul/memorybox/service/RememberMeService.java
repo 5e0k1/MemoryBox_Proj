@@ -44,7 +44,7 @@ public class RememberMeService {
         String tokenHash = sha256(rawToken);
         LocalDateTime expiresAt = LocalDateTime.now().plusDays(authProperties.getRememberDays());
 
-        rememberMeTokenMapper.insertToken(userId, tokenHash, expiresAt);
+        rememberMeTokenMapper.insertToken(userId, tokenHash, null, null, null, expiresAt);
         addRememberCookie(response, rawToken, authProperties.getRememberDays() * 24 * 60 * 60);
     }
 

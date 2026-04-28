@@ -10,6 +10,9 @@ public interface RememberMeTokenMapper {
 
     int insertToken(@Param("userId") Long userId,
                     @Param("tokenHash") String tokenHash,
+                    @Param("deviceName") String deviceName,
+                    @Param("userAgent") String userAgent,
+                    @Param("ipAddr") String ipAddr,
                     @Param("expiresAt") LocalDateTime expiresAt);
 
     RememberMeToken findActiveToken(@Param("tokenHash") String tokenHash);

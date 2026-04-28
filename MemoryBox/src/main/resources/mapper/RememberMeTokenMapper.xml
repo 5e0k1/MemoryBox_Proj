@@ -15,19 +15,21 @@
         INSERT INTO REMEMBER_ME_TOKEN (
             user_id,
             token_hash,
+            device_name,
+            user_agent,
+            ip_addr,
             expires_at,
             last_used_at,
-            revoked_yn,
-            created_at,
-            updated_at
+            revoked_yn
         ) VALUES (
             #{userId},
             #{tokenHash},
+            #{deviceName},
+            #{userAgent},
+            #{ipAddr},
             #{expiresAt},
             NOW(),
-            'N',
-            NOW(),
-            NOW()
+            'N'
         )
     </insert>
 
@@ -43,15 +45,14 @@
 
     <update id="updateLastUsedAt">
         UPDATE REMEMBER_ME_TOKEN
-        SET last_used_at = NOW(),
-            updated_at = NOW()
+        SET last_used_at = NOW()
         WHERE token_id = #{tokenId}
     </update>
 
     <update id="revokeTokenByHash">
         UPDATE REMEMBER_ME_TOKEN
         SET revoked_yn = 'Y',
-            updated_at = NOW()
+            revoked_at = NOW()
         WHERE token_hash = #{tokenHash}
           AND revoked_yn = 'N'
     </update>
@@ -59,7 +60,7 @@
     <update id="revokeAllTokensByUserId">
         UPDATE REMEMBER_ME_TOKEN
         SET revoked_yn = 'Y',
-            updated_at = NOW()
+            revoked_at = NOW()
         WHERE user_id = #{userId}
           AND revoked_yn = 'N'
     </update>
