@@ -12,8 +12,8 @@
     <link rel="stylesheet" href="/css/detail.css">
     <link rel="stylesheet" href="/css/photoswipe/photoswipe.css">
 </head>
-<body class="page page-detail <c:if test='${not allowDownload}'>share-download-locked</c:if>">
-<main class="detail-layout" id="shareDetailLayout" data-token="${shareToken}">
+<body class="page page-detail share-page ${allowDownload ? '' : 'no-download'}">
+<main class="detail-layout" id="shareDetailLayout" data-token="${shareToken}" data-download-allowed="${allowDownload ? 'true' : 'false'}">
     <header class="detail-header">
         <div class="login-chip">게스트 공유</div>
     </header>
@@ -110,8 +110,9 @@ window.PhotoSwipe = window.PhotoSwipe || undefined;
     const selectedCount = document.getElementById('selectedCount');
     const cancelSelectBtn = document.getElementById('cancelSelectBtn');
     const downloadSelectBtn = document.getElementById('downloadSelectBtn');
-    const shareToken = document.getElementById('shareDetailLayout')?.dataset.token;
-    const allowDownload = ${allowDownload ? 'true' : 'false'};
+    const shareRoot = document.getElementById('shareDetailLayout');
+    const shareToken = shareRoot?.dataset.token;
+    const allowDownload = shareRoot?.dataset.downloadAllowed === 'true';
     const selected = new Set();
     let selectionMode = false;
 
@@ -153,12 +154,22 @@ window.PhotoSwipe = window.PhotoSwipe || undefined;
     };
 
     if (!allowDownload) {
+        const blockedSelector = [
+            'img', 'video', 'a', 'picture', 'figure',
+            '.photo-card', '.share-grid-item', '.grid-item',
+            '.batch-grid', '.pswp', '.pswp__container', '.pswp__item'
+        ].join(', ');
         const blockSaveAttempt = (event) => {
-            const mediaNode = event.target.closest('img, video, .grid-item');
-            if (mediaNode) event.preventDefault();
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            if (target.closest(blockedSelector)) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
         };
-        document.addEventListener('contextmenu', blockSaveAttempt);
-        document.addEventListener('dragstart', blockSaveAttempt);
+        document.addEventListener('contextmenu', blockSaveAttempt, true);
+        document.addEventListener('dragstart', blockSaveAttempt, true);
+        document.addEventListener('selectstart', blockSaveAttempt, true);
     }
 
     items.forEach((btn, index) => {
