@@ -169,7 +169,17 @@ public class ShareController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         DetailService.DownloadFileInfo fileInfo = detailService.getDownloadFileInfo(mediaId, null);
-        if (fileInfo == null || !fileInfo.existsReadable()) {
+        if (fileInfo == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        String cdnDownloadUrl = detailService.resolveOriginalDownloadUrl(fileInfo);
+        if (!cdnDownloadUrl.isBlank()) {
+            detailService.logDownloadAttempt(mediaId, null, request.getRemoteAddr(), request.getHeader(HttpHeaders.USER_AGENT), true, null);
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .header(HttpHeaders.LOCATION, cdnDownloadUrl)
+                    .build();
+        }
+        if (!fileInfo.existsReadable()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
         MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;

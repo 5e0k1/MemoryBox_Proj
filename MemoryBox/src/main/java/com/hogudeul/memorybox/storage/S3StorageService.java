@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.Locale;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -37,12 +38,20 @@ public class S3StorageService implements StorageService {
 
     @Override
     public StoredFile store(MultipartFile multipartFile, StorageCategory category, LocalDate date) throws IOException {
+        return store(multipartFile, category, date, Map.of());
+    }
+
+    @Override
+    public StoredFile store(MultipartFile multipartFile,
+                            StorageCategory category,
+                            LocalDate date,
+                            Map<String, String> metadata) throws IOException {
         try {
             String originalName = multipartFile.getOriginalFilename();
             String extension = extractExtension(originalName);
             String mimeType = multipartFile.getContentType();
             byte[] bytes = multipartFile.getBytes();
-            return store(bytes, originalName, extension, mimeType, category, date);
+            return store(bytes, originalName, extension, mimeType, category, date, metadata);
         } catch (IOException e) {
             throw new IOException("Failed to read multipart file bytes for S3 upload.", e);
         }
@@ -55,15 +64,32 @@ public class S3StorageService implements StorageService {
                             String mimeType,
                             StorageCategory category,
                             LocalDate date) {
+        return store(bytes, originalName, extension, mimeType, category, date, Map.of());
+    }
+
+    @Override
+    public StoredFile store(byte[] bytes,
+                            String originalName,
+                            String extension,
+                            String mimeType,
+                            StorageCategory category,
+                            LocalDate date,
+                            Map<String, String> metadata) {
         String ext = sanitize(extension);
         String saveName = UUID.randomUUID() + (ext.isBlank() ? "" : "." + ext);
         String storageKey = buildStorageKey(category, date, saveName);
 
-        PutObjectRequest request = PutObjectRequest.builder()
+        PutObjectRequest.Builder requestBuilder = PutObjectRequest.builder()
                 .bucket(storageProperties.getS3().getBucket())
                 .key(storageKey)
-                .contentType(mimeType)
-                .build();
+                .contentType(mimeType);
+        if (metadata != null && !metadata.isEmpty()) {
+            String contentDisposition = metadata.get("Content-Disposition");
+            if (contentDisposition != null && !contentDisposition.isBlank()) {
+                requestBuilder.contentDisposition(contentDisposition);
+            }
+        }
+        PutObjectRequest request = requestBuilder.build();
 
         s3Client.putObject(request, RequestBody.fromBytes(bytes));
         return new StoredFile(storageKey, originalName, saveName, ext, mimeType, bytes.length);

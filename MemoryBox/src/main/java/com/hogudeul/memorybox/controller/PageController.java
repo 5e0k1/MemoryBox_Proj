@@ -33,6 +33,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.core.io.FileSystemResource;
@@ -537,6 +538,21 @@ public class PageController {
             return ResponseEntity.status(302)
                     .header(HttpHeaders.LOCATION, "/feed?error="
                             + URLEncoder.encode("다운로드 가능한 원본 파일이 없습니다.", StandardCharsets.UTF_8))
+                    .build();
+        }
+
+        String cdnDownloadUrl = detailService.resolveOriginalDownloadUrl(fileInfo);
+        if (!cdnDownloadUrl.isBlank()) {
+            detailService.logDownloadAttempt(
+                    itemId,
+                    loginUser.getUserId(),
+                    request.getRemoteAddr(),
+                    request.getHeader(HttpHeaders.USER_AGENT),
+                    true,
+                    null
+            );
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .header(HttpHeaders.LOCATION, cdnDownloadUrl)
                     .build();
         }
 

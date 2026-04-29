@@ -6,7 +6,8 @@ public enum StorageCategory {
     MEDIUM("medium"),
     VIDEO("video"),
     THUMB("thumb"),
-    PREVIEW("preview");
+    PREVIEW("preview"),
+    STREAM("stream");
 
     private final String dir;
 

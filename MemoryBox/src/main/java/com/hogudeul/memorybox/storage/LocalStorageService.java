@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.Locale;
 import java.util.UUID;
 import com.hogudeul.memorybox.config.StorageProperties;
@@ -26,11 +27,19 @@ public class LocalStorageService implements StorageService {
 
     @Override
     public StoredFile store(MultipartFile multipartFile, StorageCategory category, LocalDate date) throws IOException {
+        return store(multipartFile, category, date, Map.of());
+    }
+
+    @Override
+    public StoredFile store(MultipartFile multipartFile,
+                            StorageCategory category,
+                            LocalDate date,
+                            Map<String, String> metadata) throws IOException {
         String originalName = multipartFile.getOriginalFilename();
         String extension = extractExtension(originalName);
         String mimeType = multipartFile.getContentType();
         byte[] bytes = multipartFile.getBytes();
-        return store(bytes, originalName, extension, mimeType, category, date);
+        return store(bytes, originalName, extension, mimeType, category, date, metadata);
     }
 
     @Override
@@ -40,6 +49,17 @@ public class LocalStorageService implements StorageService {
                             String mimeType,
                             StorageCategory category,
                             LocalDate date) throws IOException {
+        return store(bytes, originalName, extension, mimeType, category, date, Map.of());
+    }
+
+    @Override
+    public StoredFile store(byte[] bytes,
+                            String originalName,
+                            String extension,
+                            String mimeType,
+                            StorageCategory category,
+                            LocalDate date,
+                            Map<String, String> metadata) throws IOException {
         String ext = sanitizeExtension(extension);
         String saveName = UUID.randomUUID() + (ext.isBlank() ? "" : "." + ext);
 
