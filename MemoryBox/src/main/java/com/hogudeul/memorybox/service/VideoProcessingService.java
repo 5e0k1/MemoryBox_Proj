@@ -161,7 +161,7 @@ public class VideoProcessingService {
                     resolvedFfmpegPath(),
                     "-y",
                     "-i", originalPath.toString(),
-                    "-vf", "scale=min(720\,iw):-2",
+                    "-vf", "scale=min(720\\,iw):-2",
                     "-c:v", "libx264",
                     "-preset", "veryfast",
                     "-crf", "28",
