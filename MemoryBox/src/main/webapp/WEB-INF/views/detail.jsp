@@ -160,6 +160,9 @@
             <div class="share-action-row">
                 <button type="submit" class="btn btn-primary" id="shareCreateBtn">링크 생성</button>
                 <button type="button" class="btn btn-secondary" id="shareCopyBtn" disabled>복사</button>
+                <button type="button" class="kakao-share-btn" id="shareKakaoBtn" disabled aria-label="카카오톡으로 공유">
+                    <img src="/images/kakaotalk_sharing_btn_medium.png" alt="카카오톡 공유">
+                </button>
             </div>
             <input type="text" class="share-url-output" id="shareUrlOutput" readonly placeholder="생성된 링크가 여기에 표시됩니다.">
             <p class="share-feedback" id="shareFeedback" aria-live="polite"></p>
@@ -189,6 +192,9 @@
 </div>
 
 <script src="/js/sweetalert2/sweetalert2.all.min.js"></script>
+<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.5/kakao.min.js"
+        integrity="sha384-dok87au0gKqJdxs7msj8Yl5V8lQroS0WyM4yn2Vr4yuR6Ce4vYmoU6HcBWyL9Ltl"
+        crossorigin="anonymous"></script>
 <script>
 (() => {
     const grid = document.getElementById('batchGrid');
@@ -225,8 +231,10 @@
     const guestOptionWrap = document.getElementById('guestOptionWrap');
     const shareCreateBtn = document.getElementById('shareCreateBtn');
     const shareCopyBtn = document.getElementById('shareCopyBtn');
+    const shareKakaoBtn = document.getElementById('shareKakaoBtn');
     const shareUrlOutput = document.getElementById('shareUrlOutput');
     const shareFeedback = document.getElementById('shareFeedback');
+    const kakaoJavascriptKey = '<c:out value="${kakaoJavascriptKey}" />';
 
     if (!viewerBackdrop || !viewerContent || !viewerCurrent || !viewerTotal || !viewerDownloadBtn ||
         !selectionBar || !selectedCount || !viewerCloseBtn || !viewerPrevBtn || !viewerNextBtn ||
@@ -663,7 +671,10 @@
     });
 
     if (shareOpenBtn && shareModal && shareForm && shareCloseBtn && shareBackdrop &&
-        guestOptionWrap && shareCreateBtn && shareCopyBtn && shareUrlOutput && shareFeedback) {
+        guestOptionWrap && shareCreateBtn && shareCopyBtn && shareKakaoBtn && shareUrlOutput && shareFeedback) {
+        if (window.Kakao && kakaoJavascriptKey && !window.Kakao.isInitialized()) {
+            window.Kakao.init(kakaoJavascriptKey);
+        }
         const closeShareModal = () => {
             shareModal.hidden = true;
         };
@@ -707,6 +718,7 @@
                 const link = payload.guest ? body.guestUrl : body.memberUrl;
                 shareUrlOutput.value = link || '';
                 shareCopyBtn.disabled = !link;
+                shareKakaoBtn.disabled = !link;
                 shareFeedback.textContent = link ? '공유 링크가 생성되었습니다.' : '링크 생성에 실패했습니다.';
             } catch (error) {
                 shareFeedback.textContent = '공유 링크 생성 중 오류가 발생했습니다.';
@@ -725,6 +737,34 @@
                 document.execCommand('copy');
                 shareFeedback.textContent = '링크를 복사했습니다.';
             }
+        });
+
+        shareKakaoBtn.addEventListener('click', () => {
+            const link = shareUrlOutput.value?.trim();
+            if (!link) return;
+            if (!window.Kakao || !window.Kakao.Share) {
+                shareFeedback.textContent = '카카오톡 공유를 사용할 수 없습니다. 링크를 복사해 사용해 주세요.';
+                return;
+            }
+            window.Kakao.Share.sendDefault({
+                objectType: 'feed',
+                content: {
+                    title: '${fn:escapeXml(detail.title)}',
+                    description: 'MemoryBox 게시물 공유 링크입니다.',
+                    imageUrl: window.location.origin + '/images/share-btn-img.png',
+                    link: {
+                        mobileWebUrl: link,
+                        webUrl: link
+                    }
+                },
+                buttons: [{
+                    title: '게시물 보기',
+                    link: {
+                        mobileWebUrl: link,
+                        webUrl: link
+                    }
+                }]
+            });
         });
     }
 
