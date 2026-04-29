@@ -14,6 +14,8 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
@@ -586,7 +588,17 @@ public class DetailService {
         if (fileInfo == null || isBlank(fileInfo.getStorageKey())) {
             return "";
         }
-        return storageUrlResolver.resolvePublicUrl(fileInfo.getStorageKey());
+        String baseUrl = storageUrlResolver.resolvePublicUrl(fileInfo.getStorageKey());
+        if (isBlank(baseUrl)) {
+            return "";
+        }
+
+        String contentDisposition = buildAttachmentContentDisposition(fileInfo.getFileName(), "download");
+        String encodedDisposition = URLEncoder.encode(contentDisposition, StandardCharsets.UTF_8).replace("+", "%20");
+        String separator = baseUrl.contains("?") ? "&" : "?";
+        return baseUrl + separator
+                + "response-content-disposition=" + encodedDisposition
+                + "&response-content-type=application%2Foctet-stream";
     }
 
     public static class DownloadFileInfo {
