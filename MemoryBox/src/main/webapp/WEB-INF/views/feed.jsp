@@ -254,14 +254,25 @@
                                             <div class="feed-slide" data-slide-index="${status.index}">
                                                 <c:choose>
                                                     <c:when test="${media.mediaType eq 'video'}">
-                                                        <video class="feed-preview-video"
-                                                               src="${media.previewUrl}"
-                                                               poster="${media.smallUrl}"
-                                                               muted
-                                                               playsinline
-                                                               loop
-                                                               preload="none"
-                                                               data-has-preview="${not empty media.previewUrl}"></video>
+                                                        <c:choose>
+                                                            <c:when test="${not empty media.previewUrl}">
+                                                                <video class="feed-preview-video"
+                                                                       src="${media.previewUrl}"
+                                                                       poster="${media.smallUrl}"
+                                                                       autoplay
+                                                                       muted
+                                                                       playsinline
+                                                                       loop
+                                                                       preload="metadata"
+                                                                       data-has-preview="true"></video>
+                                                            </c:when>
+                                                            <c:when test="${not empty media.smallUrl}">
+                                                                <img src="${media.smallUrl}" alt="${item.title} 비디오 썸네일" loading="lazy">
+                                                            </c:when>
+                                                            <c:otherwise>
+                                                                <img src="/images/default-image.png" alt="${item.title} placeholder" loading="lazy">
+                                                            </c:otherwise>
+                                                        </c:choose>
                                                     </c:when>
                                                     <c:otherwise>
                                                         <img src="${media.smallUrl}" alt="${item.title} 썸네일" loading="lazy">
@@ -280,14 +291,25 @@
                             <c:otherwise>
                                 <c:choose>
                                     <c:when test="${item.mediaType eq 'video'}">
-                                        <video class="feed-preview-video"
-                                               src="${item.previewUrl}"
-                                               poster="${item.thumbnailUrl}"
-                                               muted
-                                               playsinline
-                                               loop
-                                               preload="none"
-                                               data-has-preview="${not empty item.previewUrl}"></video>
+                                        <c:choose>
+                                            <c:when test="${not empty item.previewUrl}">
+                                                <video class="feed-preview-video"
+                                                       src="${item.previewUrl}"
+                                                       poster="${item.thumbnailUrl}"
+                                                       autoplay
+                                                       muted
+                                                       playsinline
+                                                       loop
+                                                       preload="metadata"
+                                                       data-has-preview="true"></video>
+                                            </c:when>
+                                            <c:when test="${not empty item.thumbnailUrl}">
+                                                <img src="${item.thumbnailUrl}" alt="${item.title} 썸네일" loading="lazy">
+                                            </c:when>
+                                            <c:otherwise>
+                                                <img src="/images/default-image.png" alt="${item.title} placeholder" loading="lazy">
+                                            </c:otherwise>
+                                        </c:choose>
                                     </c:when>
                                     <c:otherwise>
                                         <img src="${item.thumbnailUrl}" alt="${item.title} 썸네일" loading="lazy">

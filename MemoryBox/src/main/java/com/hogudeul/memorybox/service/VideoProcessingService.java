@@ -54,26 +54,30 @@ public class VideoProcessingService {
         Path tempPreview = null;
 
         String ffmpeg = resolvedFfmpegPath();
+        log.info("[video-processing] resolved ffmpeg path. mediaId={}, ffmpegPath={}", mediaId, ffmpeg);
         if (!isExecutable(ffmpeg)) {
             log.error("[video-processing] ffmpeg 실행 파일을 찾지 못했습니다. mediaId={}, configured='{}'. app.ffmpeg.command 값을 확인해 주세요.", mediaId, ffmpegCommand);
             return;
         }
 
+        logFfmpegVersion(mediaId, ffmpeg);
+
         try {
             tempInputPath = storageService.downloadToTempFile(originalStorageKey, "memorybox-original-", ".tmp");
             tempThumb = Files.createTempFile("memorybox-thumb-", ".jpg");
             tempPreview = Files.createTempFile("memorybox-preview-", ".mp4");
+        } catch (Exception e) {
+            log.error("[video-processing] ORIGINAL download failed. mediaId={}, originalStorageKey={}, tempInputPath={}, ffmpegPath={}, stderr={}",
+                    mediaId, originalStorageKey, tempInputPath, ffmpeg, e.getMessage(), e);
+            return;
+        }
+
+        try {
             generateThumb(mediaId, tempInputPath, tempThumb, originalName);
         } catch (Exception e) {
             log.error("[video-processing] THUMB 생성 실패(1차). mediaId={}, originalStorageKey={}, tempInputPath={}, ffmpegPath={}, stderr={}",
                     mediaId, originalStorageKey, tempInputPath, ffmpeg, e.getMessage(), e);
             try {
-                if (tempInputPath == null) {
-                    tempInputPath = storageService.downloadToTempFile(originalStorageKey, "memorybox-original-", ".tmp");
-                }
-                if (tempThumb == null) {
-                    tempThumb = Files.createTempFile("memorybox-thumb-", ".jpg");
-                }
                 generateThumbFromStart(mediaId, tempInputPath, tempThumb, originalName);
             } catch (Exception secondEx) {
                 log.error("[video-processing] THUMB 생성 실패(2차 fallback). mediaId={}, originalStorageKey={}, tempInputPath={}, ffmpegPath={}, stderr={}",
@@ -82,12 +86,6 @@ public class VideoProcessingService {
         }
 
         try {
-            if (tempInputPath == null) {
-                tempInputPath = storageService.downloadToTempFile(originalStorageKey, "memorybox-original-", ".tmp");
-            }
-            if (tempPreview == null) {
-                tempPreview = Files.createTempFile("memorybox-preview-", ".mp4");
-            }
             generatePreview(mediaId, tempInputPath, tempPreview, originalName);
         } catch (Exception e) {
             log.error("[video-processing] PREVIEW 생성 실패. mediaId={}, originalStorageKey={}, tempInputPath={}, ffmpegPath={}, stderr={}",
@@ -100,7 +98,7 @@ public class VideoProcessingService {
     }
 
     protected void generateThumb(Long mediaId, Path originalPath, Path tempThumb, String originalName) throws IOException {
-        runFfmpeg(buildThumbCommand(originalPath, tempThumb, "00:00:01"), mediaId, "THUMB");
+        runFfmpeg(buildThumbCommand(originalPath, tempThumb, "00:00:01"), mediaId, "THUMB", tempThumb);
 
         byte[] bytes = Files.readAllBytes(tempThumb);
         StoredFile thumb = storageService.store(bytes, originalName, "jpg", "image/jpeg", StorageCategory.THUMB, LocalDate.now());
@@ -112,7 +110,7 @@ public class VideoProcessingService {
     }
 
     protected void generateThumbFromStart(Long mediaId, Path originalPath, Path tempThumb, String originalName) throws IOException {
-        runFfmpeg(buildThumbCommand(originalPath, tempThumb, "00:00:00"), mediaId, "THUMB-FALLBACK");
+        runFfmpeg(buildThumbCommand(originalPath, tempThumb, "00:00:00"), mediaId, "THUMB-FALLBACK", tempThumb);
         byte[] bytes = Files.readAllBytes(tempThumb);
         StoredFile thumb = storageService.store(bytes, originalName, "jpg", "image/jpeg", StorageCategory.THUMB, LocalDate.now());
         BufferedImage image = ImageIO.read(tempThumb.toFile());
@@ -126,27 +124,28 @@ public class VideoProcessingService {
         runFfmpeg(List.of(
                     resolvedFfmpegPath(),
                     "-y",
-                    "-ss", "00:00:01",
-                    "-t", "4",
+                    "-ss", "00:00:00",
+                    "-t", "4.5",
                     "-i", originalPath.toString(),
                     "-an",
-                    "-vf", "setpts=0.5*PTS,scale=min(480\\,iw):-2",
+                    "-vf", "setpts=0.6667*PTS,scale=min(480\\,iw):-2",
                     "-r", "24",
                     "-c:v", "libx264",
                     "-preset", "veryfast",
                     "-crf", "30",
+                    "-pix_fmt", "yuv420p",
                     "-movflags", "+faststart",
                     tempPreview.toString()
-            ), mediaId, "PREVIEW");
+            ), mediaId, "PREVIEW", tempPreview);
 
         byte[] bytes = Files.readAllBytes(tempPreview);
         StoredFile preview = storageService.store(bytes, originalName, "mp4", "video/mp4", StorageCategory.PREVIEW, LocalDate.now());
-        saveVariant(mediaId, "PREVIEW", preview, 480, null, 2);
+        saveVariant(mediaId, "PREVIEW", preview, 480, null, 3);
         log.info("[video-processing] PREVIEW 생성 완료. mediaId={}, key={}", mediaId, preview.getStorageKey());
     }
 
-    private void runFfmpeg(List<String> command, Long mediaId, String variantType) throws IOException {
-        log.info("[video-processing] ffmpeg 실행. mediaId={}, variant={}, command={}", mediaId, variantType, String.join(" ", command));
+    private void runFfmpeg(List<String> command, Long mediaId, String variantType, Path outputPath) throws IOException {
+        log.info("[video-processing] ffmpeg start. mediaId={}, variant={}, command={}", mediaId, variantType, String.join(" ", command));
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.redirectErrorStream(true);
         Process process = pb.start();
@@ -163,8 +162,19 @@ public class VideoProcessingService {
             throw new IOException("ffmpeg 실행 대기 중 인터럽트 발생", e);
         }
 
-        if (process.exitValue() != 0) {
-            throw new IOException("ffmpeg 실패(mediaId=" + mediaId + ", variant=" + variantType + "): " + output);
+        int exitCode = process.exitValue();
+        String outputTail = tail(output, 4000);
+        boolean exists = outputPath != null && Files.exists(outputPath);
+        long size = exists ? Files.size(outputPath) : 0L;
+        log.info("[video-processing] ffmpeg finished. mediaId={}, variant={}, exitCode={}, outputPath={}, exists={}, size={}, outputTail={}",
+                mediaId, variantType, exitCode, outputPath, exists, size, outputTail);
+        if (exitCode != 0) {
+            throw new IOException("ffmpeg failed. mediaId=" + mediaId + ", variant=" + variantType + ", exitCode=" + exitCode
+                    + ", command=" + String.join(" ", command) + ", output=" + outputTail);
+        }
+        if (!exists || size <= 0) {
+            throw new IOException("ffmpeg output missing/empty. mediaId=" + mediaId + ", variant=" + variantType
+                    + ", outputPath=" + outputPath + ", command=" + String.join(" ", command) + ", output=" + outputTail);
         }
     }
 
@@ -175,10 +185,23 @@ public class VideoProcessingService {
                 "-ss", seekTime,
                 "-i", originalPath.toString(),
                 "-frames:v", "1",
-                "-update", "1",
                 "-q:v", "4",
                 tempThumb.toString()
         );
+    }
+    private void logFfmpegVersion(Long mediaId, String ffmpegPath) {
+        try {
+            Process p = new ProcessBuilder(ffmpegPath, "-version").redirectErrorStream(true).start();
+            String v = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            p.waitFor(3, TimeUnit.SECONDS);
+            log.info("[video-processing] ffmpeg version. mediaId={}, ffmpegPath={}, output={}", mediaId, ffmpegPath, tail(v, 1000));
+        } catch (Exception e) {
+            log.warn("[video-processing] ffmpeg -version check failed. mediaId={}, ffmpegPath={}, reason={}", mediaId, ffmpegPath, e.getMessage());
+        }
+    }
+    private String tail(String value, int maxLength) {
+        if (value == null) return "";
+        return value.length() <= maxLength ? value : value.substring(value.length() - maxLength);
     }
 
     private void saveVariant(Long mediaId,

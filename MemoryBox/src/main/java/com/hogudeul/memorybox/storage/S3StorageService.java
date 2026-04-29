@@ -17,7 +17,9 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.core.ResponseInputStream;
 
 @Service
 @ConditionalOnProperty(prefix = "app.storage", name = "type", havingValue = "s3")
@@ -90,11 +92,13 @@ public class S3StorageService implements StorageService {
                     .bucket(storageProperties.getS3().getBucket())
                     .key(storageKey)
                     .build();
-            s3Client.getObject(request, tempFile);
+            try (ResponseInputStream<GetObjectResponse> inputStream = s3Client.getObject(request)) {
+                Files.copy(inputStream, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
             return tempFile;
         } catch (Exception e) {
             Files.deleteIfExists(tempFile);
-            throw new IOException("Failed to download object from S3. key=" + storageKey, e);
+            throw new IOException("S3 object download to temp file failed. key=" + storageKey + ", path=" + tempFile, e);
         }
     }
 
