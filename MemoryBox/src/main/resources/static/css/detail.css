@@ -595,5 +595,19 @@
 .viewer-nav.next { right:10px; }
 .viewer-footer { display:flex; justify-content:space-between; align-items:center; color:#fff; }
 
+body.share-page.no-download img,
+body.share-page.no-download video,
+body.share-page.no-download picture,
+body.share-page.no-download figure,
+body.share-page.no-download .grid-item,
+body.share-page.no-download .batch-grid,
+body.share-page.no-download .pswp,
+body.share-page.no-download .pswp img {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
 .selection-bar { position:fixed; left:0; right:0; bottom:0; z-index:1100; background:#111827; color:#fff; display:flex; justify-content:space-between; align-items:center; padding:10px 14px; }
 .selection-bar[hidden] { display:none !important; }

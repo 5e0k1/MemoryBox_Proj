@@ -10,9 +10,10 @@
     <%@ include file="/WEB-INF/views/common/head-icons.jspf" %>
     <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/detail.css">
+    <link rel="stylesheet" href="/css/photoswipe/photoswipe.css">
 </head>
-<body class="page page-detail">
-<main class="detail-layout" id="shareDetailLayout" data-token="${shareToken}">
+<body class="page page-detail share-page ${allowDownload ? '' : 'no-download'}">
+<main class="detail-layout" id="shareDetailLayout" data-token="${shareToken}" data-download-allowed="${allowDownload ? 'true' : 'false'}">
     <header class="detail-header">
         <div class="login-chip">게스트 공유</div>
     </header>
@@ -76,21 +77,6 @@
     </c:if>
 </main>
 
-<div class="viewer-backdrop" id="viewerBackdrop" hidden>
-    <section class="viewer-panel">
-        <button type="button" class="viewer-close" id="viewerCloseBtn">✕</button>
-        <button type="button" class="viewer-nav prev" id="viewerPrevBtn">‹</button>
-        <button type="button" class="viewer-nav next" id="viewerNextBtn">›</button>
-        <div class="viewer-content" id="viewerContent"></div>
-        <div class="viewer-footer">
-            <span id="viewerCounter"><span id="viewerCurrent">1</span> / <span id="viewerTotal">1</span></span>
-            <c:if test="${allowDownload}">
-                <a class="btn btn-secondary" id="viewerDownloadBtn" href="#">원본 다운로드</a>
-            </c:if>
-        </div>
-    </section>
-</div>
-
 <c:if test="${allowDownload}">
     <div class="selection-bar" id="selectionBar" hidden>
         <span><strong id="selectedCount">0</strong>개 선택</span>
@@ -101,6 +87,11 @@
     </div>
 </c:if>
 
+<script>
+window.PhotoSwipe = window.PhotoSwipe || undefined;
+</script>
+<script src="/js/photoswipe/photoswipe.umd.min.js"></script>
+<script src="/js/photoswipe/photoswipe-lightbox.umd.min.js"></script>
 <script>
 (() => {
     const grid = document.getElementById('batchGrid');
@@ -115,59 +106,71 @@
         downloadUrl: button.dataset.downloadUrl,
         thumbUrl: button.querySelector('img, video')?.getAttribute('src') || ''
     }));
-    const viewerBackdrop = document.getElementById('viewerBackdrop');
-    const viewerContent = document.getElementById('viewerContent');
-    const viewerCurrent = document.getElementById('viewerCurrent');
-    const viewerTotal = document.getElementById('viewerTotal');
-    const viewerDownloadBtn = document.getElementById('viewerDownloadBtn');
-    const viewerCloseBtn = document.getElementById('viewerCloseBtn');
-    const viewerPrevBtn = document.getElementById('viewerPrevBtn');
-    const viewerNextBtn = document.getElementById('viewerNextBtn');
     const selectionBar = document.getElementById('selectionBar');
     const selectedCount = document.getElementById('selectedCount');
     const cancelSelectBtn = document.getElementById('cancelSelectBtn');
     const downloadSelectBtn = document.getElementById('downloadSelectBtn');
-    const shareToken = document.getElementById('shareDetailLayout')?.dataset.token;
-    let currentIndex = 0;
+    const shareRoot = document.getElementById('shareDetailLayout');
+    const shareToken = shareRoot?.dataset.token;
+    const allowDownload = shareRoot?.dataset.downloadAllowed === 'true';
     const selected = new Set();
     let selectionMode = false;
 
-    const createViewerMedia = (index, data) => {
-        const button = items[index];
-        const thumbElement = button?.querySelector('img, video');
-        const thumbElementSrc = thumbElement?.getAttribute('src') || '';
-        if (data.mediaType === 'VIDEO') {
-            const video = document.createElement('video');
-            video.controls = true;
-            video.playsInline = true;
-            video.autoplay = true;
-            video.src = data.previewUrl || thumbElementSrc || data.thumbUrl || data.mediumUrl || data.smallUrl || '';
-            return video;
+    const toAbsoluteUrl = (url) => {
+        if (!url) return '';
+        if (/^https?:\/\//i.test(url)) return url;
+        return window.location.origin + (url.startsWith('/') ? url : '/' + url);
+    };
+    const imageSizeCache = new Map();
+    const readImageSize = (src) => new Promise((resolve) => {
+        if (!src) return resolve({width: 1600, height: 1200});
+        if (imageSizeCache.has(src)) return resolve(imageSizeCache.get(src));
+        const img = new Image();
+        img.onload = () => {
+            const size = {width: img.naturalWidth || 1600, height: img.naturalHeight || 1200};
+            imageSizeCache.set(src, size);
+            resolve(size);
+        };
+        img.onerror = () => resolve({width: 1600, height: 1200});
+        img.src = src;
+    });
+    const openViewer = async (index) => {
+        const clicked = mediaEntries[index];
+        if (!clicked || clicked.mediaType === 'VIDEO' || !window.PhotoSwipe) return;
+        const imageEntries = mediaEntries.filter((entry) => entry.mediaType !== 'VIDEO');
+        const imageItems = await Promise.all(imageEntries.map(async (entry) => {
+            const src = toAbsoluteUrl(entry.mediumUrl || entry.previewUrl || entry.smallUrl);
+            const size = await readImageSize(src);
+            return { src, width: size.width, height: size.height };
+        }));
+        const imageIndex = mediaEntries.filter((entry, i) => i <= index && entry.mediaType !== 'VIDEO').length - 1;
+        const pswp = new window.PhotoSwipe({ dataSource: imageItems, index: Math.max(0, imageIndex), pswpModule: window.PhotoSwipe, wheelToZoom: true });
+        if (!allowDownload) {
+            pswp.on('bindEvents', () => {
+                pswp.events.add(pswp.scrollWrap, 'contextmenu', (event) => event.preventDefault());
+            });
         }
-        const image = document.createElement('img');
-        image.src = thumbElementSrc || data.thumbUrl || data.mediumUrl || data.smallUrl || '';
-        image.alt = 'viewer';
-        return image;
+        pswp.init();
     };
 
-    const renderViewer = (index) => {
-        const data = mediaEntries[index];
-        if (!data) return;
-        const frame = document.createElement('div');
-        frame.className = 'viewer-media-frame';
-        frame.appendChild(createViewerMedia(index, data));
-        viewerContent.innerHTML = '';
-        viewerContent.appendChild(frame);
-        currentIndex = index;
-        viewerCurrent.textContent = String(index + 1);
-        viewerTotal.textContent = String(items.length || 1);
-        if (viewerDownloadBtn) viewerDownloadBtn.href = data.downloadUrl;
-    };
-
-    const openViewer = (index) => {
-        viewerBackdrop.hidden = false;
-        renderViewer(index);
-    };
+    if (!allowDownload) {
+        const blockedSelector = [
+            'img', 'video', 'a', 'picture', 'figure',
+            '.photo-card', '.share-grid-item', '.grid-item',
+            '.batch-grid', '.pswp', '.pswp__container', '.pswp__item'
+        ].join(', ');
+        const blockSaveAttempt = (event) => {
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            if (target.closest(blockedSelector)) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        };
+        document.addEventListener('contextmenu', blockSaveAttempt, true);
+        document.addEventListener('dragstart', blockSaveAttempt, true);
+        document.addEventListener('selectstart', blockSaveAttempt, true);
+    }
 
     items.forEach((btn, index) => {
         btn.addEventListener('click', () => {
@@ -191,11 +194,6 @@
             btn.classList.toggle('is-selected', selected.has(id));
         });
     });
-
-    if (viewerCloseBtn) viewerCloseBtn.addEventListener('click', () => { viewerBackdrop.hidden = true; });
-    if (viewerBackdrop) viewerBackdrop.addEventListener('click', (e) => { if (e.target === viewerBackdrop) viewerBackdrop.hidden = true; });
-    if (viewerPrevBtn) viewerPrevBtn.addEventListener('click', () => renderViewer((currentIndex - 1 + items.length) % items.length));
-    if (viewerNextBtn) viewerNextBtn.addEventListener('click', () => renderViewer((currentIndex + 1) % items.length));
 
     if (cancelSelectBtn) cancelSelectBtn.addEventListener('click', () => {
         selectionMode = false;

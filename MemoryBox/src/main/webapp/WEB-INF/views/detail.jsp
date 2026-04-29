@@ -64,6 +64,7 @@
                     <button type="button" class="grid-item"
                             data-media-id="${item.mediaId}"
                             data-index="${status.index}"
+                            data-sort-order="${item.sortOrder}"
                             data-media-type="${item.mediaType}"
                             data-small-url="${fn:escapeXml(item.smallUrl)}"
                             data-medium-url="${fn:escapeXml(item.mediumUrl)}"
@@ -160,23 +161,13 @@
             <div class="share-action-row">
                 <button type="submit" class="btn btn-primary" id="shareCreateBtn">링크 생성</button>
                 <button type="button" class="btn btn-secondary" id="shareCopyBtn" disabled>복사</button>
+                <button type="button" class="kakao-share-btn" id="shareKakaoBtn" disabled aria-label="카카오톡으로 공유">
+                    <img src="/images/kakaotalk_sharing_btn_medium.png" alt="카카오톡 공유">
+                </button>
             </div>
             <input type="text" class="share-url-output" id="shareUrlOutput" readonly placeholder="생성된 링크가 여기에 표시됩니다.">
             <p class="share-feedback" id="shareFeedback" aria-live="polite"></p>
         </form>
-    </section>
-</div>
-
-<div class="viewer-backdrop" id="viewerBackdrop" hidden>
-    <section class="viewer-panel">
-        <button type="button" class="viewer-close" id="viewerCloseBtn">✕</button>
-        <button type="button" class="viewer-nav prev" id="viewerPrevBtn">‹</button>
-        <button type="button" class="viewer-nav next" id="viewerNextBtn">›</button>
-        <div class="viewer-content" id="viewerContent"></div>
-        <div class="viewer-footer">
-            <span id="viewerCounter"><span id="viewerCurrent">1</span> / <span id="viewerTotal">1</span></span>
-            <a class="btn btn-secondary" id="viewerDownloadBtn" href="#">원본 다운로드</a>
-        </div>
     </section>
 </div>
 
@@ -189,6 +180,12 @@
 </div>
 
 <script src="/js/sweetalert2/sweetalert2.all.min.js"></script>
+<link rel="stylesheet" href="/css/photoswipe/photoswipe.css">
+<script src="/js/photoswipe/photoswipe.umd.min.js"></script>
+<script src="/js/photoswipe/photoswipe-lightbox.umd.min.js"></script>
+<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.8.1/kakao.min.js"
+        integrity="sha384-OL+ylM/iuPLtW5U3XcvLSGhE8JzReKDank5InqlHGWPhb4140/yrBw0bg0y7+C9J"
+        crossorigin="anonymous"></script>
 <script>
 (() => {
     const grid = document.getElementById('batchGrid');
@@ -197,6 +194,7 @@
     const totalItems = items.length || 1;
     const mediaEntries = items.map((button) => ({
         mediaId: button.dataset.mediaId,
+        sortOrder: Number(button.dataset.sortOrder || Number.MAX_SAFE_INTEGER),
         mediaType: button.dataset.mediaType,
         smallUrl: button.dataset.smallUrl,
         mediumUrl: button.dataset.mediumUrl,
@@ -204,16 +202,13 @@
         downloadUrl: button.dataset.downloadUrl,
         thumbUrl: button.querySelector('img, video')?.getAttribute('src') || ''
     }));
-    const viewerBackdrop = document.getElementById('viewerBackdrop');
-    const viewerContent = document.getElementById('viewerContent');
-    const viewerCurrent = document.getElementById('viewerCurrent');
-    const viewerTotal = document.getElementById('viewerTotal');
-    const viewerDownloadBtn = document.getElementById('viewerDownloadBtn');
+    const toAbsoluteUrl = (url) => {
+        if (!url) return '';
+        if (/^https?:\/\//i.test(url)) return url;
+        return window.location.origin + (url.startsWith('/') ? url : '/' + url);
+    };
     const selectionBar = document.getElementById('selectionBar');
     const selectedCount = document.getElementById('selectedCount');
-    const viewerCloseBtn = document.getElementById('viewerCloseBtn');
-    const viewerPrevBtn = document.getElementById('viewerPrevBtn');
-    const viewerNextBtn = document.getElementById('viewerNextBtn');
     const cancelSelectBtn = document.getElementById('cancelSelectBtn');
     const downloadSelectBtn = document.getElementById('downloadSelectBtn');
     const downloadAllBtn = document.getElementById('downloadAllBtn');
@@ -225,118 +220,50 @@
     const guestOptionWrap = document.getElementById('guestOptionWrap');
     const shareCreateBtn = document.getElementById('shareCreateBtn');
     const shareCopyBtn = document.getElementById('shareCopyBtn');
+    const shareKakaoBtn = document.getElementById('shareKakaoBtn');
     const shareUrlOutput = document.getElementById('shareUrlOutput');
     const shareFeedback = document.getElementById('shareFeedback');
+    const kakaoJavascriptKey = '<c:out value="${kakaoJavascriptKey}" />';
 
-    if (!viewerBackdrop || !viewerContent || !viewerCurrent || !viewerTotal || !viewerDownloadBtn ||
-        !selectionBar || !selectedCount || !viewerCloseBtn || !viewerPrevBtn || !viewerNextBtn ||
-        !cancelSelectBtn || !downloadSelectBtn) return;
+    if (!selectionBar || !selectedCount || !cancelSelectBtn || !downloadSelectBtn) return;
 
-    let currentIndex = 0;
     let selectionMode = false;
     const selected = new Set();
-    let viewerHistoryActive = false;
+    let pswpInstance = null;
 
     const getItemData = (index) => mediaEntries[index];
 
-    const createViewerMedia = (index, data) => {
-        const button = items[index];
-        const thumbElement = button?.querySelector('img, video');
-        const thumbElementSrc = thumbElement?.getAttribute('src') || '';
-        if (data.mediaType === 'VIDEO') {
-            const video = document.createElement('video');
-            video.controls = true;
-            video.playsInline = true;
-            video.autoplay = true;
-            video.src = data.previewUrl || thumbElementSrc || data.thumbUrl || data.mediumUrl || data.smallUrl || '';
-            return video;
-        }
-        const image = document.createElement('img');
-        image.src = thumbElementSrc || data.thumbUrl || data.mediumUrl || data.smallUrl || '';
-        image.alt = 'viewer';
-        return image;
-    };
-
-    const createViewerFrame = (index, data) => {
-        const frame = document.createElement('div');
-        frame.className = 'viewer-media-frame';
-        frame.appendChild(createViewerMedia(index, data));
-        return frame;
-    };
-
-    const updateViewerMeta = (index, data) => {
-        currentIndex = index;
-        viewerCurrent.textContent = String(index + 1);
-        viewerTotal.textContent = String(totalItems);
-        viewerDownloadBtn.href = data.downloadUrl;
-    };
-
-    const renderViewer = (index, direction) => {
-        if ((direction === 'next' || direction === 'prev') && viewerContent.dataset.animating) return;
-        const data = getItemData(index);
-        if (!data) return;
-        const nextFrame = createViewerFrame(index, data);
-        const currentFrame = viewerContent.querySelector('.viewer-media-frame');
-        const isAnimated = (direction === 'next' || direction === 'prev') && currentFrame && !viewerContent.dataset.animating;
-
-        if (!isAnimated) {
-            viewerContent.innerHTML = '';
-            viewerContent.appendChild(nextFrame);
-        } else {
-            viewerContent.dataset.animating = 'true';
-            const offset = direction === 'next' ? 100 : -100;
-            const durationMs = 420;
-            const easing = 'cubic-bezier(0.25, 0.8, 0.25, 1)';
-
-            nextFrame.style.transform = 'translateX(' + offset + '%)';
-            nextFrame.style.opacity = '0.92';
-            nextFrame.style.transition = 'transform ' + durationMs + 'ms ' + easing + ', opacity ' + durationMs + 'ms ease';
-            currentFrame.style.transition = 'transform ' + durationMs + 'ms ' + easing + ', opacity ' + durationMs + 'ms ease';
-
-            viewerContent.appendChild(nextFrame);
-
-            requestAnimationFrame(() => {
-                currentFrame.style.transform = 'translateX(' + (-offset) + '%)';
-                currentFrame.style.opacity = '0.88';
-                nextFrame.style.transform = 'translateX(0)';
-                nextFrame.style.opacity = '1';
-            });
-
-            window.setTimeout(() => {
-                viewerContent.innerHTML = '';
-                nextFrame.style.transition = '';
-                nextFrame.style.transform = '';
-                nextFrame.style.opacity = '';
-                viewerContent.appendChild(nextFrame);
-                delete viewerContent.dataset.animating;
-            }, durationMs + 20);
-        }
-
-        updateViewerMeta(index, data);
-    };
-
-    const openViewer = (index) => {
-        if (!viewerHistoryActive) {
-            history.pushState({detailViewerOpen: true}, '', window.location.href);
-            viewerHistoryActive = true;
-        }
-        viewerBackdrop.hidden = false;
-        document.body.classList.add('modal-open');
-        renderViewer(index, 'none');
-    };
-
-    const closeViewer = () => {
-        if (viewerHistoryActive) {
-            history.back();
-            return;
-        }
-        closeViewerFromPopState();
-    };
-
-    const closeViewerFromPopState = () => {
-        viewerBackdrop.hidden = true;
-        document.body.classList.remove('modal-open');
-        viewerHistoryActive = false;
+    const imageSizeCache = new Map();
+    const readImageSize = (src) => new Promise((resolve) => {
+        if (!src) return resolve({width: 1600, height: 1200});
+        if (imageSizeCache.has(src)) return resolve(imageSizeCache.get(src));
+        const img = new Image();
+        img.onload = () => {
+            const size = {width: img.naturalWidth || 1600, height: img.naturalHeight || 1200};
+            imageSizeCache.set(src, size);
+            resolve(size);
+        };
+        img.onerror = () => resolve({width: 1600, height: 1200});
+        img.src = src;
+    });
+    const openViewer = async (index) => {
+        const imageEntries = mediaEntries.filter((entry) => entry.mediaType !== 'VIDEO');
+        const clicked = getItemData(index);
+        if (!clicked || clicked.mediaType === 'VIDEO' || imageEntries.length === 0 || !window.PhotoSwipe) return;
+        const imageItems = await Promise.all(imageEntries.map(async (entry) => {
+            const src = toAbsoluteUrl(entry.mediumUrl || entry.previewUrl || entry.smallUrl);
+            const size = await readImageSize(src);
+            return {src, width: size.width, height: size.height};
+        }));
+        const imageIndex = mediaEntries.filter((entry, i) => i <= index && entry.mediaType !== 'VIDEO').length - 1;
+        pswpInstance = new window.PhotoSwipe({
+            dataSource: imageItems,
+            index: Math.max(0, imageIndex),
+            pswpModule: window.PhotoSwipe,
+            wheelToZoom: true,
+            bgOpacity: 0.9
+        });
+        pswpInstance.init();
     };
 
     const syncSelectionUi = () => {
@@ -384,118 +311,6 @@
         });
     });
 
-    viewerCloseBtn.addEventListener('click', closeViewer);
-    viewerPrevBtn.addEventListener('click', () => renderViewer((currentIndex - 1 + items.length) % items.length, 'prev'));
-    viewerNextBtn.addEventListener('click', () => renderViewer((currentIndex + 1) % items.length, 'next'));
-    viewerBackdrop.addEventListener('click', (e) => { if (e.target === viewerBackdrop) closeViewer(); });
-    window.addEventListener('popstate', () => {
-        if (!viewerBackdrop.hidden) {
-            closeViewerFromPopState();
-        }
-    });
-
-    const swipeState = {
-        dragging: false,
-        startX: 0,
-        deltaX: 0,
-        direction: null,
-        neighborFrame: null
-    };
-
-    const clearDragPreview = ({keepNeighborFrame = false} = {}) => {
-        const currentFrame = viewerContent.querySelector('.viewer-media-frame');
-        if (currentFrame) {
-            currentFrame.style.transition = '';
-            currentFrame.style.transform = '';
-            currentFrame.style.opacity = '';
-        }
-        if (swipeState.neighborFrame && !keepNeighborFrame) swipeState.neighborFrame.remove();
-        swipeState.dragging = false;
-        swipeState.deltaX = 0;
-        swipeState.direction = null;
-        swipeState.neighborFrame = null;
-    };
-
-    viewerContent.addEventListener('touchstart', (e) => {
-        if (viewerContent.dataset.animating || e.touches.length !== 1) return;
-        swipeState.dragging = true;
-        swipeState.startX = e.touches[0].clientX;
-        swipeState.deltaX = 0;
-        swipeState.direction = null;
-        if (swipeState.neighborFrame) swipeState.neighborFrame.remove();
-        swipeState.neighborFrame = null;
-    }, {passive:true});
-    viewerContent.addEventListener('touchmove', (e) => {
-        if (!swipeState.dragging) return;
-        const currentFrame = viewerContent.querySelector('.viewer-media-frame');
-        if (!currentFrame) return;
-        const contentWidth = Math.max(viewerContent.clientWidth, 1);
-        swipeState.deltaX = e.touches[0].clientX - swipeState.startX;
-        const direction = swipeState.deltaX > 0 ? 'prev' : 'next';
-        if (!swipeState.direction) swipeState.direction = direction;
-        if (!swipeState.neighborFrame || swipeState.direction !== direction) {
-            if (swipeState.neighborFrame) swipeState.neighborFrame.remove();
-            const neighborIndex = direction === 'prev'
-                ? (currentIndex - 1 + items.length) % items.length
-                : (currentIndex + 1) % items.length;
-            swipeState.neighborFrame = createViewerFrame(neighborIndex, getItemData(neighborIndex));
-            swipeState.neighborFrame.style.transform = 'translateX(' + (direction === 'next' ? 100 : -100) + '%)';
-            swipeState.neighborFrame.style.opacity = '0.95';
-            viewerContent.appendChild(swipeState.neighborFrame);
-            swipeState.direction = direction;
-        }
-
-        const moveX = swipeState.deltaX;
-        const nextOffset = (direction === 'next' ? contentWidth : -contentWidth) + moveX;
-        currentFrame.style.transition = 'none';
-        currentFrame.style.transform = 'translateX(' + moveX + 'px)';
-        currentFrame.style.opacity = String(Math.max(0.72, 1 - Math.abs(moveX) / (contentWidth * 1.6)));
-        swipeState.neighborFrame.style.transition = 'none';
-        swipeState.neighborFrame.style.transform = 'translateX(' + nextOffset + 'px)';
-    }, {passive:true});
-    viewerContent.addEventListener('touchend', (e) => {
-        if (!swipeState.dragging) return;
-        const currentFrame = viewerContent.querySelector('.viewer-media-frame');
-        const diff = swipeState.deltaX || (e.changedTouches[0].clientX - swipeState.startX);
-        const threshold = Math.max(48, viewerContent.clientWidth * 0.16);
-        if (!currentFrame || !swipeState.neighborFrame || Math.abs(diff) < threshold) {
-            if (currentFrame) {
-                currentFrame.style.transition = 'transform 240ms ease, opacity 240ms ease';
-                currentFrame.style.transform = 'translateX(0)';
-                currentFrame.style.opacity = '1';
-            }
-            if (swipeState.neighborFrame) {
-                swipeState.neighborFrame.style.transition = 'transform 240ms ease, opacity 240ms ease';
-                swipeState.neighborFrame.style.transform = 'translateX(' + (diff > 0 ? -100 : 100) + '%)';
-            }
-            window.setTimeout(clearDragPreview, 250);
-            return;
-        }
-
-        const direction = diff > 0 ? 'prev' : 'next';
-        const nextIndex = direction === 'prev'
-            ? (currentIndex - 1 + items.length) % items.length
-            : (currentIndex + 1) % items.length;
-        viewerContent.dataset.animating = 'true';
-        currentFrame.style.transition = 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease';
-        swipeState.neighborFrame.style.transition = 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease';
-        currentFrame.style.transform = 'translateX(' + (direction === 'next' ? -100 : 100) + '%)';
-        currentFrame.style.opacity = '0.82';
-        swipeState.neighborFrame.style.transform = 'translateX(0)';
-        swipeState.neighborFrame.style.opacity = '1';
-
-        window.setTimeout(() => {
-            viewerContent.innerHTML = '';
-            swipeState.neighborFrame.style.transition = '';
-            swipeState.neighborFrame.style.transform = '';
-            swipeState.neighborFrame.style.opacity = '';
-            viewerContent.appendChild(swipeState.neighborFrame);
-            clearDragPreview({keepNeighborFrame: true});
-            delete viewerContent.dataset.animating;
-            updateViewerMeta(nextIndex, getItemData(nextIndex));
-        }, 300);
-    }, {passive:true});
-    viewerContent.addEventListener('touchcancel', clearDragPreview, {passive:true});
 
     cancelSelectBtn.addEventListener('click', () => {
         selectionMode = false; selected.clear(); syncSelectionUi();
@@ -663,7 +478,11 @@
     });
 
     if (shareOpenBtn && shareModal && shareForm && shareCloseBtn && shareBackdrop &&
-        guestOptionWrap && shareCreateBtn && shareCopyBtn && shareUrlOutput && shareFeedback) {
+        guestOptionWrap && shareCreateBtn && shareCopyBtn && shareKakaoBtn && shareUrlOutput && shareFeedback) {
+        if (window.Kakao && kakaoJavascriptKey && !window.Kakao.isInitialized()) {
+
+            window.Kakao.init(kakaoJavascriptKey);
+        }
         const closeShareModal = () => {
             shareModal.hidden = true;
         };
@@ -707,6 +526,7 @@
                 const link = payload.guest ? body.guestUrl : body.memberUrl;
                 shareUrlOutput.value = link || '';
                 shareCopyBtn.disabled = !link;
+                shareKakaoBtn.disabled = !link;
                 shareFeedback.textContent = link ? '공유 링크가 생성되었습니다.' : '링크 생성에 실패했습니다.';
             } catch (error) {
                 shareFeedback.textContent = '공유 링크 생성 중 오류가 발생했습니다.';
@@ -725,6 +545,38 @@
                 document.execCommand('copy');
                 shareFeedback.textContent = '링크를 복사했습니다.';
             }
+        });
+
+        shareKakaoBtn.addEventListener('click', () => {
+            const link = shareUrlOutput.value?.trim();
+            if (!link) return;
+            if (!window.Kakao || !window.Kakao.Share) {
+                shareFeedback.textContent = '카카오톡 공유를 사용할 수 없습니다. 링크를 복사해 사용해 주세요.';
+                return;
+            }
+            const primaryMedia = mediaEntries.find((entry) => entry.sortOrder === 1)
+                || mediaEntries.slice().sort((a, b) => a.sortOrder - b.sortOrder)[0]
+                || {};
+            const previewImage = primaryMedia.thumbUrl || primaryMedia.smallUrl || primaryMedia.mediumUrl || '/images/default-image.png';
+            window.Kakao.Share.sendDefault({
+                objectType: 'feed',
+                content: {
+                    title: '${fn:escapeXml(detail.title)}',
+                    description: 'MemoryBox 게시물 공유 링크입니다.',
+                    imageUrl: toAbsoluteUrl(previewImage),
+                    link: {
+                        mobileWebUrl: link,
+                        webUrl: link
+                    }
+                },
+                buttons: [{
+                    title: '게시물 보기',
+                    link: {
+                        mobileWebUrl: link,
+                        webUrl: link
+                    }
+                }]
+            });
         });
     }
 
