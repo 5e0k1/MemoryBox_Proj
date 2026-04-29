@@ -345,8 +345,8 @@ public class DetailService {
     }
 
     private DownloadFileInfo toDownloadFileInfo(MediaDetailRow row) {
-        Path filePath = storageRoot.resolve(row.getOriginalStorageKey()).normalize();
-        return new DownloadFileInfo(filePath, defaultText(row.getOriginalFileName(), "download"), row.getOriginalMimeType());
+        Path filePath = isBlank(row.getOriginalStorageKey()) ? null : storageRoot.resolve(row.getOriginalStorageKey()).normalize();
+        return new DownloadFileInfo(filePath, row.getOriginalStorageKey(), defaultText(row.getOriginalFileName(), "download"), row.getOriginalMimeType());
     }
 
     @Transactional
@@ -582,19 +582,32 @@ public class DetailService {
         return value == null || value.isBlank();
     }
 
+    public String resolveOriginalDownloadUrl(DownloadFileInfo fileInfo) {
+        if (fileInfo == null || isBlank(fileInfo.getStorageKey())) {
+            return "";
+        }
+        return storageUrlResolver.resolvePublicUrl(fileInfo.getStorageKey());
+    }
+
     public static class DownloadFileInfo {
         private final Path filePath;
+        private final String storageKey;
         private final String fileName;
         private final String mimeType;
 
-        public DownloadFileInfo(Path filePath, String fileName, String mimeType) {
+        public DownloadFileInfo(Path filePath, String storageKey, String fileName, String mimeType) {
             this.filePath = filePath;
+            this.storageKey = storageKey;
             this.fileName = fileName;
             this.mimeType = mimeType;
         }
 
         public Path getFilePath() {
             return filePath;
+        }
+
+        public String getStorageKey() {
+            return storageKey;
         }
 
         public String getFileName() {

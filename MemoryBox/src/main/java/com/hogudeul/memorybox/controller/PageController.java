@@ -540,6 +540,21 @@ public class PageController {
                     .build();
         }
 
+        String cdnDownloadUrl = detailService.resolveOriginalDownloadUrl(fileInfo);
+        if (!cdnDownloadUrl.isBlank()) {
+            detailService.logDownloadAttempt(
+                    itemId,
+                    loginUser.getUserId(),
+                    request.getRemoteAddr(),
+                    request.getHeader(HttpHeaders.USER_AGENT),
+                    true,
+                    null
+            );
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .header(HttpHeaders.LOCATION, cdnDownloadUrl)
+                    .build();
+        }
+
         if (!fileInfo.existsReadable()) {
             log.warn("Single download file not found. mediaId={}, userId={}, path={}",
                     itemId, loginUser.getUserId(), fileInfo.getFilePath());
