@@ -290,6 +290,12 @@ public class PageController {
         model.addAttribute("loginUser", loginUser);
         model.addAttribute("video", videoDetail);
         model.addAttribute("notFound", videoDetail == null);
+        if (videoDetail != null) {
+            MediaDetailView detail = detailService.getMediaDetail(videoDetail.getBatchId(), userId);
+            model.addAttribute("detail", detail);
+            model.addAttribute("currentBatchId", videoDetail.getBatchId());
+            model.addAttribute("comments", detailService.getComments(videoDetail.getBatchId(), userId));
+        }
         return "videoDetail";
     }
 
