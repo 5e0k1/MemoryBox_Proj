@@ -17,7 +17,7 @@
     <c:if test="${not empty errorMessage}"><p class="msg error">${errorMessage}</p></c:if>
     <form method="post" enctype="multipart/form-data" class="upload-form" id="multiUploadForm">
         <label>사진 파일들
-            <input type="file" name="imageFiles" accept="image/*" multiple required id="multiImageInput">
+            <input type="file" name="imageFiles" accept="image/*" multiple id="multiImageInput">
         </label>
         <label>공통 제목<input type="text" name="title" value="${form.title}" maxlength="100"></label>
         <label>공통 촬영일시<input type="datetime-local" class="taken-at-input" name="takenAt" value="${form.takenAt}"></label>
