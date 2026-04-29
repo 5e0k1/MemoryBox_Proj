@@ -72,12 +72,18 @@
             <div class="share-action-row">
                 <button type="submit" class="btn btn-primary" id="shareCreateBtn">링크 생성</button>
                 <button type="button" class="btn btn-secondary" id="shareCopyBtn" disabled>복사</button>
+                <button type="button" class="kakao-share-btn" id="shareKakaoBtn" disabled aria-label="카카오톡으로 공유">
+                    <img src="/images/kakaotalk_sharing_btn_medium.png" alt="카카오톡 공유">
+                </button>
             </div>
             <input type="text" class="share-url-output" id="shareUrlOutput" readonly>
             <p class="share-feedback" id="shareFeedback"></p>
         </form>
     </section>
 </div>
+<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.8.1/kakao.min.js"
+        integrity="sha384-OL+ylM/iuPLtW5U3XcvLSGhE8JzReKDank5InqlHGWPhb4140/yrBw0bg0y7+C9J"
+        crossorigin="anonymous"></script>
 <script>
 (() => {
   const shareOpenBtn = document.getElementById('shareOpenBtn');
@@ -89,7 +95,15 @@
   const shareCopyBtn = document.getElementById('shareCopyBtn');
   const shareUrlOutput = document.getElementById('shareUrlOutput');
   const shareFeedback = document.getElementById('shareFeedback');
+  const shareKakaoBtn = document.getElementById('shareKakaoBtn');
   const batchId = '${video.batchId}';
+  const kakaoJavascriptKey = '<c:out value="${kakaoJavascriptKey}" />';
+  let latestShareUrl = '';
+  const toAbsoluteUrl = (url) => {
+    if (!url) return window.location.origin + '/images/default-image.png';
+    if (/^https?:\/\//i.test(url)) return url;
+    return window.location.origin + (url.startsWith('/') ? url : '/' + url);
+  };
   if (!shareOpenBtn) return;
   const open = () => shareModal.hidden = false;
   const close = () => shareModal.hidden = true;
@@ -105,14 +119,35 @@
     const res = await fetch('/share/batch/' + batchId, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({guest, allowComments: document.getElementById('allowCommentsChk').checked, allowDownload: document.getElementById('allowDownloadChk').checked})});
     const data = await res.json();
     const url = guest ? data.guestUrl : data.memberUrl;
+    latestShareUrl = url || '';
     shareUrlOutput.value = url || '';
     shareCopyBtn.disabled = !url;
+    shareKakaoBtn.disabled = !url;
     shareFeedback.textContent = url ? '공유 링크가 생성되었습니다.' : '링크 생성 실패';
   });
   shareCopyBtn.addEventListener('click', async () => {
     if (!shareUrlOutput.value) return;
     await navigator.clipboard.writeText(shareUrlOutput.value);
     shareFeedback.textContent = '복사되었습니다.';
+  });
+
+  if (window.Kakao && kakaoJavascriptKey) {
+    if (!window.Kakao.isInitialized()) {
+      window.Kakao.init(kakaoJavascriptKey);
+    }
+  }
+  shareKakaoBtn.addEventListener('click', () => {
+    if (!latestShareUrl || !window.Kakao || !window.Kakao.Share) return;
+    window.Kakao.Share.sendDefault({
+      objectType: 'feed',
+      content: {
+        title: '${video.title}',
+        description: '${detail.authorName} · ${detail.relativeUploadedAt}',
+        imageUrl: toAbsoluteUrl('${video.posterUrl}'),
+        link: { mobileWebUrl: latestShareUrl, webUrl: latestShareUrl }
+      },
+      buttons: [{ title: '보러가기', link: { mobileWebUrl: latestShareUrl, webUrl: latestShareUrl } }]
+    });
   });
 })();
 </script>
