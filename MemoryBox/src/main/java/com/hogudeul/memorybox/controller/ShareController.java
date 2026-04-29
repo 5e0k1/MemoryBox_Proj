@@ -71,7 +71,10 @@ public class ShareController {
         boolean allowDownload = request != null && Boolean.TRUE.equals(request.getAllowDownload());
         Integer expiresMinutes = request != null ? request.getExpiresMinutes() : null;
 
-        String memberUrl = shareLinkService.buildMemberShareUrl(batchId);
+        boolean videoBatch = "VIDEO".equalsIgnoreCase(detail.getMediaType());
+        String memberUrl = videoBatch
+                ? shareLinkService.buildVideoMemberShareUrl(detail.getMediaId())
+                : shareLinkService.buildMemberShareUrl(batchId);
         if (!guest) {
             return ResponseEntity.ok(new ShareLinkCreateResponse(memberUrl, null, null));
         }

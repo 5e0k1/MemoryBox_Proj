@@ -12,7 +12,7 @@
 <body class="page page-detail share-page ${allowDownload ? '' : 'no-download'}">
 <main class="detail-layout">
     <header class="detail-header">
-        <a href="/share/${shareToken}" class="back-link" aria-label="공유 상세로 돌아가기">← 공유 상세</a>
+        <span></span>
         <div class="login-chip">게스트 공유</div>
     </header>
 
