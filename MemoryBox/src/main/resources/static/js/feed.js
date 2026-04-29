@@ -472,16 +472,30 @@ document.addEventListener('DOMContentLoaded', () => {
         </article>`;
     };
 
-    const openSearchViewer = (items, index) => {
+    const imageSizeCache = new Map();
+    const readImageSize = (src) => new Promise((resolve) => {
+        if (!src) return resolve({ width: 1600, height: 1200 });
+        if (imageSizeCache.has(src)) return resolve(imageSizeCache.get(src));
+        const img = new Image();
+        img.onload = () => {
+            const size = { width: img.naturalWidth || 1600, height: img.naturalHeight || 1200 };
+            imageSizeCache.set(src, size);
+            resolve(size);
+        };
+        img.onerror = () => resolve({ width: 1600, height: 1200 });
+        img.src = src;
+    });
+
+    const openSearchViewer = async (items, index) => {
         const viewerItems = (items || []).filter((item) => (item.mediaType || '').toLowerCase() !== 'video');
         if (viewerItems.length === 0 || !window.PhotoSwipe) return;
         const clicked = items[index];
         if (!clicked || (clicked.mediaType || '').toLowerCase() === 'video') return;
         const imageIndex = viewerItems.findIndex((item) => String(item.mediaId) === String(clicked.mediaId));
-        const dataSource = viewerItems.map((item) => ({
-            src: item.mediumUrl || item.previewUrl || item.smallUrl || '',
-            width: 1600,
-            height: 1200
+        const dataSource = await Promise.all(viewerItems.map(async (item) => {
+            const src = item.mediumUrl || item.previewUrl || item.smallUrl || '';
+            const size = await readImageSize(src);
+            return { src, width: size.width, height: size.height };
         }));
         const pswp = new window.PhotoSwipe({
             dataSource,

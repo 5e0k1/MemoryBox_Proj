@@ -233,12 +233,28 @@
 
     const getItemData = (index) => mediaEntries[index];
 
-    const openViewer = (index) => {
-        const imageItems = mediaEntries
-            .filter((entry) => entry.mediaType !== 'VIDEO')
-            .map((entry) => ({ src: toAbsoluteUrl(entry.mediumUrl || entry.previewUrl || entry.smallUrl), width: 1600, height: 1200 }));
+    const imageSizeCache = new Map();
+    const readImageSize = (src) => new Promise((resolve) => {
+        if (!src) return resolve({width: 1600, height: 1200});
+        if (imageSizeCache.has(src)) return resolve(imageSizeCache.get(src));
+        const img = new Image();
+        img.onload = () => {
+            const size = {width: img.naturalWidth || 1600, height: img.naturalHeight || 1200};
+            imageSizeCache.set(src, size);
+            resolve(size);
+        };
+        img.onerror = () => resolve({width: 1600, height: 1200});
+        img.src = src;
+    });
+    const openViewer = async (index) => {
+        const imageEntries = mediaEntries.filter((entry) => entry.mediaType !== 'VIDEO');
         const clicked = getItemData(index);
-        if (!clicked || clicked.mediaType === 'VIDEO' || imageItems.length === 0 || !window.PhotoSwipe) return;
+        if (!clicked || clicked.mediaType === 'VIDEO' || imageEntries.length === 0 || !window.PhotoSwipe) return;
+        const imageItems = await Promise.all(imageEntries.map(async (entry) => {
+            const src = toAbsoluteUrl(entry.mediumUrl || entry.previewUrl || entry.smallUrl);
+            const size = await readImageSize(src);
+            return {src, width: size.width, height: size.height};
+        }));
         const imageIndex = mediaEntries.filter((entry, i) => i <= index && entry.mediaType !== 'VIDEO').length - 1;
         pswpInstance = new window.PhotoSwipe({
             dataSource: imageItems,
