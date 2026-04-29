@@ -64,6 +64,7 @@
                     <button type="button" class="grid-item"
                             data-media-id="${item.mediaId}"
                             data-index="${status.index}"
+                            data-sort-order="${item.sortOrder}"
                             data-media-type="${item.mediaType}"
                             data-small-url="${fn:escapeXml(item.smallUrl)}"
                             data-medium-url="${fn:escapeXml(item.mediumUrl)}"
@@ -203,6 +204,7 @@
     const totalItems = items.length || 1;
     const mediaEntries = items.map((button) => ({
         mediaId: button.dataset.mediaId,
+        sortOrder: Number(button.dataset.sortOrder || Number.MAX_SAFE_INTEGER),
         mediaType: button.dataset.mediaType,
         smallUrl: button.dataset.smallUrl,
         mediumUrl: button.dataset.mediumUrl,
@@ -751,7 +753,9 @@
                 shareFeedback.textContent = '카카오톡 공유를 사용할 수 없습니다. 링크를 복사해 사용해 주세요.';
                 return;
             }
-            const primaryMedia = mediaEntries[0] || {};
+            const primaryMedia = mediaEntries.find((entry) => entry.sortOrder === 1)
+                || mediaEntries.slice().sort((a, b) => a.sortOrder - b.sortOrder)[0]
+                || {};
             const previewImage = primaryMedia.thumbUrl || primaryMedia.smallUrl || primaryMedia.mediumUrl || '/images/default-image.png';
             window.Kakao.Share.sendDefault({
                 objectType: 'feed',
