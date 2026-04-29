@@ -101,6 +101,22 @@
     gap: 8px;
 }
 
+.meta-action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.engagement-row {
+    margin-top: 10px;
+}
+
+.btn-sm {
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+}
+
 .share-open-btn {
     width: 40px;
     height: 40px;

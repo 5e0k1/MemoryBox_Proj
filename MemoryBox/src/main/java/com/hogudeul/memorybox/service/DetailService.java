@@ -601,5 +601,9 @@ public class DetailService {
         public DownloadException(String message) {
             super(message);
         }
+
+        public DownloadException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 }

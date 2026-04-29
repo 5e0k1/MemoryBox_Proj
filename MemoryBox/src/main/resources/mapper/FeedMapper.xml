@@ -30,6 +30,21 @@
         <result column="sort_order" property="sortOrder"/>
     </resultMap>
 
+    <resultMap id="SearchMediaItemRowMap" type="com.hogudeul.memorybox.model.SearchMediaItemRow">
+        <id column="media_id" property="mediaId"/>
+        <result column="batch_id" property="batchId"/>
+        <result column="media_type" property="mediaType"/>
+        <result column="small_storage_key" property="smallStorageKey"/>
+        <result column="medium_storage_key" property="mediumStorageKey"/>
+        <result column="preview_storage_key" property="previewStorageKey"/>
+        <result column="original_file_name" property="originalFileName"/>
+        <result column="uploaded_at" property="uploadedAt"/>
+        <result column="taken_at" property="takenAt"/>
+        <result column="title" property="title"/>
+        <result column="display_name" property="displayName"/>
+        <result column="batch_media_count" property="batchMediaCount"/>
+    </resultMap>
+
     <sql id="FeedBaseFrom">
         FROM MEDIA_BATCH mb
                  JOIN MEDIA_ITEMS cover ON cover.media_id = mb.cover_media_id AND cover.del_yn = 'N'
@@ -130,6 +145,62 @@
               #{batchId}
           </foreach>
         ORDER BY mi.batch_id ASC, mi.sort_order ASC, mi.media_id ASC
+    </select>
+
+    <sql id="SearchMediaBaseFrom">
+        FROM MEDIA_ITEMS mi
+                 JOIN MEDIA_BATCH mb ON mi.batch_id = mb.batch_id
+                 LEFT JOIN MEDIA_VARIANT small_mv ON mi.media_id = small_mv.media_id AND small_mv.variant_type = 'SMALL'
+                 LEFT JOIN MEDIA_VARIANT medium_mv ON mi.media_id = medium_mv.media_id AND medium_mv.variant_type = 'MEDIUM'
+                 LEFT JOIN MEDIA_VARIANT preview_mv ON mi.media_id = preview_mv.media_id AND preview_mv.variant_type = 'PREVIEW'
+                 LEFT JOIN MEDIA_VARIANT original_mv ON mi.media_id = original_mv.media_id AND original_mv.variant_type = 'ORIGINAL'
+                 LEFT JOIN USER u ON mb.user_id = u.user_id
+                 LEFT JOIN ALBUM a ON mb.album_id = a.album_id
+        WHERE mi.del_yn = 'N'
+          AND mb.del_yn = 'N'
+          AND u.del_yn = 'N'
+          AND a.del_yn = 'N'
+    </sql>
+
+    <sql id="SearchMediaBaseWhere">
+        <if test="mediaType != null">AND mi.media_type = #{mediaType}</if>
+        <if test="author != null">AND u.display_name = #{author}</if>
+        <if test="album != null">AND a.album_name = #{album}</if>
+        <if test="tag != null">
+            AND EXISTS (
+                SELECT 1 FROM BATCH_TAG bt JOIN TAG t ON bt.tag_id=t.tag_id
+                WHERE bt.batch_id=mb.batch_id AND t.del_yn='N' AND t.tag_name=#{tag}
+            )
+        </if>
+        <if test="likedOnly and userId != null">
+            AND EXISTS (SELECT 1 FROM BATCH_LIKE bl WHERE bl.batch_id = mb.batch_id AND bl.user_id = #{userId})
+        </if>
+        <if test="mineOnly and userId != null">AND mb.user_id = #{userId}</if>
+    </sql>
+
+    <select id="findSearchMediaItems" resultMap="SearchMediaItemRowMap">
+        SELECT mi.media_id,
+               mi.batch_id,
+               mi.media_type,
+               small_mv.storage_key AS small_storage_key,
+               medium_mv.storage_key AS medium_storage_key,
+               preview_mv.storage_key AS preview_storage_key,
+               original_mv.file_org_name AS original_file_name,
+               mb.uploaded_at,
+               mb.taken_at,
+               COALESCE(mb.title, mi.title) AS title,
+               u.display_name,
+               (SELECT COUNT(*) FROM MEDIA_ITEMS mi2 WHERE mi2.batch_id = mb.batch_id AND mi2.del_yn = 'N') AS batch_media_count
+        <include refid="SearchMediaBaseFrom"/>
+        <include refid="SearchMediaBaseWhere"/>
+        ORDER BY mb.uploaded_at DESC, mi.sort_order ASC, mi.media_id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countSearchMediaItems" resultType="int">
+        SELECT COUNT(*)
+        <include refid="SearchMediaBaseFrom"/>
+        <include refid="SearchMediaBaseWhere"/>
     </select>
 
 </mapper>

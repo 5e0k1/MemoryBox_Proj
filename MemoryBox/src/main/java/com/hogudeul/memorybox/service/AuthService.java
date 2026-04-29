@@ -67,12 +67,12 @@ public class AuthService {
             rememberMeService.issueRememberMeToken(userId, response);
             return;
         }
-        rememberMeService.clearRememberMeToken(userId, response);
+        rememberMeService.clearRememberMeTokenByCurrentCookie(null, response);
     }
 
     @Transactional
-    public void logout(Long userId, HttpServletResponse response) {
-        rememberMeService.clearRememberMeToken(userId, response);
+    public void logout(Long userId, HttpServletRequest request, HttpServletResponse response) {
+        rememberMeService.clearRememberMeTokenByCurrentCookie(request, response);
     }
 
     @Transactional
@@ -103,14 +103,14 @@ public class AuthService {
         }
 
         userMapper.updatePasswordHash(userId, passwordEncoder.encode(newPassword));
-        userMapper.clearRememberToken(userId);
+        rememberMeService.revokeAllRememberMeTokens(userId);
         return null;
     }
 
     @Transactional
     public void clearRememberTokenForSecurityEvent(Long userId) {
         // TODO: 관리자 비밀번호 초기화/계정 잠금 해제 플로우에서 본 메서드를 호출해 기존 자동로그인을 강제 해제하세요.
-        userMapper.clearRememberToken(userId);
+        rememberMeService.revokeAllRememberMeTokens(userId);
     }
 
     @Transactional

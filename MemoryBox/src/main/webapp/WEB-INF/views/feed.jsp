@@ -10,6 +10,7 @@
     <%@ include file="/WEB-INF/views/common/head-icons.jspf" %>
     <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/feed.css">
+    <link rel="stylesheet" href="/css/sweetalert2/sweetalert2.min.css">
 </head>
 <body class="page page-feed" data-mode="${empty mode ? 'feed' : mode}">
 <main class="feed-layout with-bottom-nav">
@@ -151,6 +152,11 @@
     </c:if>
 
     <c:if test="${mode eq 'search'}">
+        <section class="search-mode-tabs" id="searchModeTabs" hidden>
+            <button type="button" class="search-mode-btn is-active" data-search-mode="feed">피드</button>
+            <button type="button" class="search-mode-btn" data-search-mode="photo">사진</button>
+        </section>
+
         <section class="album-picker-section" id="albumPickerSection">
             <header class="album-picker-header">
                 <h2>앨범 선택</h2>
@@ -158,12 +164,16 @@
             </header>
             <div class="album-picker-grid" id="albumPickerGrid">
                 <c:forEach var="album" items="${albums}">
-                    <button type="button" class="album-picker-card" data-album-value="${album}" aria-label="${album} 앨범 보기">
+                    <button type="button" class="album-picker-card"
+                            data-album-value="${album}"
+                            data-feed-count="${empty albumFeedCounts[album] ? 0 : albumFeedCounts[album]}"
+                            data-photo-count="${empty albumPhotoCounts[album] ? 0 : albumPhotoCounts[album]}"
+                            data-video-count="${empty albumVideoCounts[album] ? 0 : albumVideoCounts[album]}"
+                            aria-label="${album} 앨범 보기">
                         <span class="album-picker-icon" aria-hidden="true">📁</span>
                         <span class="album-picker-name">${album}</span>
-                        <span class="album-picker-count">
-                            사진 ${empty albumPhotoCounts[album] ? 0 : albumPhotoCounts[album]}개
-                            영상 ${empty albumVideoCounts[album] ? 0 : albumVideoCounts[album]}개
+                        <span class="album-picker-count" data-album-count-label>
+                            <c:out value="${empty albumFeedCounts[album] ? 0 : albumFeedCounts[album]}"/>개의 피드
                         </span>
                     </button>
                 </c:forEach>
@@ -359,6 +369,30 @@
         </form>
     </section>
 </div>
+
+<c:if test="${mode eq 'search'}">
+    <div class="viewer-backdrop" id="searchViewerBackdrop" hidden>
+        <section class="viewer-panel">
+            <button type="button" class="viewer-close" id="searchViewerCloseBtn">✕</button>
+            <button type="button" class="viewer-nav prev" id="searchViewerPrevBtn">‹</button>
+            <button type="button" class="viewer-nav next" id="searchViewerNextBtn">›</button>
+            <div class="viewer-content" id="searchViewerContent"></div>
+            <div class="viewer-footer">
+                <span id="searchViewerCounter"><span id="searchViewerCurrent">1</span> / <span id="searchViewerTotal">1</span></span>
+                <a class="btn btn-secondary" id="searchViewerDownloadBtn" href="#">원본 다운로드</a>
+            </div>
+        </section>
+    </div>
+
+    <div class="selection-bar" id="searchSelectionBar" hidden>
+        <span><strong id="searchSelectedCount">0</strong>개 선택됨</span>
+        <div class="selection-actions">
+            <button type="button" class="btn btn-secondary" id="searchCancelSelectBtn">취소</button>
+            <button type="button" class="btn btn-secondary" id="searchDownloadSelectBtn">선택 다운로드</button>
+        </div>
+    </div>
+</c:if>
+<script src="/js/sweetalert2/sweetalert2.all.min.js"></script>
 <script src="/js/feed.js"></script>
 <script src="/js/push.js"></script>
 </body>
