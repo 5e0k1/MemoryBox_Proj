@@ -595,5 +595,12 @@
 .viewer-nav.next { right:10px; }
 .viewer-footer { display:flex; justify-content:space-between; align-items:center; color:#fff; }
 
+body.share-download-locked img,
+body.share-download-locked video {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
 .selection-bar { position:fixed; left:0; right:0; bottom:0; z-index:1100; background:#111827; color:#fff; display:flex; justify-content:space-between; align-items:center; padding:10px 14px; }
 .selection-bar[hidden] { display:none !important; }

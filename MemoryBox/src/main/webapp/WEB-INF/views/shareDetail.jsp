@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="/css/detail.css">
     <link rel="stylesheet" href="/css/photoswipe/photoswipe.css">
 </head>
-<body class="page page-detail">
+<body class="page page-detail <c:if test='${not allowDownload}'>share-download-locked</c:if>">
 <main class="detail-layout" id="shareDetailLayout" data-token="${shareToken}">
     <header class="detail-header">
         <div class="login-chip">게스트 공유</div>
@@ -111,6 +111,7 @@ window.PhotoSwipe = window.PhotoSwipe || undefined;
     const cancelSelectBtn = document.getElementById('cancelSelectBtn');
     const downloadSelectBtn = document.getElementById('downloadSelectBtn');
     const shareToken = document.getElementById('shareDetailLayout')?.dataset.token;
+    const allowDownload = ${allowDownload ? 'true' : 'false'};
     const selected = new Set();
     let selectionMode = false;
 
@@ -143,8 +144,22 @@ window.PhotoSwipe = window.PhotoSwipe || undefined;
         }));
         const imageIndex = mediaEntries.filter((entry, i) => i <= index && entry.mediaType !== 'VIDEO').length - 1;
         const pswp = new window.PhotoSwipe({ dataSource: imageItems, index: Math.max(0, imageIndex), pswpModule: window.PhotoSwipe, wheelToZoom: true });
+        if (!allowDownload) {
+            pswp.on('bindEvents', () => {
+                pswp.events.add(pswp.scrollWrap, 'contextmenu', (event) => event.preventDefault());
+            });
+        }
         pswp.init();
     };
+
+    if (!allowDownload) {
+        const blockSaveAttempt = (event) => {
+            const mediaNode = event.target.closest('img, video, .grid-item');
+            if (mediaNode) event.preventDefault();
+        };
+        document.addEventListener('contextmenu', blockSaveAttempt);
+        document.addEventListener('dragstart', blockSaveAttempt);
+    }
 
     items.forEach((btn, index) => {
         btn.addEventListener('click', () => {
