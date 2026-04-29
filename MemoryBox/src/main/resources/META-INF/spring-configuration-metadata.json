@@ -36,6 +36,12 @@
       "defaultValue": "/files"
     },
     {
+      "name": "app.storage.temp-root",
+      "type": "java.lang.String",
+      "description": "ZIP 등 임시 파일 저장 루트 경로입니다.",
+      "defaultValue": "tmp/"
+    },
+    {
       "name": "app.storage.s3.bucket",
       "type": "java.lang.String",
       "description": "S3 버킷명입니다."

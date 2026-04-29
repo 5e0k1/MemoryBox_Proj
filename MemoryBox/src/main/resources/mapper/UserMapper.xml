@@ -11,8 +11,6 @@
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
         <result column="last_login_at" property="lastLoginAt"/>
-        <result column="remember_token_hash" property="rememberTokenHash"/>
-        <result column="remember_token_expires_at" property="rememberTokenExpiresAt"/>
         <result column="last_access_at" property="lastAccessAt"/>
         <result column="del_yn" property="delYn"/>
         <result column="del_at" property="delAt"/>
@@ -27,8 +25,6 @@
         created_at,
         updated_at,
         last_login_at,
-        remember_token_hash,
-        remember_token_expires_at,
         last_access_at,
         del_yn,
         del_at
@@ -58,15 +54,6 @@
           AND del_yn = 'N'
     </select>
 
-    <select id="findByRememberTokenHash" resultMap="UserAccountMap">
-        SELECT
-        <include refid="userColumns"/>
-        FROM `USER`
-        WHERE remember_token_hash = #{rememberTokenHash}
-          AND del_yn = 'N'
-        LIMIT 1
-    </select>
-
     <update id="updateLastLoginAt">
         UPDATE `USER`
         SET last_login_at = NOW(),
@@ -77,22 +64,6 @@
     <update id="updateLastAccessAt">
         UPDATE `USER`
         SET last_access_at = NOW(),
-            updated_at = NOW()
-        WHERE user_id = #{userId}
-    </update>
-
-    <update id="updateRememberToken">
-        UPDATE `USER`
-        SET remember_token_hash = #{rememberTokenHash},
-            remember_token_expires_at = #{rememberTokenExpiresAt},
-            updated_at = NOW()
-        WHERE user_id = #{userId}
-    </update>
-
-    <update id="clearRememberToken">
-        UPDATE `USER`
-        SET remember_token_hash = NULL,
-            remember_token_expires_at = NULL,
             updated_at = NOW()
         WHERE user_id = #{userId}
     </update>

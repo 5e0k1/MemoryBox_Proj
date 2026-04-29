@@ -2,9 +2,11 @@ package com.hogudeul.memorybox.service;
 
 import com.hogudeul.memorybox.dto.FeedItemView;
 import com.hogudeul.memorybox.dto.FeedMediaItemView;
+import com.hogudeul.memorybox.dto.SearchMediaItemView;
 import com.hogudeul.memorybox.mapper.FeedMapper;
 import com.hogudeul.memorybox.model.FeedMediaRow;
 import com.hogudeul.memorybox.model.FeedRow;
+import com.hogudeul.memorybox.model.SearchMediaItemRow;
 import com.hogudeul.memorybox.storage.StorageUrlResolver;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -60,6 +62,61 @@ public class FeedService {
     public int getFeedItemCount(String mediaType, String author, String album, String tag,
                                 Long userId, boolean likedOnly, boolean mineOnly) {
         return feedMapper.countFeedRows(
+                normalizeFilter(mediaType),
+                normalizeFilter(author),
+                normalizeFilter(album),
+                normalizeFilter(tag),
+                userId,
+                likedOnly,
+                mineOnly
+        );
+    }
+
+    public List<SearchMediaItemView> getSearchMediaItems(String mediaType, String author, String album, String tag,
+                                                         String sort, Long userId, boolean likedOnly, boolean mineOnly,
+                                                         int page, int size) {
+        int safeSize = Math.max(1, Math.min(size, 60));
+        int safePage = Math.max(1, page);
+        int offset = (safePage - 1) * safeSize;
+
+        List<SearchMediaItemRow> rows = feedMapper.findSearchMediaItems(
+                normalizeFilter(mediaType),
+                normalizeFilter(author),
+                normalizeFilter(album),
+                normalizeFilter(tag),
+                normalizeSort(sort),
+                userId,
+                likedOnly,
+                mineOnly,
+                safeSize,
+                offset);
+
+        List<Long> batchIds = rows.stream().map(SearchMediaItemRow::getBatchId).filter(id -> id != null).distinct().toList();
+        java.util.Map<Long, java.util.List<FeedMediaItemView>> mediaByBatch = buildMediaItemsMap(batchIds);
+        List<SearchMediaItemView> items = new ArrayList<>();
+        for (SearchMediaItemRow row : rows) {
+            items.add(new SearchMediaItemView(
+                    row.getMediaId(),
+                    row.getBatchId(),
+                    toUiMediaType(row.getMediaType()),
+                    toPublicFileUrl(row.getSmallStorageKey()),
+                    toPublicFileUrl(row.getMediumStorageKey()),
+                    toPublicFileUrl(row.getPreviewStorageKey()),
+                    "/feed/media/" + row.getMediaId() + "/download",
+                    defaultText(row.getTitle(), "(제목 없음)"),
+                    defaultText(row.getDisplayName(), "알 수 없음"),
+                    timeDisplayService.formatTakenDate(row.getTakenAt()),
+                    timeDisplayService.formatRelativeUploadedAt(row.getUploadedAt()),
+                    safeInt(row.getBatchMediaCount()),
+                    mediaByBatch.getOrDefault(row.getBatchId(), java.util.List.of())
+            ));
+        }
+        return items;
+    }
+
+    public int countSearchMediaItems(String mediaType, String author, String album, String tag,
+                                     Long userId, boolean likedOnly, boolean mineOnly) {
+        return feedMapper.countSearchMediaItems(
                 normalizeFilter(mediaType),
                 normalizeFilter(author),
                 normalizeFilter(album),
