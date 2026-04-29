@@ -110,6 +110,17 @@ public class ShareController {
         boolean allowDownload = "Y".equalsIgnoreCase(shareLink.getAllowDownload());
         List<CommentView> comments = showComments ? detailService.getComments(shareLink.getBatchId(), null) : List.of();
         List<DetailMediaItemView> detailItems = detailService.getBatchMediaItems(shareLink.getBatchId(), null);
+        boolean singleVideo = detailItems.size() == 1 && "VIDEO".equalsIgnoreCase(detailItems.get(0).getMediaType());
+        if (singleVideo) {
+            VideoDetailView video = detailService.getVideoDetail(detailItems.get(0).getMediaId(), null);
+            model.addAttribute("video", video);
+            model.addAttribute("detail", detail);
+            model.addAttribute("comments", comments);
+            model.addAttribute("allowComments", showComments);
+            model.addAttribute("allowDownload", allowDownload);
+            model.addAttribute("shareToken", token);
+            return "shareVideoDetail";
+        }
 
         model.addAttribute("detail", detail);
         model.addAttribute("detailItems", detailItems);
