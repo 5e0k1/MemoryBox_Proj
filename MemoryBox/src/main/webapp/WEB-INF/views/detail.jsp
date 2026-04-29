@@ -210,6 +210,11 @@
         downloadUrl: button.dataset.downloadUrl,
         thumbUrl: button.querySelector('img, video')?.getAttribute('src') || ''
     }));
+    const toAbsoluteUrl = (url) => {
+        if (!url) return '';
+        if (/^https?:\/\//i.test(url)) return url;
+        return window.location.origin + (url.startsWith('/') ? url : '/' + url);
+    };
     const viewerBackdrop = document.getElementById('viewerBackdrop');
     const viewerContent = document.getElementById('viewerContent');
     const viewerCurrent = document.getElementById('viewerCurrent');
@@ -746,12 +751,14 @@
                 shareFeedback.textContent = '카카오톡 공유를 사용할 수 없습니다. 링크를 복사해 사용해 주세요.';
                 return;
             }
+            const primaryMedia = mediaEntries[0] || {};
+            const previewImage = primaryMedia.thumbUrl || primaryMedia.smallUrl || primaryMedia.mediumUrl || '/images/default-image.png';
             window.Kakao.Share.sendDefault({
                 objectType: 'feed',
                 content: {
                     title: '${fn:escapeXml(detail.title)}',
                     description: 'MemoryBox 게시물 공유 링크입니다.',
-                    imageUrl: window.location.origin + '/images/share-btn-img.png',
+                    imageUrl: toAbsoluteUrl(previewImage),
                     link: {
                         mobileWebUrl: link,
                         webUrl: link
