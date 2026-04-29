@@ -21,6 +21,8 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -30,6 +32,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import javax.imageio.ImageIO;
 import com.hogudeul.memorybox.config.AppProperties;
@@ -185,7 +188,13 @@ public class UploadService {
             uploadMapper.insertMediaBatch(batchId, userId, form.getAlbumId(), blankToNull(form.getTitle()), takenAt);
             MediaItem mediaItem = createMediaItem(batchId, 1, userId, form.getAlbumId(), "VIDEO", form.getTitle(), takenAt);
 
-            StoredFile original = storageService.store(form.getVideoFile(), StorageCategory.VIDEO, LocalDate.now());
+            String contentDisposition = buildAttachmentContentDisposition(form.getVideoFile().getOriginalFilename(), "download.mp4");
+            StoredFile original = storageService.store(
+                    form.getVideoFile(),
+                    StorageCategory.VIDEO,
+                    LocalDate.now(),
+                    Map.of("Content-Disposition", contentDisposition)
+            );
             savedKeys.add(original.getStorageKey());
             uploadMapper.insertMediaVariant(buildVariant(mediaItem.getMediaId(), "ORIGINAL", original, null, null, null));
 
@@ -256,6 +265,18 @@ public class UploadService {
             throw new UploadException("WebP 변환에 실패했습니다. webp-imageio 설정을 확인해 주세요.");
         }
         return storageService.store(out.toByteArray(), originalName, "webp", "image/webp", category, LocalDate.now());
+    }
+
+    private String buildAttachmentContentDisposition(String utf8FileName, String fallbackName) {
+        String normalizedFileName = (utf8FileName == null || utf8FileName.isBlank())
+                ? fallbackName
+                : utf8FileName;
+        String asciiFallback = normalizedFileName.replaceAll("[^\\x20-\\x7E]", "_");
+        if (asciiFallback.isBlank()) {
+            asciiFallback = fallbackName;
+        }
+        return "attachment; filename=\"" + asciiFallback + "\"; filename*=UTF-8''"
+                + URLEncoder.encode(normalizedFileName, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
     private StoredFile createVideoPlaceholderThumb(String originalName) throws IOException {

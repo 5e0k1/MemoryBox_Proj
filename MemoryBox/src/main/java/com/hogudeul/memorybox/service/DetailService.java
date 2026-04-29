@@ -14,8 +14,6 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
@@ -584,33 +582,11 @@ public class DetailService {
         return value == null || value.isBlank();
     }
 
-    private String buildAttachmentContentDisposition(String utf8FileName, String fallbackName) {
-        String normalizedFileName = (utf8FileName == null || utf8FileName.isBlank())
-                ? fallbackName
-                : utf8FileName;
-        String asciiFallback = normalizedFileName.replaceAll("[^\\x20-\\x7E]", "_");
-        if (asciiFallback.isBlank()) {
-            asciiFallback = fallbackName;
-        }
-        return "attachment; filename=\"" + asciiFallback + "\"; filename*=UTF-8''"
-                + URLEncoder.encode(normalizedFileName, StandardCharsets.UTF_8).replace("+", "%20");
-    }
-
     public String resolveOriginalDownloadUrl(DownloadFileInfo fileInfo) {
         if (fileInfo == null || isBlank(fileInfo.getStorageKey())) {
             return "";
         }
-        String baseUrl = storageUrlResolver.resolvePublicUrl(fileInfo.getStorageKey());
-        if (isBlank(baseUrl)) {
-            return "";
-        }
-
-        String contentDisposition = buildAttachmentContentDisposition(fileInfo.getFileName(), "download");
-        String encodedDisposition = URLEncoder.encode(contentDisposition, StandardCharsets.UTF_8).replace("+", "%20");
-        String separator = baseUrl.contains("?") ? "&" : "?";
-        return baseUrl + separator
-                + "response-content-disposition=" + encodedDisposition
-                + "&response-content-type=application%2Foctet-stream";
+        return storageUrlResolver.resolvePublicUrl(fileInfo.getStorageKey());
     }
 
     public static class DownloadFileInfo {
