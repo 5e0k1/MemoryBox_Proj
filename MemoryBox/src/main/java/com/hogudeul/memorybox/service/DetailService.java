@@ -126,6 +126,7 @@ public class DetailService {
                     toPublicFileUrl(row.getSmallStorageKey()),
                     toPublicFileUrl(row.getMediumStorageKey()),
                     toPublicFileUrl(row.getPreviewStorageKey()),
+                    toPublicFileUrl(row.getStreamStorageKey()),
                     "/feed/media/" + row.getMediaId() + "/download",
                     safeInt(row.getSortOrder())
             ));
@@ -221,7 +222,8 @@ public class DetailService {
         if (row == null || !"VIDEO".equalsIgnoreCase(row.getMediaType())) {
             return null;
         }
-        String playbackKey = !isBlank(row.getOriginalStorageKey()) ? row.getOriginalStorageKey() : row.getPreviewStorageKey();
+        String playbackKey = !isBlank(row.getStreamStorageKey()) ? row.getStreamStorageKey()
+                : (!isBlank(row.getPreviewStorageKey()) ? row.getPreviewStorageKey() : row.getThumbStorageKey());
         return new VideoDetailView(
                 row.getMediaId(),
                 row.getBatchId(),

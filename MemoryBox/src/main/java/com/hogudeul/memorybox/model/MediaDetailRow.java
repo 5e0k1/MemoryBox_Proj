@@ -18,6 +18,7 @@ public class MediaDetailRow {
     private String smallStorageKey;
     private String thumbStorageKey;
     private String previewStorageKey;
+    private String streamStorageKey;
     private String originalStorageKey;
     private String originalFileName;
     private String originalMimeType;
@@ -121,6 +122,14 @@ public class MediaDetailRow {
 
     public void setSmallStorageKey(String smallStorageKey) {
         this.smallStorageKey = smallStorageKey;
+    }
+
+    public String getStreamStorageKey() {
+        return streamStorageKey;
+    }
+
+    public void setStreamStorageKey(String streamStorageKey) {
+        this.streamStorageKey = streamStorageKey;
     }
 
     public String getOriginalStorageKey() {

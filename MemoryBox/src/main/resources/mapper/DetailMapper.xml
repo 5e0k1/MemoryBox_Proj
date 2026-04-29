@@ -16,6 +16,7 @@
         <result column="small_storage_key" property="smallStorageKey"/>
         <result column="thumb_storage_key" property="thumbStorageKey"/>
         <result column="preview_storage_key" property="previewStorageKey"/>
+        <result column="stream_storage_key" property="streamStorageKey"/>
         <result column="original_storage_key" property="originalStorageKey"/>
         <result column="original_file_name" property="originalFileName"/>
         <result column="original_mime_type" property="originalMimeType"/>
@@ -51,6 +52,7 @@
                small_mv.storage_key AS small_storage_key,
                thumb_mv.storage_key AS thumb_storage_key,
                preview_mv.storage_key AS preview_storage_key,
+               stream_mv.storage_key AS stream_storage_key,
                original_mv.storage_key AS original_storage_key,
                original_mv.file_org_name AS original_file_name,
                original_mv.mime_type AS original_mime_type,
@@ -68,6 +70,7 @@
                  LEFT JOIN MEDIA_VARIANT small_mv ON mi.media_id = small_mv.media_id AND small_mv.variant_type = 'SMALL'
                  LEFT JOIN MEDIA_VARIANT thumb_mv ON mi.media_id = thumb_mv.media_id AND thumb_mv.variant_type = 'THUMB'
                  LEFT JOIN MEDIA_VARIANT preview_mv ON mi.media_id = preview_mv.media_id AND preview_mv.variant_type = 'PREVIEW'
+                 LEFT JOIN MEDIA_VARIANT stream_mv ON mi.media_id = stream_mv.media_id AND stream_mv.variant_type = 'STREAM'
                  LEFT JOIN MEDIA_VARIANT original_mv ON mi.media_id = original_mv.media_id AND original_mv.variant_type = 'ORIGINAL'
         WHERE mb.del_yn='N' AND u.del_yn='N' AND a.del_yn='N'
     </sql>
@@ -82,7 +85,7 @@
                a.album_name, u.display_name,
                medium_mv.storage_key AS medium_storage_key, small_mv.storage_key AS small_storage_key,
                thumb_mv.storage_key AS thumb_storage_key, preview_mv.storage_key AS preview_storage_key,
-               original_mv.storage_key AS original_storage_key, original_mv.file_org_name AS original_file_name,
+               stream_mv.storage_key AS stream_storage_key, original_mv.storage_key AS original_storage_key, original_mv.file_org_name AS original_file_name,
                original_mv.mime_type AS original_mime_type,
                0 AS like_count, 0 AS comment_count, 0 AS liked_by_me, '' AS tags_csv
         FROM MEDIA_ITEMS mi
@@ -92,6 +95,7 @@
                  LEFT JOIN MEDIA_VARIANT small_mv ON mi.media_id = small_mv.media_id AND small_mv.variant_type='SMALL'
                  LEFT JOIN MEDIA_VARIANT thumb_mv ON mi.media_id = thumb_mv.media_id AND thumb_mv.variant_type='THUMB'
                  LEFT JOIN MEDIA_VARIANT preview_mv ON mi.media_id = preview_mv.media_id AND preview_mv.variant_type='PREVIEW'
+                 LEFT JOIN MEDIA_VARIANT stream_mv ON mi.media_id = stream_mv.media_id AND stream_mv.variant_type='STREAM'
                  LEFT JOIN MEDIA_VARIANT original_mv ON mi.media_id = original_mv.media_id AND original_mv.variant_type='ORIGINAL'
         WHERE mi.media_id=#{mediaId} AND mi.del_yn='N' AND u.del_yn='N' AND a.del_yn='N'
     </select>
@@ -101,7 +105,7 @@
                a.album_name, u.display_name,
                medium_mv.storage_key AS medium_storage_key, small_mv.storage_key AS small_storage_key,
                thumb_mv.storage_key AS thumb_storage_key, preview_mv.storage_key AS preview_storage_key,
-               original_mv.storage_key AS original_storage_key, original_mv.file_org_name AS original_file_name,
+               stream_mv.storage_key AS stream_storage_key, original_mv.storage_key AS original_storage_key, original_mv.file_org_name AS original_file_name,
                original_mv.mime_type AS original_mime_type,
                0 AS like_count, 0 AS comment_count, 0 AS liked_by_me, '' AS tags_csv
         FROM MEDIA_ITEMS mi
@@ -111,6 +115,7 @@
                  LEFT JOIN MEDIA_VARIANT small_mv ON mi.media_id = small_mv.media_id AND small_mv.variant_type='SMALL'
                  LEFT JOIN MEDIA_VARIANT thumb_mv ON mi.media_id = thumb_mv.media_id AND thumb_mv.variant_type='THUMB'
                  LEFT JOIN MEDIA_VARIANT preview_mv ON mi.media_id = preview_mv.media_id AND preview_mv.variant_type='PREVIEW'
+                 LEFT JOIN MEDIA_VARIANT stream_mv ON mi.media_id = stream_mv.media_id AND stream_mv.variant_type='STREAM'
                  LEFT JOIN MEDIA_VARIANT original_mv ON mi.media_id = original_mv.media_id AND original_mv.variant_type='ORIGINAL'
         WHERE mi.media_id IN <foreach item="mediaId" collection="mediaIds" open="(" separator="," close=")">#{mediaId}</foreach>
           AND mi.del_yn='N' AND u.del_yn='N' AND a.del_yn='N'
@@ -124,7 +129,7 @@
                a.album_name, u.display_name,
                medium_mv.storage_key AS medium_storage_key, small_mv.storage_key AS small_storage_key,
                thumb_mv.storage_key AS thumb_storage_key, preview_mv.storage_key AS preview_storage_key,
-               original_mv.storage_key AS original_storage_key, original_mv.file_org_name AS original_file_name,
+               stream_mv.storage_key AS stream_storage_key, original_mv.storage_key AS original_storage_key, original_mv.file_org_name AS original_file_name,
                original_mv.mime_type AS original_mime_type,
                0 AS like_count, 0 AS comment_count, 0 AS liked_by_me, '' AS tags_csv
         FROM MEDIA_ITEMS mi
@@ -134,6 +139,7 @@
                  LEFT JOIN MEDIA_VARIANT small_mv ON mi.media_id = small_mv.media_id AND small_mv.variant_type='SMALL'
                  LEFT JOIN MEDIA_VARIANT thumb_mv ON mi.media_id = thumb_mv.media_id AND thumb_mv.variant_type='THUMB'
                  LEFT JOIN MEDIA_VARIANT preview_mv ON mi.media_id = preview_mv.media_id AND preview_mv.variant_type='PREVIEW'
+                 LEFT JOIN MEDIA_VARIANT stream_mv ON mi.media_id = stream_mv.media_id AND stream_mv.variant_type='STREAM'
                  LEFT JOIN MEDIA_VARIANT original_mv ON mi.media_id = original_mv.media_id AND original_mv.variant_type='ORIGINAL'
         WHERE mi.batch_id=#{batchId}
           AND mi.del_yn='N' AND u.del_yn='N' AND a.del_yn='N'
@@ -146,7 +152,7 @@
                a.album_name, u.display_name,
                medium_mv.storage_key AS medium_storage_key, small_mv.storage_key AS small_storage_key,
                thumb_mv.storage_key AS thumb_storage_key, preview_mv.storage_key AS preview_storage_key,
-               original_mv.storage_key AS original_storage_key, original_mv.file_org_name AS original_file_name,
+               stream_mv.storage_key AS stream_storage_key, original_mv.storage_key AS original_storage_key, original_mv.file_org_name AS original_file_name,
                original_mv.mime_type AS original_mime_type,
                0 AS like_count, 0 AS comment_count, 0 AS liked_by_me, '' AS tags_csv
         FROM MEDIA_ITEMS mi
@@ -156,6 +162,7 @@
                  LEFT JOIN MEDIA_VARIANT small_mv ON mi.media_id = small_mv.media_id AND small_mv.variant_type='SMALL'
                  LEFT JOIN MEDIA_VARIANT thumb_mv ON mi.media_id = thumb_mv.media_id AND thumb_mv.variant_type='THUMB'
                  LEFT JOIN MEDIA_VARIANT preview_mv ON mi.media_id = preview_mv.media_id AND preview_mv.variant_type='PREVIEW'
+                 LEFT JOIN MEDIA_VARIANT stream_mv ON mi.media_id = stream_mv.media_id AND stream_mv.variant_type='STREAM'
                  LEFT JOIN MEDIA_VARIANT original_mv ON mi.media_id = original_mv.media_id AND original_mv.variant_type='ORIGINAL'
         WHERE mi.batch_id=#{batchId}
           AND mi.del_yn='N' AND u.del_yn='N' AND a.del_yn='N'

@@ -52,6 +52,7 @@ public class VideoProcessingService {
         Path tempInputPath = null;
         Path tempThumb = null;
         Path tempPreview = null;
+        Path tempStream = null;
 
         String ffmpeg = resolvedFfmpegPath();
         log.info("[video-processing] resolved ffmpeg path. mediaId={}, ffmpegPath={}", mediaId, ffmpeg);
@@ -66,6 +67,7 @@ public class VideoProcessingService {
             tempInputPath = storageService.downloadToTempFile(originalStorageKey, "memorybox-original-", ".tmp");
             tempThumb = Files.createTempFile("memorybox-thumb-", ".jpg");
             tempPreview = Files.createTempFile("memorybox-preview-", ".mp4");
+            tempStream = Files.createTempFile("memorybox-stream-", ".mp4");
         } catch (Exception e) {
             log.error("[video-processing] ORIGINAL download failed. mediaId={}, originalStorageKey={}, tempInputPath={}, ffmpegPath={}, stderr={}",
                     mediaId, originalStorageKey, tempInputPath, ffmpeg, e.getMessage(), e);
@@ -90,10 +92,18 @@ public class VideoProcessingService {
         } catch (Exception e) {
             log.error("[video-processing] PREVIEW 생성 실패. mediaId={}, originalStorageKey={}, tempInputPath={}, ffmpegPath={}, stderr={}",
                     mediaId, originalStorageKey, tempInputPath, ffmpeg, e.getMessage(), e);
+        }
+
+        try {
+            generateStream(mediaId, tempInputPath, tempStream, originalName);
+        } catch (Exception e) {
+            log.error("[video-processing] STREAM 생성 실패. mediaId={}, originalStorageKey={}, tempInputPath={}, ffmpegPath={}, stderr={}",
+                    mediaId, originalStorageKey, tempInputPath, ffmpeg, e.getMessage(), e);
         } finally {
             deleteTempFile(tempInputPath);
             deleteTempFile(tempThumb);
             deleteTempFile(tempPreview);
+            deleteTempFile(tempStream);
         }
     }
 
@@ -142,6 +152,30 @@ public class VideoProcessingService {
         StoredFile preview = storageService.store(bytes, originalName, "mp4", "video/mp4", StorageCategory.PREVIEW, LocalDate.now());
         saveVariant(mediaId, "PREVIEW", preview, 480, null, 3);
         log.info("[video-processing] PREVIEW 생성 완료. mediaId={}, key={}", mediaId, preview.getStorageKey());
+    }
+
+
+
+    protected void generateStream(Long mediaId, Path originalPath, Path tempStream, String originalName) throws IOException {
+        runFfmpeg(List.of(
+                    resolvedFfmpegPath(),
+                    "-y",
+                    "-i", originalPath.toString(),
+                    "-vf", "scale=min(720\,iw):-2",
+                    "-c:v", "libx264",
+                    "-preset", "veryfast",
+                    "-crf", "28",
+                    "-c:a", "aac",
+                    "-b:a", "128k",
+                    "-movflags", "+faststart",
+                    "-pix_fmt", "yuv420p",
+                    tempStream.toString()
+            ), mediaId, "STREAM", tempStream);
+
+        byte[] bytes = Files.readAllBytes(tempStream);
+        StoredFile stream = storageService.store(bytes, originalName, "mp4", "video/mp4", StorageCategory.STREAM, LocalDate.now());
+        saveVariant(mediaId, "STREAM", stream, 720, null, null);
+        log.info("[video-processing] STREAM 생성 완료. mediaId={}, key={}", mediaId, stream.getStorageKey());
     }
 
     private void runFfmpeg(List<String> command, Long mediaId, String variantType, Path outputPath) throws IOException {
