@@ -10,6 +10,7 @@
     <%@ include file="/WEB-INF/views/common/head-icons.jspf" %>
     <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/detail.css">
+    <link rel="stylesheet" href="/css/sweetalert2/sweetalert2.min.css">
 </head>
 <body class="page page-detail">
 <main class="detail-layout" id="detailLayout" data-batch-id="${currentBatchId}">
@@ -37,8 +38,11 @@
             <div class="title-row">
                 <h1 class="detail-title">${detail.title}</h1>
                 <div class="meta-action-buttons">
-                    <button type="button" class="share-open-btn" id="shareOpenBtn" aria-label="공유 열기">🔗</button>
-                    <a class="btn btn-secondary" href="/feed/${currentBatchId}/download-all">전체 다운로드</a>
+                    <button type="button" class="share-open-btn" id="shareOpenBtn" aria-label="공유 열기">
+                        <img src="/images/share-btn-img.png" alt="공유하기" width="20" height="20">
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="downloadAllBtn"
+                            data-batch-id="${currentBatchId}">전체 다운로드</button>
                 </div>
             </div>
             <p class="meta-line">작성자 ${detail.authorName}</p>
@@ -184,6 +188,7 @@
     </div>
 </div>
 
+<script src="/js/sweetalert2/sweetalert2.all.min.js"></script>
 <script>
 (() => {
     const grid = document.getElementById('batchGrid');
@@ -211,6 +216,7 @@
     const viewerNextBtn = document.getElementById('viewerNextBtn');
     const cancelSelectBtn = document.getElementById('cancelSelectBtn');
     const downloadSelectBtn = document.getElementById('downloadSelectBtn');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
     const shareOpenBtn = document.getElementById('shareOpenBtn');
     const shareModal = document.getElementById('shareModal');
     const shareBackdrop = document.getElementById('shareBackdrop');
@@ -495,24 +501,96 @@
         selectionMode = false; selected.clear(); syncSelectionUi();
     });
 
+    const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+    const triggerBrowserDownload = (url) => {
+        if (!url) return;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '';
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        window.setTimeout(() => a.remove(), 1000);
+    };
+
+    const withPreparingAlert = async (job) => {
+        const startedAt = Date.now();
+        if (window.Swal && typeof window.Swal.fire === 'function') {
+            window.Swal.fire({
+                title: '압축 파일 준비 중...',
+                text: '파일을 묶는 중입니다. 잠시만 기다려주세요.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => window.Swal.showLoading()
+            });
+        }
+        try {
+            return await job();
+        } finally {
+            const elapsed = Date.now() - startedAt;
+            if (elapsed < 300) {
+                await wait(300 - elapsed);
+            }
+            if (window.Swal && typeof window.Swal.close === 'function') {
+                window.Swal.close();
+            }
+        }
+    };
+
     downloadSelectBtn.addEventListener('click', async () => {
         if (selected.size === 0) return;
-        window.alert('다운로드가 완료될 때 까지 페이지에서 기다려주세요.');
+        downloadSelectBtn.disabled = true;
         const mediaIds = Array.from(selected, (v) => Number(v));
         if (mediaIds.length === 1) {
             const target = items.find((i) => i.dataset.mediaId === String(mediaIds[0]));
-            if (target) window.location.href = target.dataset.downloadUrl;
+            if (target) triggerBrowserDownload(target.dataset.downloadUrl);
+            downloadSelectBtn.disabled = false;
             return;
         }
-        const res = await fetch('/feed/download-zip', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({mediaIds})
-        });
-        if (!res.ok) { alert('다운로드 실패'); return; }
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'memorybox_selected.zip'; a.click();
-        URL.revokeObjectURL(url);
+        try {
+            const payload = await withPreparingAlert(async () => {
+                const res = await fetch('/download/zip/prepare', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({mediaIds})
+                });
+                if (!res.ok) throw new Error('zip prepare failed');
+                return res.json();
+            });
+            selectionMode = false;
+            selected.clear();
+            syncSelectionUi();
+            triggerBrowserDownload(payload.downloadUrl);
+        } catch (e) {
+            alert('압축 파일 생성 실패');
+        } finally {
+            downloadSelectBtn.disabled = false;
+        }
+    });
+
+    downloadAllBtn?.addEventListener('click', async () => {
+        const batchId = Number(downloadAllBtn.dataset.batchId);
+        if (!batchId) return;
+        downloadAllBtn.disabled = true;
+        try {
+            const payload = await withPreparingAlert(async () => {
+                const res = await fetch('/download/zip/prepare', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({batchId})
+                });
+                if (!res.ok) {
+                    const error = await res.json().catch(() => ({}));
+                    throw new Error(error.message || 'ZIP 생성에 실패했습니다.');
+                }
+                return res.json();
+            });
+            triggerBrowserDownload(payload.downloadUrl);
+        } catch (e) {
+            alert(e.message || 'ZIP 생성에 실패했습니다.');
+        } finally {
+            downloadAllBtn.disabled = false;
+        }
     });
 
     document.querySelectorAll('.reply-toggle-btn').forEach((btn) => {

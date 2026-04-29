@@ -1198,26 +1198,72 @@ document.addEventListener('DOMContentLoaded', () => {
         if (searchSelectionBar) searchSelectionBar.hidden = true;
         if (searchSelectedCount) searchSelectedCount.textContent = '0';
     });
+    const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+    const triggerBrowserDownload = (url) => {
+        if (!url) return;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '';
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        window.setTimeout(() => a.remove(), 1000);
+    };
+
+    const withPreparingAlert = async (job) => {
+        const startedAt = Date.now();
+        if (window.Swal && typeof window.Swal.fire === 'function') {
+            window.Swal.fire({
+                title: '압축 파일 준비 중...',
+                text: '파일을 묶는 중입니다. 잠시만 기다려주세요.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => window.Swal.showLoading()
+            });
+        }
+        try {
+            return await job();
+        } finally {
+            const elapsed = Date.now() - startedAt;
+            if (elapsed < 300) {
+                await wait(300 - elapsed);
+            }
+            if (window.Swal && typeof window.Swal.close === 'function') {
+                window.Swal.close();
+            }
+        }
+    };
+
     searchDownloadSelectBtn?.addEventListener('click', async () => {
         const mediaIds = Array.from(selectedPhotoIds, (value) => Number(value));
         if (mediaIds.length === 0) return;
-        window.alert('다운로드가 완료될 때 까지 페이지에서 기다려주세요.');
+        searchDownloadSelectBtn.disabled = true;
         if (mediaIds.length === 1) {
-            window.location.href = `/feed/media/${mediaIds[0]}/download`;
+            triggerBrowserDownload(`/feed/media/${mediaIds[0]}/download`);
+            searchDownloadSelectBtn.disabled = false;
             return;
         }
-        const res = await fetch('/feed/download-zip', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({mediaIds})
-        });
-        if (!res.ok) return;
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'memorybox_selected.zip';
-        a.click();
-        URL.revokeObjectURL(url);
+        try {
+            const payload = await withPreparingAlert(async () => {
+                const res = await fetch('/download/zip/prepare', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({mediaIds})
+                });
+                if (!res.ok) throw new Error('압축 파일 생성 실패');
+                return res.json();
+            });
+            selectingPhotoMode = false;
+            selectedPhotoIds.clear();
+            getCards().forEach((card) => card.classList.remove('is-selected'));
+            if (searchSelectionBar) searchSelectionBar.hidden = true;
+            if (searchSelectedCount) searchSelectedCount.textContent = '0';
+            triggerBrowserDownload(payload.downloadUrl);
+        } catch (error) {
+            window.alert('압축 파일 생성 실패');
+        } finally {
+            searchDownloadSelectBtn.disabled = false;
+        }
     });
 });
