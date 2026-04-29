@@ -81,7 +81,7 @@
         <button type="submit">일괄 업로드</button>
     </form>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js" integrity="sha256-0PJ4R8m8qf7pP5P9i9M9xwRZwV4Mt4qf1A6k9m6niK8=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 <script src="${pageContext.request.contextPath}/js/upload.js"></script>
 </body>
 </html>
