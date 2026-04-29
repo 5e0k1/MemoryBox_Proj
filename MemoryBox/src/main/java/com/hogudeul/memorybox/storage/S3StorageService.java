@@ -4,6 +4,8 @@ import com.hogudeul.memorybox.config.StorageProperties;
 import com.hogudeul.memorybox.upload.StorageCategory;
 import com.hogudeul.memorybox.upload.StoredFile;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.Locale;
 import java.util.UUID;
@@ -14,6 +16,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @Service
@@ -74,6 +77,24 @@ public class S3StorageService implements StorageService {
             s3Client.deleteObject(request);
         } catch (Exception ignore) {
             // 보상 트랜잭션 단계에서는 삭제 실패를 무시하고 DB rollback을 우선한다.
+        }
+    }
+
+    @Override
+    public Path downloadToTempFile(String storageKey, String prefix, String suffix) throws IOException {
+        String safePrefix = (prefix == null || prefix.isBlank()) ? "memorybox-" : prefix;
+        String safeSuffix = (suffix == null || suffix.isBlank()) ? ".tmp" : suffix;
+        Path tempFile = Files.createTempFile(safePrefix, safeSuffix);
+        try {
+            GetObjectRequest request = GetObjectRequest.builder()
+                    .bucket(storageProperties.getS3().getBucket())
+                    .key(storageKey)
+                    .build();
+            s3Client.getObject(request, tempFile);
+            return tempFile;
+        } catch (Exception e) {
+            Files.deleteIfExists(tempFile);
+            throw new IOException("Failed to download object from S3. key=" + storageKey, e);
         }
     }
 

@@ -307,6 +307,10 @@
                 return;
             }
             if (selectionMode) { toggleSelection(btn); return; }
+            if (btn.dataset.mediaType === 'VIDEO') {
+                window.location.href = '/video/' + btn.dataset.mediaId;
+                return;
+            }
             openViewer(index);
         });
     });

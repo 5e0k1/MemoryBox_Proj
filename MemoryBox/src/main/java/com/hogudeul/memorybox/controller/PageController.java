@@ -9,6 +9,7 @@ import com.hogudeul.memorybox.dto.CommentView;
 import com.hogudeul.memorybox.dto.DetailMediaItemView;
 import com.hogudeul.memorybox.dto.FeedItemView;
 import com.hogudeul.memorybox.dto.MediaDetailView;
+import com.hogudeul.memorybox.dto.VideoDetailView;
 import com.hogudeul.memorybox.config.AppProperties;
 import com.hogudeul.memorybox.config.KakaoProperties;
 import com.hogudeul.memorybox.service.DetailService;
@@ -279,6 +280,17 @@ public class PageController {
         response.put("loadedCount", loadedCount);
         response.put("hasMore", loadedCount < totalCount);
         return response;
+    }
+
+    @GetMapping("/video/{mediaId}")
+    public String videoDetailPage(@PathVariable Long mediaId, Model model, HttpSession session) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        Long userId = loginUser != null ? loginUser.getUserId() : null;
+        VideoDetailView videoDetail = detailService.getVideoDetail(mediaId, userId);
+        model.addAttribute("loginUser", loginUser);
+        model.addAttribute("video", videoDetail);
+        model.addAttribute("notFound", videoDetail == null);
+        return "videoDetail";
     }
 
     @GetMapping("/feed/{itemId}")

@@ -3,6 +3,7 @@ package com.hogudeul.memorybox.storage;
 import com.hogudeul.memorybox.upload.StorageCategory;
 import com.hogudeul.memorybox.upload.StoredFile;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,4 +19,6 @@ public interface StorageService {
                      LocalDate date) throws IOException;
 
     void delete(String storageKey);
+
+    Path downloadToTempFile(String storageKey, String prefix, String suffix) throws IOException;
 }

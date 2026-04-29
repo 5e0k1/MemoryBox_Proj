@@ -8,7 +8,6 @@ import com.hogudeul.memorybox.upload.StoredFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.hogudeul.memorybox.config.AppProperties;
-import com.hogudeul.memorybox.config.StorageProperties;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -20,7 +19,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -35,17 +33,14 @@ public class VideoProcessingService {
 
     private final UploadMapper uploadMapper;
     private final StorageService storageService;
-    private final Path storageRoot;
     private final String ffmpegCommand;
     private volatile String resolvedFfmpegCommand;
 
     public VideoProcessingService(UploadMapper uploadMapper,
                                   StorageService storageService,
-                                  StorageProperties storageProperties,
                                   AppProperties appProperties) {
         this.uploadMapper = uploadMapper;
         this.storageService = storageService;
-        this.storageRoot = Paths.get(storageProperties.getLocalRoot()).toAbsolutePath().normalize();
         String ffmpeg = appProperties.getFfmpeg().getCommand();
         this.ffmpegCommand = ffmpeg == null || ffmpeg.isBlank() ? "ffmpeg" : ffmpeg.trim();
         this.resolvedFfmpegCommand = this.ffmpegCommand;
@@ -54,11 +49,9 @@ public class VideoProcessingService {
     @Async("mediaTaskExecutor")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void generateVideoVariantsAsync(Long mediaId, String originalStorageKey, String originalName) {
-        Path originalPath = storageRoot.resolve(originalStorageKey).normalize();
-        if (!Files.exists(originalPath)) {
-            log.error("[video-processing] 원본 파일을 찾을 수 없습니다. mediaId={}, key={}", mediaId, originalStorageKey);
-            return;
-        }
+        Path tempInputPath = null;
+        Path tempThumb = null;
+        Path tempPreview = null;
 
         String ffmpeg = resolvedFfmpegPath();
         if (!isExecutable(ffmpeg)) {
@@ -67,65 +60,70 @@ public class VideoProcessingService {
         }
 
         try {
-            generateThumb(mediaId, originalPath, originalName);
+            tempInputPath = storageService.downloadToTempFile(originalStorageKey, "memorybox-original-", ".tmp");
+            tempThumb = Files.createTempFile("memorybox-thumb-", ".jpg");
+            tempPreview = Files.createTempFile("memorybox-preview-", ".mp4");
+            generateThumb(mediaId, tempInputPath, tempThumb, originalName);
         } catch (Exception e) {
-            log.error("[video-processing] THUMB 생성 실패(1차). mediaId={}", mediaId, e);
+            log.error("[video-processing] THUMB 생성 실패(1차). mediaId={}, originalStorageKey={}, tempInputPath={}, ffmpegPath={}, stderr={}",
+                    mediaId, originalStorageKey, tempInputPath, ffmpeg, e.getMessage(), e);
             try {
-                generateThumbFromStart(mediaId, originalPath, originalName);
+                if (tempInputPath == null) {
+                    tempInputPath = storageService.downloadToTempFile(originalStorageKey, "memorybox-original-", ".tmp");
+                }
+                if (tempThumb == null) {
+                    tempThumb = Files.createTempFile("memorybox-thumb-", ".jpg");
+                }
+                generateThumbFromStart(mediaId, tempInputPath, tempThumb, originalName);
             } catch (Exception secondEx) {
-                log.error("[video-processing] THUMB 생성 실패(2차 fallback). mediaId={}", mediaId, secondEx);
+                log.error("[video-processing] THUMB 생성 실패(2차 fallback). mediaId={}, originalStorageKey={}, tempInputPath={}, ffmpegPath={}, stderr={}",
+                        mediaId, originalStorageKey, tempInputPath, ffmpeg, secondEx.getMessage(), secondEx);
             }
         }
 
         try {
-            generatePreview(mediaId, originalPath, originalName);
+            if (tempInputPath == null) {
+                tempInputPath = storageService.downloadToTempFile(originalStorageKey, "memorybox-original-", ".tmp");
+            }
+            if (tempPreview == null) {
+                tempPreview = Files.createTempFile("memorybox-preview-", ".mp4");
+            }
+            generatePreview(mediaId, tempInputPath, tempPreview, originalName);
         } catch (Exception e) {
-            log.error("[video-processing] PREVIEW 생성 실패. mediaId={}", mediaId, e);
-        }
-    }
-
-    protected void generateThumb(Long mediaId, Path originalPath, String originalName) throws IOException {
-        Path tempDir = Files.createTempDirectory("memorybox-thumb-");
-        Path tempThumb = tempDir.resolve("thumb.jpg");
-        try {
-            runFfmpeg(buildThumbCommand(originalPath, tempThumb, "00:00:01"), mediaId, "THUMB");
-
-            byte[] bytes = Files.readAllBytes(tempThumb);
-            StoredFile thumb = storageService.store(bytes, originalName, "jpg", "image/jpeg", StorageCategory.THUMB, LocalDate.now());
-            BufferedImage image = ImageIO.read(tempThumb.toFile());
-            Integer width = image != null ? image.getWidth() : null;
-            Integer height = image != null ? image.getHeight() : null;
-            saveVariant(mediaId, "THUMB", thumb, width, height, null);
-            log.info("[video-processing] THUMB 생성 완료. mediaId={}, key={}", mediaId, thumb.getStorageKey());
+            log.error("[video-processing] PREVIEW 생성 실패. mediaId={}, originalStorageKey={}, tempInputPath={}, ffmpegPath={}, stderr={}",
+                    mediaId, originalStorageKey, tempInputPath, ffmpeg, e.getMessage(), e);
         } finally {
-            Files.deleteIfExists(tempThumb);
-            Files.deleteIfExists(tempDir);
+            deleteTempFile(tempInputPath);
+            deleteTempFile(tempThumb);
+            deleteTempFile(tempPreview);
         }
     }
 
-    protected void generateThumbFromStart(Long mediaId, Path originalPath, String originalName) throws IOException {
-        Path tempDir = Files.createTempDirectory("memorybox-thumb-fallback-");
-        Path tempThumb = tempDir.resolve("thumb.jpg");
-        try {
-            runFfmpeg(buildThumbCommand(originalPath, tempThumb, "00:00:00"), mediaId, "THUMB-FALLBACK");
-            byte[] bytes = Files.readAllBytes(tempThumb);
-            StoredFile thumb = storageService.store(bytes, originalName, "jpg", "image/jpeg", StorageCategory.THUMB, LocalDate.now());
-            BufferedImage image = ImageIO.read(tempThumb.toFile());
-            Integer width = image != null ? image.getWidth() : null;
-            Integer height = image != null ? image.getHeight() : null;
-            saveVariant(mediaId, "THUMB", thumb, width, height, null);
-            log.info("[video-processing] THUMB fallback 생성 완료. mediaId={}, key={}", mediaId, thumb.getStorageKey());
-        } finally {
-            Files.deleteIfExists(tempThumb);
-            Files.deleteIfExists(tempDir);
-        }
+    protected void generateThumb(Long mediaId, Path originalPath, Path tempThumb, String originalName) throws IOException {
+        runFfmpeg(buildThumbCommand(originalPath, tempThumb, "00:00:01"), mediaId, "THUMB");
+
+        byte[] bytes = Files.readAllBytes(tempThumb);
+        StoredFile thumb = storageService.store(bytes, originalName, "jpg", "image/jpeg", StorageCategory.THUMB, LocalDate.now());
+        BufferedImage image = ImageIO.read(tempThumb.toFile());
+        Integer width = image != null ? image.getWidth() : null;
+        Integer height = image != null ? image.getHeight() : null;
+        saveVariant(mediaId, "THUMB", thumb, width, height, null);
+        log.info("[video-processing] THUMB 생성 완료. mediaId={}, key={}", mediaId, thumb.getStorageKey());
     }
 
-    protected void generatePreview(Long mediaId, Path originalPath, String originalName) throws IOException {
-        Path tempDir = Files.createTempDirectory("memorybox-preview-");
-        Path tempPreview = tempDir.resolve("preview.mp4");
-        try {
-            runFfmpeg(List.of(
+    protected void generateThumbFromStart(Long mediaId, Path originalPath, Path tempThumb, String originalName) throws IOException {
+        runFfmpeg(buildThumbCommand(originalPath, tempThumb, "00:00:00"), mediaId, "THUMB-FALLBACK");
+        byte[] bytes = Files.readAllBytes(tempThumb);
+        StoredFile thumb = storageService.store(bytes, originalName, "jpg", "image/jpeg", StorageCategory.THUMB, LocalDate.now());
+        BufferedImage image = ImageIO.read(tempThumb.toFile());
+        Integer width = image != null ? image.getWidth() : null;
+        Integer height = image != null ? image.getHeight() : null;
+        saveVariant(mediaId, "THUMB", thumb, width, height, null);
+        log.info("[video-processing] THUMB fallback 생성 완료. mediaId={}, key={}", mediaId, thumb.getStorageKey());
+    }
+
+    protected void generatePreview(Long mediaId, Path originalPath, Path tempPreview, String originalName) throws IOException {
+        runFfmpeg(List.of(
                     resolvedFfmpegPath(),
                     "-y",
                     "-ss", "00:00:01",
@@ -141,14 +139,10 @@ public class VideoProcessingService {
                     tempPreview.toString()
             ), mediaId, "PREVIEW");
 
-            byte[] bytes = Files.readAllBytes(tempPreview);
-            StoredFile preview = storageService.store(bytes, originalName, "mp4", "video/mp4", StorageCategory.PREVIEW, LocalDate.now());
-            saveVariant(mediaId, "PREVIEW", preview, 480, null, 2);
-            log.info("[video-processing] PREVIEW 생성 완료. mediaId={}, key={}", mediaId, preview.getStorageKey());
-        } finally {
-            Files.deleteIfExists(tempPreview);
-            Files.deleteIfExists(tempDir);
-        }
+        byte[] bytes = Files.readAllBytes(tempPreview);
+        StoredFile preview = storageService.store(bytes, originalName, "mp4", "video/mp4", StorageCategory.PREVIEW, LocalDate.now());
+        saveVariant(mediaId, "PREVIEW", preview, 480, null, 2);
+        log.info("[video-processing] PREVIEW 생성 완료. mediaId={}, key={}", mediaId, preview.getStorageKey());
     }
 
     private void runFfmpeg(List<String> command, Long mediaId, String variantType) throws IOException {
@@ -283,5 +277,15 @@ public class VideoProcessingService {
 
     private boolean isWindows() {
         return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
+    }
+
+    private void deleteTempFile(Path path) {
+        if (path == null) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException ignored) {
+        }
     }
 }

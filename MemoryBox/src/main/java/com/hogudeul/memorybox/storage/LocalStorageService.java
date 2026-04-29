@@ -71,6 +71,19 @@ public class LocalStorageService implements StorageService {
         }
     }
 
+    @Override
+    public Path downloadToTempFile(String storageKey, String prefix, String suffix) throws IOException {
+        Path source = root.resolve(storageKey).normalize();
+        if (!Files.exists(source)) {
+            throw new IOException("Local storage source not found: " + storageKey);
+        }
+        String safePrefix = (prefix == null || prefix.isBlank()) ? "memorybox-" : prefix;
+        String safeSuffix = (suffix == null || suffix.isBlank()) ? ".tmp" : suffix;
+        Path tempFile = Files.createTempFile(safePrefix, safeSuffix);
+        Files.copy(source, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        return tempFile;
+    }
+
     private String sanitizeExtension(String extension) {
         if (extension == null) {
             return "";

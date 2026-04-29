@@ -244,8 +244,8 @@
     <section id="feedGrid" class="feed-grid columns-1" aria-live="polite">
         <c:if test="${mode ne 'search'}">
             <c:forEach var="item" items="${feedItems}">
-                <article class="feed-card" data-media-type="${item.mediaType}" data-batch-id="${item.id}" data-detail-url="/feed/${item.id}">
-                    <a class="thumb-link" href="/feed/${item.id}" aria-label="${item.title} 상세보기">
+                <article class="feed-card" data-media-type="${item.mediaType}" data-batch-id="${item.id}" data-detail-url="${item.mediaType eq 'video' ? '/video/'.concat(item.mediaItems[0].mediaId) : '/feed/'.concat(item.id)}">
+                    <a class="thumb-link" href="${item.mediaType eq 'video' ? '/video/'.concat(item.mediaItems[0].mediaId) : '/feed/'.concat(item.id)}" aria-label="${item.title} 상세보기">
                         <c:choose>
                             <c:when test="${not empty item.mediaItems}">
                                 <div class="feed-slider" data-slider>

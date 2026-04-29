@@ -181,6 +181,10 @@ window.PhotoSwipe = window.PhotoSwipe || undefined;
                 btn.classList.toggle('is-selected', selected.has(id));
                 return;
             }
+            if (btn.dataset.mediaType === 'VIDEO') {
+                window.location.href = '/share/' + shareToken + '/video/' + btn.dataset.mediaId;
+                return;
+            }
             openViewer(index);
         });
         btn.addEventListener('contextmenu', (e) => {
