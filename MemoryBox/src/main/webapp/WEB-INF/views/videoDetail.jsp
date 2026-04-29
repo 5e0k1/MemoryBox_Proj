@@ -1,7 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!DOCTYPE html>
-<html lang="ko"><head><meta charset="UTF-8"><title>Video Detail</title><link rel="stylesheet" href="/css/common.css"><link rel="stylesheet" href="/css/detail.css"></head>
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Video Detail</title><link rel="stylesheet" href="/css/common.css"><link rel="stylesheet" href="/css/detail.css"></head>
 <body class="page page-detail"><main class="detail-layout with-bottom-nav">
     <header class="detail-header"><a href="/feed" class="back-link">← 피드</a><div class="login-chip">${loginUser.displayName}</div></header>
     <c:if test="${notFound}"><section class="detail-panel state-panel"><p>영상을 찾을 수 없습니다.</p></section></c:if>
@@ -20,8 +20,9 @@
             <p class="meta-line">업로드 ${detail.relativeUploadedAt}</p>
             <p class="meta-line">앨범 ${detail.albumName} · ${detail.commentCount} 댓글</p>
             <div class="engagement-row">
-                <form action="/feed/${video.batchId}/like" method="post" class="inline-form">
-                    <input type="hidden" name="action" value="${detail.likedByMe ? 'unlike' : 'like'}">
+                    <form action="/feed/${video.batchId}/like" method="post" class="inline-form">
+                        <input type="hidden" name="action" value="${detail.likedByMe ? 'unlike' : 'like'}">
+                        <input type="hidden" name="redirectTo" value="/video/${video.mediaId}">
                     <button type="submit" class="btn btn-secondary like-btn ${detail.likedByMe ? 'is-liked' : ''}">
                         ${detail.likedByMe ? '❤ 좋아요 취소' : '♡ 좋아요'} · ${detail.likeCount}
                     </button>
@@ -43,6 +44,7 @@
                 <c:if test="${empty comments}"><li class="comment-empty">아직 댓글이 없습니다. 첫 댓글을 남겨보세요.</li></c:if>
             </ul>
             <form method="post" action="/feed/${video.batchId}/comments" class="comment-form">
+                <input type="hidden" name="redirectTo" value="/video/${video.mediaId}">
                 <textarea name="content" maxlength="500" placeholder="댓글을 입력하세요." required></textarea>
                 <button type="submit" class="btn btn-primary">댓글 등록</button>
             </form>

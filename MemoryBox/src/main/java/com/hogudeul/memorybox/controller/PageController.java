@@ -384,6 +384,7 @@ public class PageController {
     @PostMapping("/feed/{itemId}/like")
     public String like(@PathVariable Long itemId,
                        @RequestParam("action") String action,
+                       @RequestParam(name = "redirectTo", required = false) String redirectTo,
                        HttpSession session,
                        RedirectAttributes redirectAttributes) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
@@ -400,13 +401,14 @@ public class PageController {
         } catch (Exception e) {
             redirectAttributes.addAttribute("error", "좋아요 처리 중 오류가 발생했습니다.");
         }
-        return "redirect:/feed/" + itemId;
+        return "redirect:" + resolveRedirectPath(redirectTo, "/feed/" + itemId);
     }
 
     @PostMapping("/feed/{itemId}/comments")
     public String addComment(@PathVariable Long itemId,
                              @RequestParam("content") String content,
                              @RequestParam(required = false) Long parentId,
+                             @RequestParam(name = "redirectTo", required = false) String redirectTo,
                              HttpSession session,
                              RedirectAttributes redirectAttributes) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
@@ -428,7 +430,17 @@ public class PageController {
         } catch (Exception e) {
             redirectAttributes.addAttribute("error", "댓글 처리 중 오류가 발생했습니다.");
         }
-        return "redirect:/feed/" + itemId;
+        return "redirect:" + resolveRedirectPath(redirectTo, "/feed/" + itemId);
+    }
+
+    private String resolveRedirectPath(String redirectTo, String fallback) {
+        if (redirectTo == null || redirectTo.isBlank()) {
+            return fallback;
+        }
+        if (redirectTo.startsWith("/video/") || redirectTo.startsWith("/feed/")) {
+            return redirectTo;
+        }
+        return fallback;
     }
 
 
