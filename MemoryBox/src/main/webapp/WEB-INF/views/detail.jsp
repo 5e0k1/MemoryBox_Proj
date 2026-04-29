@@ -193,8 +193,8 @@
 </div>
 
 <script src="/js/sweetalert2/sweetalert2.all.min.js"></script>
-<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.5/kakao.min.js"
-        integrity="sha384-dok87au0gKqJdxs7msj8Yl5V8lQroS0WyM4yn2Vr4yuR6Ce4vYmoU6HcBWyL9Ltl"
+<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.8.1/kakao.min.js"
+        integrity="sha384-OL+ylM/iuPLtW5U3XcvLSGhE8JzReKDank5InqlHGWPhb4140/yrBw0bg0y7+C9J"
         crossorigin="anonymous"></script>
 <script>
 (() => {
@@ -680,6 +680,7 @@
     if (shareOpenBtn && shareModal && shareForm && shareCloseBtn && shareBackdrop &&
         guestOptionWrap && shareCreateBtn && shareCopyBtn && shareKakaoBtn && shareUrlOutput && shareFeedback) {
         if (window.Kakao && kakaoJavascriptKey && !window.Kakao.isInitialized()) {
+
             window.Kakao.init(kakaoJavascriptKey);
         }
         const closeShareModal = () => {
