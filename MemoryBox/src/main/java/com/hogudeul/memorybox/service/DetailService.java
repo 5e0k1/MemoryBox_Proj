@@ -584,6 +584,18 @@ public class DetailService {
         return value == null || value.isBlank();
     }
 
+    private String buildAttachmentContentDisposition(String utf8FileName, String fallbackName) {
+        String normalizedFileName = (utf8FileName == null || utf8FileName.isBlank())
+                ? fallbackName
+                : utf8FileName;
+        String asciiFallback = normalizedFileName.replaceAll("[^\\x20-\\x7E]", "_");
+        if (asciiFallback.isBlank()) {
+            asciiFallback = fallbackName;
+        }
+        return "attachment; filename=\"" + asciiFallback + "\"; filename*=UTF-8''"
+                + URLEncoder.encode(normalizedFileName, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
     public String resolveOriginalDownloadUrl(DownloadFileInfo fileInfo) {
         if (fileInfo == null || isBlank(fileInfo.getStorageKey())) {
             return "";
