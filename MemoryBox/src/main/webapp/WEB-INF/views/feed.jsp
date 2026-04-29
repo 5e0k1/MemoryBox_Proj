@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/feed.css">
     <link rel="stylesheet" href="/css/sweetalert2/sweetalert2.min.css">
+    <link rel="stylesheet" href="/css/photoswipe/photoswipe.css">
 </head>
 <body class="page page-feed" data-mode="${empty mode ? 'feed' : mode}">
 <main class="feed-layout with-bottom-nav">
@@ -371,19 +372,6 @@
 </div>
 
 <c:if test="${mode eq 'search'}">
-    <div class="viewer-backdrop" id="searchViewerBackdrop" hidden>
-        <section class="viewer-panel">
-            <button type="button" class="viewer-close" id="searchViewerCloseBtn">✕</button>
-            <button type="button" class="viewer-nav prev" id="searchViewerPrevBtn">‹</button>
-            <button type="button" class="viewer-nav next" id="searchViewerNextBtn">›</button>
-            <div class="viewer-content" id="searchViewerContent"></div>
-            <div class="viewer-footer">
-                <span id="searchViewerCounter"><span id="searchViewerCurrent">1</span> / <span id="searchViewerTotal">1</span></span>
-                <a class="btn btn-secondary" id="searchViewerDownloadBtn" href="#">원본 다운로드</a>
-            </div>
-        </section>
-    </div>
-
     <div class="selection-bar" id="searchSelectionBar" hidden>
         <span><strong id="searchSelectedCount">0</strong>개 선택됨</span>
         <div class="selection-actions">
@@ -393,6 +381,8 @@
     </div>
 </c:if>
 <script src="/js/sweetalert2/sweetalert2.all.min.js"></script>
+<script src="/js/photoswipe/photoswipe.umd.min.js"></script>
+<script src="/js/photoswipe/photoswipe-lightbox.umd.min.js"></script>
 <script src="/js/feed.js"></script>
 <script src="/js/push.js"></script>
 </body>

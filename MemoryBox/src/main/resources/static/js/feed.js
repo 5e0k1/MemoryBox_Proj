@@ -45,14 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const commentParentIdInput = document.getElementById('commentParentId');
     const commentSheetInput = document.getElementById('commentSheetInput');
     const commentReplyCancelBtn = document.getElementById('commentReplyCancelBtn');
-    const searchViewerBackdrop = document.getElementById('searchViewerBackdrop');
-    const searchViewerContent = document.getElementById('searchViewerContent');
-    const searchViewerCurrent = document.getElementById('searchViewerCurrent');
-    const searchViewerTotal = document.getElementById('searchViewerTotal');
-    const searchViewerDownloadBtn = document.getElementById('searchViewerDownloadBtn');
-    const searchViewerCloseBtn = document.getElementById('searchViewerCloseBtn');
-    const searchViewerPrevBtn = document.getElementById('searchViewerPrevBtn');
-    const searchViewerNextBtn = document.getElementById('searchViewerNextBtn');
     const searchSelectionBar = document.getElementById('searchSelectionBar');
     const searchSelectedCount = document.getElementById('searchSelectedCount');
     const searchCancelSelectBtn = document.getElementById('searchCancelSelectBtn');
@@ -75,13 +67,10 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedAlbum: isSearchMode ? null : '전체',
         searchMode: 'feed'
     };
-    let photoViewerItems = [];
-    let photoViewerIndex = 0;
     let longPressTimer = null;
     let longPressTriggered = false;
     const selectedPhotoIds = new Set();
     let selectingPhotoMode = false;
-    let searchViewerHistoryActive = false;
     let commentSheetHistoryActive = false;
 
     const isAlbumPickerMode = () => isSearchMode && state.selectedAlbum === null;
@@ -483,46 +472,30 @@ document.addEventListener('DOMContentLoaded', () => {
         </article>`;
     };
 
-    const renderSearchViewer = () => {
-        if (!searchViewerContent || photoViewerItems.length === 0) return;
-        const item = photoViewerItems[photoViewerIndex];
-        const mediaUrl = item.mediumUrl || item.smallUrl || '';
-        const html = item.mediaType === 'video'
-            ? `<video src="${mediaUrl}" controls autoplay playsinline></video>`
-            : `<img src="${mediaUrl}" alt="viewer">`;
-        searchViewerContent.innerHTML = html;
-        if (searchViewerCurrent) searchViewerCurrent.textContent = String(photoViewerIndex + 1);
-        if (searchViewerTotal) searchViewerTotal.textContent = String(photoViewerItems.length);
-        if (searchViewerDownloadBtn) searchViewerDownloadBtn.href = `/feed/media/${item.mediaId}/download`;
-    };
-
     const openSearchViewer = (items, index) => {
-        photoViewerItems = items || [];
-        photoViewerIndex = Math.max(0, index || 0);
-        if (!searchViewerBackdrop || photoViewerItems.length === 0) return;
-        if (!searchViewerHistoryActive) {
-            history.pushState({ searchViewerOpen: true }, '', window.location.href);
-            searchViewerHistoryActive = true;
-        }
-        searchViewerBackdrop.hidden = false;
-        document.body.classList.add('modal-open');
-        renderSearchViewer();
-    };
-
-    const closeSearchViewer = () => {
-        if (!searchViewerBackdrop) return;
-        if (searchViewerHistoryActive) {
-            history.back();
-            return;
-        }
-        closeSearchViewerFromPopState();
-    };
-
-    const closeSearchViewerFromPopState = () => {
-        if (!searchViewerBackdrop) return;
-        searchViewerBackdrop.hidden = true;
-        document.body.classList.remove('modal-open');
-        searchViewerHistoryActive = false;
+        const viewerItems = (items || []).filter((item) => (item.mediaType || '').toLowerCase() !== 'video');
+        if (viewerItems.length === 0 || !window.PhotoSwipe) return;
+        const clicked = items[index];
+        if (!clicked || (clicked.mediaType || '').toLowerCase() === 'video') return;
+        const imageIndex = viewerItems.findIndex((item) => String(item.mediaId) === String(clicked.mediaId));
+        const dataSource = viewerItems.map((item) => ({
+            src: item.mediumUrl || item.previewUrl || item.smallUrl || '',
+            width: 1600,
+            height: 1200
+        }));
+        const pswp = new window.PhotoSwipe({
+            dataSource,
+            index: Math.max(0, imageIndex),
+            pswpModule: window.PhotoSwipe,
+            wheelToZoom: true
+        });
+        pswp.on('change', () => {
+            const current = viewerItems[pswp.currIndex];
+            const dl = current ? `/feed/media/${current.mediaId}/download` : '';
+            const btn = document.querySelector('.pswp__button.pswp__button--download');
+            if (btn) btn.setAttribute('data-download-url', dl);
+        });
+        pswp.init();
     };
 
     const togglePhotoSelect = (card) => {
@@ -1168,28 +1141,12 @@ document.addEventListener('DOMContentLoaded', () => {
     initCalendarWidget();
     if (isFeedMode) window.addEventListener('beforeunload', saveFeedState);
 
-    searchViewerCloseBtn?.addEventListener('click', closeSearchViewer);
-    searchViewerBackdrop?.addEventListener('click', (event) => {
-        if (event.target === searchViewerBackdrop) closeSearchViewer();
-    });
     window.addEventListener('popstate', () => {
         if (commentSheetBackdrop && !commentSheetBackdrop.hidden) {
             closeCommentSheetFromPopState();
             return;
         }
-        if (searchViewerBackdrop && !searchViewerBackdrop.hidden) {
-            closeSearchViewerFromPopState();
-        }
-    });
-    searchViewerPrevBtn?.addEventListener('click', () => {
-        if (photoViewerItems.length === 0) return;
-        photoViewerIndex = (photoViewerIndex - 1 + photoViewerItems.length) % photoViewerItems.length;
-        renderSearchViewer();
-    });
-    searchViewerNextBtn?.addEventListener('click', () => {
-        if (photoViewerItems.length === 0) return;
-        photoViewerIndex = (photoViewerIndex + 1) % photoViewerItems.length;
-        renderSearchViewer();
+        
     });
     searchCancelSelectBtn?.addEventListener('click', () => {
         selectingPhotoMode = false;
