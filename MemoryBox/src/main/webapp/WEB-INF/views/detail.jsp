@@ -38,7 +38,9 @@
             <div class="title-row">
                 <h1 class="detail-title">${detail.title}</h1>
                 <div class="meta-action-buttons">
-                    <button type="button" class="share-open-btn" id="shareOpenBtn" aria-label="공유 열기">🔗</button>
+                    <button type="button" class="share-open-btn" id="shareOpenBtn" aria-label="공유 열기">
+                        <img src="/images/share-btn-img.png" alt="공유하기" width="20" height="20">
+                    </button>
                     <button type="button" class="btn btn-secondary" id="downloadAllBtn"
                             data-batch-id="${currentBatchId}">전체 다운로드</button>
                 </div>
