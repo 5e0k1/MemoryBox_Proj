@@ -10,10 +10,10 @@
             <div class="title-row">
                 <h1 class="detail-title">${video.title}</h1>
                 <div class="meta-action-buttons">
-                    <a href="/feed/${video.batchId}" class="share-open-btn" aria-label="공유하기">
+                    <button type="button" class="share-open-btn" id="shareOpenBtn" aria-label="공유하기">
                         <img src="/images/share-btn-img.png" alt="공유하기" width="20" height="20">
-                    </a>
-                    <a href="/feed/${video.batchId}" class="btn btn-secondary">전체 보기</a>
+                    </button>
+                    <a href="${video.downloadUrl}" class="btn btn-secondary">다운로드</a>
                 </div>
             </div>
             <p class="meta-line">작성자 ${detail.authorName}</p>
@@ -31,9 +31,6 @@
         </section>
         <section class="detail-panel media-panel">
             <video class="detail-image" controls playsinline preload="metadata" poster="${video.posterUrl}" src="${video.playbackUrl}"></video>
-        </section>
-        <section class="detail-panel meta-panel">
-            <a class="btn btn-secondary" href="${video.downloadUrl}">원본 다운로드</a>
         </section>
         <section class="detail-panel comment-panel">
             <h2>댓글</h2>
@@ -58,4 +55,65 @@
     <a href="/likes" class="nav-item">좋아요</a>
     <a href="/mypage" class="nav-item">마이</a>
 </nav>
+<div class="share-modal" id="shareModal" hidden>
+    <div class="share-modal-backdrop" id="shareBackdrop"></div>
+    <section class="share-modal-panel" role="dialog" aria-modal="true" aria-labelledby="shareModalTitle">
+        <div class="share-modal-header">
+            <h2 id="shareModalTitle">게시물 공유</h2>
+            <button type="button" class="share-close-btn" id="shareCloseBtn" aria-label="공유 모달 닫기">×</button>
+        </div>
+        <form class="share-form" id="shareForm">
+            <label class="share-option-row"><input type="radio" name="shareScope" value="member" checked><span>회원 전용 링크</span></label>
+            <label class="share-option-row"><input type="radio" name="shareScope" value="guest"><span>게스트 링크</span></label>
+            <div class="guest-option-wrap" id="guestOptionWrap" hidden>
+                <label class="share-option-row"><input type="checkbox" name="allowComments" id="allowCommentsChk"><span>댓글 보기 허용</span></label>
+                <label class="share-option-row"><input type="checkbox" name="allowDownload" id="allowDownloadChk"><span>다운로드 허용</span></label>
+            </div>
+            <div class="share-action-row">
+                <button type="submit" class="btn btn-primary" id="shareCreateBtn">링크 생성</button>
+                <button type="button" class="btn btn-secondary" id="shareCopyBtn" disabled>복사</button>
+            </div>
+            <input type="text" class="share-url-output" id="shareUrlOutput" readonly>
+            <p class="share-feedback" id="shareFeedback"></p>
+        </form>
+    </section>
+</div>
+<script>
+(() => {
+  const shareOpenBtn = document.getElementById('shareOpenBtn');
+  const shareModal = document.getElementById('shareModal');
+  const shareBackdrop = document.getElementById('shareBackdrop');
+  const shareCloseBtn = document.getElementById('shareCloseBtn');
+  const shareForm = document.getElementById('shareForm');
+  const guestOptionWrap = document.getElementById('guestOptionWrap');
+  const shareCopyBtn = document.getElementById('shareCopyBtn');
+  const shareUrlOutput = document.getElementById('shareUrlOutput');
+  const shareFeedback = document.getElementById('shareFeedback');
+  const batchId = '${video.batchId}';
+  if (!shareOpenBtn) return;
+  const open = () => shareModal.hidden = false;
+  const close = () => shareModal.hidden = true;
+  shareOpenBtn.addEventListener('click', open);
+  shareBackdrop.addEventListener('click', close);
+  shareCloseBtn.addEventListener('click', close);
+  shareForm.addEventListener('change', () => {
+    guestOptionWrap.hidden = shareForm.shareScope.value !== 'guest';
+  });
+  shareForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const guest = shareForm.shareScope.value === 'guest';
+    const res = await fetch('/share/batch/' + batchId, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({guest, allowComments: document.getElementById('allowCommentsChk').checked, allowDownload: document.getElementById('allowDownloadChk').checked})});
+    const data = await res.json();
+    const url = guest ? data.guestUrl : data.memberUrl;
+    shareUrlOutput.value = url || '';
+    shareCopyBtn.disabled = !url;
+    shareFeedback.textContent = url ? '공유 링크가 생성되었습니다.' : '링크 생성 실패';
+  });
+  shareCopyBtn.addEventListener('click', async () => {
+    if (!shareUrlOutput.value) return;
+    await navigator.clipboard.writeText(shareUrlOutput.value);
+    shareFeedback.textContent = '복사되었습니다.';
+  });
+})();
+</script>
 </body></html>

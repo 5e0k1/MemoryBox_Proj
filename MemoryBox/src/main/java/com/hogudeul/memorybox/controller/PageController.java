@@ -288,6 +288,7 @@ public class PageController {
         Long userId = loginUser != null ? loginUser.getUserId() : null;
         VideoDetailView videoDetail = detailService.getVideoDetail(mediaId, userId);
         model.addAttribute("loginUser", loginUser);
+        model.addAttribute("kakaoJavascriptKey", kakaoProperties.getJavascriptKey());
         model.addAttribute("video", videoDetail);
         model.addAttribute("notFound", videoDetail == null);
         if (videoDetail != null) {
