@@ -30,6 +30,10 @@ public class ShareLinkService {
         return shareBaseUrl + "/feed/" + batchId;
     }
 
+    public String buildVideoMemberShareUrl(Long mediaId) {
+        return shareBaseUrl + "/video/" + mediaId;
+    }
+
     @Transactional
     public ShareLink createGuestShareLink(Long batchId,
                                           Long createdBy,

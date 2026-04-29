@@ -3,6 +3,7 @@ package com.hogudeul.memorybox.service;
 import com.hogudeul.memorybox.dto.CommentView;
 import com.hogudeul.memorybox.dto.DetailMediaItemView;
 import com.hogudeul.memorybox.dto.MediaDetailView;
+import com.hogudeul.memorybox.dto.VideoDetailView;
 import com.hogudeul.memorybox.mapper.DetailMapper;
 import com.hogudeul.memorybox.mapper.UploadMapper;
 import com.hogudeul.memorybox.model.CommentRow;
@@ -213,6 +214,24 @@ public class DetailService {
             return null;
         }
         return toDownloadFileInfo(row);
+    }
+
+    public VideoDetailView getVideoDetail(Long mediaId, Long userId) {
+        MediaDetailRow row = detailMapper.findDetailByMediaId(mediaId, userId);
+        if (row == null || !"VIDEO".equalsIgnoreCase(row.getMediaType())) {
+            return null;
+        }
+        String playbackKey = !isBlank(row.getOriginalStorageKey()) ? row.getOriginalStorageKey() : row.getPreviewStorageKey();
+        return new VideoDetailView(
+                row.getMediaId(),
+                row.getBatchId(),
+                defaultText(row.getTitle(), "(제목 없음)"),
+                defaultText(row.getDisplayName(), "알 수 없음"),
+                formatDateTime(row.getUploadedAt()),
+                toPublicFileUrl(playbackKey),
+                toPublicFileUrl(!isBlank(row.getThumbStorageKey()) ? row.getThumbStorageKey() : row.getSmallStorageKey()),
+                "/feed/media/" + row.getMediaId() + "/download"
+        );
     }
 
     public List<DownloadFileInfo> getDownloadFileInfos(List<Long> mediaIds, Long userId) {

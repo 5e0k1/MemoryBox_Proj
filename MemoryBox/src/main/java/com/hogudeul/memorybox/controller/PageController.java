@@ -9,6 +9,7 @@ import com.hogudeul.memorybox.dto.CommentView;
 import com.hogudeul.memorybox.dto.DetailMediaItemView;
 import com.hogudeul.memorybox.dto.FeedItemView;
 import com.hogudeul.memorybox.dto.MediaDetailView;
+import com.hogudeul.memorybox.dto.VideoDetailView;
 import com.hogudeul.memorybox.config.AppProperties;
 import com.hogudeul.memorybox.config.KakaoProperties;
 import com.hogudeul.memorybox.service.DetailService;
@@ -281,6 +282,24 @@ public class PageController {
         return response;
     }
 
+    @GetMapping("/video/{mediaId}")
+    public String videoDetailPage(@PathVariable Long mediaId, Model model, HttpSession session) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        Long userId = loginUser != null ? loginUser.getUserId() : null;
+        VideoDetailView videoDetail = detailService.getVideoDetail(mediaId, userId);
+        model.addAttribute("loginUser", loginUser);
+        model.addAttribute("kakaoJavascriptKey", kakaoProperties.getJavascriptKey());
+        model.addAttribute("video", videoDetail);
+        model.addAttribute("notFound", videoDetail == null);
+        if (videoDetail != null) {
+            MediaDetailView detail = detailService.getMediaDetail(videoDetail.getBatchId(), userId);
+            model.addAttribute("detail", detail);
+            model.addAttribute("currentBatchId", videoDetail.getBatchId());
+            model.addAttribute("comments", detailService.getComments(videoDetail.getBatchId(), userId));
+        }
+        return "videoDetail";
+    }
+
     @GetMapping("/feed/{itemId}")
     public String feedDetail(@PathVariable String itemId,
                              @RequestParam(required = false) String info,
@@ -366,6 +385,7 @@ public class PageController {
     @PostMapping("/feed/{itemId}/like")
     public String like(@PathVariable Long itemId,
                        @RequestParam("action") String action,
+                       @RequestParam(name = "redirectTo", required = false) String redirectTo,
                        HttpSession session,
                        RedirectAttributes redirectAttributes) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
@@ -382,13 +402,14 @@ public class PageController {
         } catch (Exception e) {
             redirectAttributes.addAttribute("error", "좋아요 처리 중 오류가 발생했습니다.");
         }
-        return "redirect:/feed/" + itemId;
+        return "redirect:" + resolveRedirectPath(redirectTo, "/feed/" + itemId);
     }
 
     @PostMapping("/feed/{itemId}/comments")
     public String addComment(@PathVariable Long itemId,
                              @RequestParam("content") String content,
                              @RequestParam(required = false) Long parentId,
+                             @RequestParam(name = "redirectTo", required = false) String redirectTo,
                              HttpSession session,
                              RedirectAttributes redirectAttributes) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
@@ -410,7 +431,17 @@ public class PageController {
         } catch (Exception e) {
             redirectAttributes.addAttribute("error", "댓글 처리 중 오류가 발생했습니다.");
         }
-        return "redirect:/feed/" + itemId;
+        return "redirect:" + resolveRedirectPath(redirectTo, "/feed/" + itemId);
+    }
+
+    private String resolveRedirectPath(String redirectTo, String fallback) {
+        if (redirectTo == null || redirectTo.isBlank()) {
+            return fallback;
+        }
+        if (redirectTo.startsWith("/video/") || redirectTo.startsWith("/feed/")) {
+            return redirectTo;
+        }
+        return fallback;
     }
 
 

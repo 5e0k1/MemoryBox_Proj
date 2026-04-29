@@ -48,7 +48,7 @@ public class AppProperties {
     }
 
     public static class Ffmpeg {
-        private String command = "ffmpeg";
+        private String command = "/usr/local/bin/ffmpeg";
 
         public String getCommand() {
             return command;

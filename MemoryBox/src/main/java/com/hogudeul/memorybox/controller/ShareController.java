@@ -6,6 +6,7 @@ import com.hogudeul.memorybox.dto.DetailMediaItemView;
 import com.hogudeul.memorybox.dto.MediaDetailView;
 import com.hogudeul.memorybox.dto.ShareLinkCreateRequest;
 import com.hogudeul.memorybox.dto.ShareLinkCreateResponse;
+import com.hogudeul.memorybox.dto.VideoDetailView;
 import com.hogudeul.memorybox.model.ShareLink;
 import com.hogudeul.memorybox.service.DetailService;
 import com.hogudeul.memorybox.service.ShareLinkService;
@@ -70,7 +71,10 @@ public class ShareController {
         boolean allowDownload = request != null && Boolean.TRUE.equals(request.getAllowDownload());
         Integer expiresMinutes = request != null ? request.getExpiresMinutes() : null;
 
-        String memberUrl = shareLinkService.buildMemberShareUrl(batchId);
+        boolean videoBatch = "VIDEO".equalsIgnoreCase(detail.getMediaType());
+        String memberUrl = videoBatch
+                ? shareLinkService.buildVideoMemberShareUrl(detail.getMediaId())
+                : shareLinkService.buildMemberShareUrl(batchId);
         if (!guest) {
             return ResponseEntity.ok(new ShareLinkCreateResponse(memberUrl, null, null));
         }
@@ -109,6 +113,17 @@ public class ShareController {
         boolean allowDownload = "Y".equalsIgnoreCase(shareLink.getAllowDownload());
         List<CommentView> comments = showComments ? detailService.getComments(shareLink.getBatchId(), null) : List.of();
         List<DetailMediaItemView> detailItems = detailService.getBatchMediaItems(shareLink.getBatchId(), null);
+        boolean singleVideo = detailItems.size() == 1 && "VIDEO".equalsIgnoreCase(detailItems.get(0).getMediaType());
+        if (singleVideo) {
+            VideoDetailView video = detailService.getVideoDetail(detailItems.get(0).getMediaId(), null);
+            model.addAttribute("video", video);
+            model.addAttribute("detail", detail);
+            model.addAttribute("comments", comments);
+            model.addAttribute("allowComments", showComments);
+            model.addAttribute("allowDownload", allowDownload);
+            model.addAttribute("shareToken", token);
+            return "shareVideoDetail";
+        }
 
         model.addAttribute("detail", detail);
         model.addAttribute("detailItems", detailItems);
@@ -117,6 +132,26 @@ public class ShareController {
         model.addAttribute("allowDownload", allowDownload);
         model.addAttribute("shareToken", token);
         return "shareDetail";
+    }
+
+    @GetMapping("/share/{token}/video/{mediaId}")
+    public String guestShareVideoDetail(@PathVariable String token, @PathVariable Long mediaId, Model model) {
+        ShareLink shareLink = shareLinkService.findActiveByToken(token);
+        if (shareLink == null) {
+            model.addAttribute("reason", "만료되었거나 사용할 수 없는 공유 링크입니다.");
+            return "shareInvalid";
+        }
+        boolean belongsToBatch = detailService.getBatchMediaItems(shareLink.getBatchId(), null)
+                .stream().anyMatch(item -> mediaId.equals(item.getMediaId()));
+        if (!belongsToBatch) {
+            model.addAttribute("reason", "공유된 미디어를 찾을 수 없습니다.");
+            return "shareInvalid";
+        }
+        VideoDetailView video = detailService.getVideoDetail(mediaId, null);
+        model.addAttribute("video", video);
+        model.addAttribute("notFound", video == null);
+        model.addAttribute("shareToken", token);
+        return "shareVideoDetail";
     }
 
     @GetMapping("/share/{token}/media/{mediaId}/download")
