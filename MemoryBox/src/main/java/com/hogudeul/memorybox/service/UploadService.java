@@ -121,14 +121,17 @@ public class UploadService {
         if (form.getImageFile() == null || form.getImageFile().isEmpty()) {
             throw new UploadException("업로드할 이미지 파일을 선택해 주세요.");
         }
-        Long mediaId = processPhoto(userId,
+        Long batchId = uploadMapper.selectNextMediaBatchId();
+        LocalDateTime takenAt = parseTakenAt(form.getTakenAt());
+        uploadMapper.insertMediaBatch(batchId, userId, form.getAlbumId(), blankToNull(form.getTitle()), takenAt);
+        Long mediaId = processPhoto(batchId, 1, userId,
                 form.getAlbumId(),
                 form.getTitle(),
                 form.getTakenAt(),
-                form.getSelectedTagIds(),
-                form.getNewTags(),
                 form.getImageFile());
-        notificationService.notifyUpload(userId, mediaId, 1);
+        bindTags(userId, batchId, form.getSelectedTagIds(), form.getNewTags());
+        uploadMapper.updateBatchCoverAndCounts(batchId, mediaId, 1, 1, 0);
+        notificationService.notifyUpload(userId, batchId, 1);
     }
 
     @Transactional
@@ -137,29 +140,33 @@ public class UploadService {
             throw new UploadException("업로드할 이미지 파일을 1개 이상 선택해 주세요.");
         }
 
+        Long batchId = uploadMapper.selectNextMediaBatchId();
+        LocalDateTime takenAt = parseTakenAt(form.getTakenAt());
+        uploadMapper.insertMediaBatch(batchId, userId, form.getAlbumId(), blankToNull(form.getTitle()), takenAt);
+
         int created = 0;
-        Long sampleMediaId = null;
+        Long coverMediaId = null;
         for (int i = 0; i < form.getImageFiles().size(); i++) {
             MultipartFile file = form.getImageFiles().get(i);
             if (file == null || file.isEmpty()) {
                 continue;
             }
-            Long mediaId = processPhoto(userId,
+            Long mediaId = processPhoto(batchId, i + 1, userId,
                     form.getAlbumId(),
                     form.getTitle(),
                     form.getTakenAt(),
-                    form.getSelectedTagIds(),
-                    form.getNewTags(),
                     file);
-            if (sampleMediaId == null) {
-                sampleMediaId = mediaId;
+            if (coverMediaId == null) {
+                coverMediaId = mediaId;
             }
             created++;
         }
         if (created == 0) {
             throw new UploadException("유효한 이미지 파일이 없습니다.");
         }
-        notificationService.notifyUpload(userId, sampleMediaId, created);
+        bindTags(userId, batchId, form.getSelectedTagIds(), form.getNewTags());
+        uploadMapper.updateBatchCoverAndCounts(batchId, coverMediaId, created, created, 0);
+        notificationService.notifyUpload(userId, batchId, created);
     }
 
     @Transactional
@@ -173,8 +180,10 @@ public class UploadService {
 
         List<String> savedKeys = new ArrayList<>();
         try {
+            Long batchId = uploadMapper.selectNextMediaBatchId();
             LocalDateTime takenAt = parseTakenAt(form.getTakenAt());
-            MediaItem mediaItem = createMediaItem(userId, form.getAlbumId(), "VIDEO", form.getTitle(), takenAt);
+            uploadMapper.insertMediaBatch(batchId, userId, form.getAlbumId(), blankToNull(form.getTitle()), takenAt);
+            MediaItem mediaItem = createMediaItem(batchId, 1, userId, form.getAlbumId(), "VIDEO", form.getTitle(), takenAt);
 
             StoredFile original = storageService.store(form.getVideoFile(), StorageCategory.VIDEO, LocalDate.now());
             savedKeys.add(original.getStorageKey());
@@ -184,8 +193,9 @@ public class UploadService {
             savedKeys.add(thumb.getStorageKey());
             uploadMapper.insertMediaVariant(buildVariant(mediaItem.getMediaId(), "THUMB", thumb, 320, 180, null));
 
-            bindTags(userId, mediaItem.getMediaId(), form.getSelectedTagIds(), form.getNewTags());
-            notificationService.notifyUpload(userId, mediaItem.getMediaId(), 1);
+            bindTags(userId, batchId, form.getSelectedTagIds(), form.getNewTags());
+            uploadMapper.updateBatchCoverAndCounts(batchId, mediaItem.getMediaId(), 1, 0, 1);
+            notificationService.notifyUpload(userId, batchId, 1);
             videoProcessingService.generateVideoVariantsAsync(mediaItem.getMediaId(), original.getStorageKey(), original.getOriginalName());
         } catch (Exception e) {
             rollbackFiles(savedKeys);
@@ -196,12 +206,12 @@ public class UploadService {
         }
     }
 
-    private Long processPhoto(Long userId,
+    private Long processPhoto(Long batchId,
+                              int sortOrder,
+                              Long userId,
                               Long albumId,
                               String title,
                               String takenAtRaw,
-                              List<Long> selectedTagIds,
-                              String newTags,
                               MultipartFile file) {
         requireAlbum(albumId);
         validateMimeType(file, "image/");
@@ -209,7 +219,7 @@ public class UploadService {
         List<String> savedKeys = new ArrayList<>();
         try {
             LocalDateTime takenAt = parseTakenAt(takenAtRaw);
-            MediaItem mediaItem = createMediaItem(userId, albumId, "IMAGE", title, takenAt);
+            MediaItem mediaItem = createMediaItem(batchId, sortOrder, userId, albumId, "IMAGE", title, takenAt);
 
             StoredFile original = storageService.store(file, StorageCategory.ORIGINAL, LocalDate.now());
             savedKeys.add(original.getStorageKey());
@@ -228,7 +238,6 @@ public class UploadService {
             uploadMapper.insertMediaVariant(buildVariant(mediaItem.getMediaId(), "SMALL", small, smallImageWidth(source, 720), smallImageHeight(source, 720), null));
             uploadMapper.insertMediaVariant(buildVariant(mediaItem.getMediaId(), "MEDIUM", medium, smallImageWidth(source, 1280), smallImageHeight(source, 1280), null));
 
-            bindTags(userId, mediaItem.getMediaId(), selectedTagIds, newTags);
             return mediaItem.getMediaId();
         } catch (Exception e) {
             rollbackFiles(savedKeys);
@@ -264,8 +273,10 @@ public class UploadService {
         return storageService.store(out.toByteArray(), originalName, "jpg", "image/jpeg", StorageCategory.THUMB, LocalDate.now());
     }
 
-    private MediaItem createMediaItem(Long userId, Long albumId, String mediaType, String title, LocalDateTime takenAt) {
+    private MediaItem createMediaItem(Long batchId, int sortOrder, Long userId, Long albumId, String mediaType, String title, LocalDateTime takenAt) {
         MediaItem mediaItem = new MediaItem();
+        mediaItem.setBatchId(batchId);
+        mediaItem.setSortOrder(sortOrder);
         mediaItem.setUserId(userId);
         mediaItem.setAlbumId(albumId);
         mediaItem.setMediaType(mediaType);
@@ -300,7 +311,7 @@ public class UploadService {
         return variant;
     }
 
-    private void bindTags(Long userId, Long mediaId, List<Long> selectedTagIds, String newTagsRaw) {
+    private void bindTags(Long userId, Long batchId, List<Long> selectedTagIds, String newTagsRaw) {
         Set<Long> resolvedTagIds = resolveSelectedTagIds(userId, selectedTagIds);
         Set<String> newTagNames = parseTags(newTagsRaw);
 
@@ -319,7 +330,7 @@ public class UploadService {
         }
 
         for (Long tagId : resolvedTagIds) {
-            uploadMapper.insertMediaTag(uploadMapper.selectNextMediaTagId(), mediaId, tagId);
+            uploadMapper.insertBatchTag(batchId, tagId);
         }
     }
 

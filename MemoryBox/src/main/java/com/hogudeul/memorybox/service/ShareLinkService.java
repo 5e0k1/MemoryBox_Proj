@@ -26,18 +26,18 @@ public class ShareLinkService {
         this.shareBaseUrl = trimTrailingSlash(appProperties.getShare().getBaseUrl());
     }
 
-    public String buildMemberShareUrl(Long mediaId) {
-        return shareBaseUrl + "/feed/" + mediaId;
+    public String buildMemberShareUrl(Long batchId) {
+        return shareBaseUrl + "/feed/" + batchId;
     }
 
     @Transactional
-    public ShareLink createGuestShareLink(Long mediaId,
+    public ShareLink createGuestShareLink(Long batchId,
                                           Long createdBy,
                                           boolean allowComments,
                                           boolean allowDownload,
                                           Integer expiresMinutes) {
         ShareLink shareLink = new ShareLink();
-        shareLink.setMediaId(mediaId);
+        shareLink.setBatchId(batchId);
         shareLink.setCreatedBy(createdBy);
         shareLink.setShareScope("GUEST");
         shareLink.setAllowComments(allowComments ? "Y" : "N");

@@ -102,7 +102,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public String logout(HttpSession session, HttpServletResponse response) {
+    public String logout(HttpSession session, HttpServletRequest request, HttpServletResponse response) {
         Long userId = null;
         if (session != null) {
             Object loginUser = session.getAttribute("loginUser");
@@ -111,7 +111,7 @@ public class AuthController {
             }
         }
 
-        authService.logout(userId, response);
+        authService.logout(userId, request, response);
 
         if (session != null) {
             session.invalidate();

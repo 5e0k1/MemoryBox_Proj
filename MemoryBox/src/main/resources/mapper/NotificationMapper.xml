@@ -123,16 +123,16 @@
 
     <select id="findMediaOwnerId" resultType="java.lang.Long">
         SELECT user_id
-        FROM MEDIA_ITEMS
-        WHERE media_id = #{mediaId}
+        FROM MEDIA_BATCH
+        WHERE batch_id = #{mediaId}
           AND del_yn = 'N'
         LIMIT 1
     </select>
 
     <select id="findMediaTitleByMediaId" resultType="string">
         SELECT title
-        FROM MEDIA_ITEMS
-        WHERE media_id = #{mediaId}
+        FROM MEDIA_BATCH
+        WHERE batch_id = #{mediaId}
           AND del_yn = 'N'
         LIMIT 1
     </select>
@@ -154,7 +154,7 @@
     </select>
 
     <select id="findMediaIdByCommentId" resultType="java.lang.Long">
-        SELECT media_id
+        SELECT batch_id
         FROM COMMENT
         WHERE comment_id = #{commentId}
           AND del_yn = 'N'
@@ -189,7 +189,7 @@
         SELECT DISTINCT receiver_user_id
         FROM NOTIFICATION
         WHERE notification_type = 'UPLOAD'
-          AND target_type = 'MEDIA'
+          AND target_type = 'BATCH'
           AND push_sent_yn = 'N'
           AND is_read = 'N'
     </select>
@@ -199,7 +199,7 @@
         FROM NOTIFICATION
         WHERE receiver_user_id = #{userId}
           AND notification_type = 'UPLOAD'
-          AND target_type = 'MEDIA'
+          AND target_type = 'BATCH'
           AND push_sent_yn = 'N'
           AND is_read = 'N'
     </select>
@@ -220,7 +220,7 @@
         FROM NOTIFICATION
         WHERE receiver_user_id = #{userId}
           AND notification_type = 'UPLOAD'
-          AND target_type = 'MEDIA'
+          AND target_type = 'BATCH'
           AND push_sent_yn = 'N'
           AND is_read = 'N'
         ORDER BY created_at ASC, notification_id ASC

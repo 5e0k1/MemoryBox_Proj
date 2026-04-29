@@ -1,6 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const MAX_SELECTION_COUNT = 30;
-    const DOWNLOAD_API_URL = '/feed/download-zip';
     const FEED_API_URL = '/api/feed/items';
     const FEED_STATE_KEY = 'memorybox.feed.state.v1';
 
@@ -12,16 +10,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const grid = document.getElementById('feedGrid');
     const tabButtons = document.querySelectorAll('.tab-btn');
     const colButtons = document.querySelectorAll('.col-btn');
-    const mobileSelectionBar = document.getElementById('mobileSelectionBar');
-    const selectedCountText = document.getElementById('selectedCount');
-    const cancelSelectionBtn = document.getElementById('cancelSelectionBtn');
-    const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
     const authorFilter = document.getElementById('authorFilter');
     const albumFilter = document.getElementById('albumFilter');
     const albumPickerSection = document.getElementById('albumPickerSection');
     const albumPickerGrid = document.getElementById('albumPickerGrid');
     const selectedAlbumHeader = document.getElementById('selectedAlbumHeader');
     const selectedAlbumTitle = document.getElementById('selectedAlbumTitle');
+    const searchModeTabs = document.getElementById('searchModeTabs');
+    const searchModeButtons = document.querySelectorAll('.search-mode-btn');
     const floatingHead = document.getElementById('floatingHead');
     const controlPanel = isSearchMode ? document.querySelector('.control-panel') : null;
     const sortOption = document.getElementById('sortOption');
@@ -49,9 +45,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const commentParentIdInput = document.getElementById('commentParentId');
     const commentSheetInput = document.getElementById('commentSheetInput');
     const commentReplyCancelBtn = document.getElementById('commentReplyCancelBtn');
+    const searchViewerBackdrop = document.getElementById('searchViewerBackdrop');
+    const searchViewerContent = document.getElementById('searchViewerContent');
+    const searchViewerCurrent = document.getElementById('searchViewerCurrent');
+    const searchViewerTotal = document.getElementById('searchViewerTotal');
+    const searchViewerDownloadBtn = document.getElementById('searchViewerDownloadBtn');
+    const searchViewerCloseBtn = document.getElementById('searchViewerCloseBtn');
+    const searchViewerPrevBtn = document.getElementById('searchViewerPrevBtn');
+    const searchViewerNextBtn = document.getElementById('searchViewerNextBtn');
+    const searchSelectionBar = document.getElementById('searchSelectionBar');
+    const searchSelectedCount = document.getElementById('searchSelectedCount');
+    const searchCancelSelectBtn = document.getElementById('searchCancelSelectBtn');
+    const searchDownloadSelectBtn = document.getElementById('searchDownloadSelectBtn');
 
-    let selectionMode = false;
-    const selectedIds = new Set();
     const likePendingIds = new Set();
     let loading = false;
     let hasMore = canInfinite;
@@ -66,8 +72,17 @@ document.addEventListener('DOMContentLoaded', () => {
         columns: isSearchMode ? '3' : '1',
         sort: 'uploaded_desc',
         scrollTop: 0,
-        selectedAlbum: isSearchMode ? null : '전체'
+        selectedAlbum: isSearchMode ? null : '전체',
+        searchMode: 'feed'
     };
+    let photoViewerItems = [];
+    let photoViewerIndex = 0;
+    let longPressTimer = null;
+    let longPressTriggered = false;
+    const selectedPhotoIds = new Set();
+    let selectingPhotoMode = false;
+    let searchViewerHistoryActive = false;
+    let commentSheetHistoryActive = false;
 
     const isAlbumPickerMode = () => isSearchMode && state.selectedAlbum === null;
 
@@ -133,12 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const getMediaBadges = () => grid.querySelectorAll('.media-badge');
     const getNewBadges = () => grid.querySelectorAll('.new-badge');
 
-    const updateSelectionUI = () => {
-        if (!selectedCountText || !mobileSelectionBar) return;
-        selectedCountText.textContent = String(selectedIds.size);
-        mobileSelectionBar.hidden = !selectionMode;
-    };
-
     const updateBadgeLabels = (columns) => {
         const shortMode = columns === '3' || columns === '5';
         getMediaBadges().forEach((badge) => {
@@ -156,28 +165,12 @@ document.addEventListener('DOMContentLoaded', () => {
         grid.classList.add(`columns-${columns}`);
         colButtons.forEach((b) => b.classList.toggle('is-active', b.dataset.columns === columns));
         updateBadgeLabels(columns);
-    };
-
-    const clearSelectionMode = () => {
-        selectionMode = false;
-        selectedIds.clear();
-        getCards().forEach((card) => card.classList.remove('is-selected'));
-        updateSelectionUI();
-    };
-
-    const toggleCardSelection = (card) => {
-        const id = card.dataset.itemId;
-        if (selectedIds.has(id)) {
-            selectedIds.delete(id);
-            card.classList.remove('is-selected');
-        } else {
-            if (selectedIds.size >= MAX_SELECTION_COUNT) return window.alert(`최대 ${MAX_SELECTION_COUNT}개까지 선택할 수 있습니다.`);
-            selectedIds.add(id);
-            card.classList.add('is-selected');
-        }
-        if (selectedIds.size === 0) return clearSelectionMode();
-        selectionMode = true;
-        updateSelectionUI();
+        const compact = columns === '3' || columns === '5';
+        getCards().forEach((card) => {
+            card.classList.toggle('compact-card', compact && state.searchMode === 'feed');
+            const countNode = card.querySelector('.compact-batch-count');
+            if (countNode) countNode.hidden = !(compact && state.searchMode === 'feed');
+        });
     };
 
     const saveFeedState = () => {
@@ -203,6 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button type="button" class="back-album-btn" aria-label="앨범 선택으로 돌아가기">
                 <span class="thumb-link back-thumb" aria-hidden="true">
                     <span class="back-album-icon">↩</span>
+                    <span class="back-thumb-label">이전</span>
                 </span>
                 <div class="feed-meta back-meta">
                     <h2>이전</h2>
@@ -218,20 +212,38 @@ document.addEventListener('DOMContentLoaded', () => {
         grid.insertAdjacentHTML('afterbegin', buildBackCardHtml());
     };
 
+    const updateAlbumPickerCountLabels = () => {
+        if (!albumPickerGrid) return;
+        const isPhotoSearchMode = state.searchMode === 'photo';
+        albumPickerGrid.querySelectorAll('.album-picker-card').forEach((card) => {
+            const countLabel = card.querySelector('[data-album-count-label]');
+            if (!countLabel) return;
+            if (isPhotoSearchMode) {
+                countLabel.textContent = `사진 ${card.dataset.photoCount || 0}개 영상 ${card.dataset.videoCount || 0}개`;
+                return;
+            }
+            countLabel.textContent = `${card.dataset.feedCount || 0}개의 피드`;
+        });
+    };
+
     const enterAlbumPicker = () => {
         if (!isSearchMode) return;
         state.selectedAlbum = null;
-        clearSelectionMode();
         resetSearchFilters();
+        selectingPhotoMode = false;
+        selectedPhotoIds.clear();
         if (grid) grid.innerHTML = '';
         updateCountUI(0, 0);
         hasMore = false;
         page = 1;
         if (albumPickerSection) albumPickerSection.hidden = false;
         if (selectedAlbumHeader) selectedAlbumHeader.hidden = true;
+        if (searchModeTabs) searchModeTabs.hidden = true;
         if (floatingHead) floatingHead.hidden = true;
         if (controlPanel) controlPanel.hidden = true;
         if (feedEndMessage) feedEndMessage.hidden = true;
+        if (searchSelectionBar) searchSelectionBar.hidden = true;
+        updateAlbumPickerCountLabels();
     };
 
     const enterAlbumView = async (albumName) => {
@@ -240,8 +252,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedAlbumTitle) selectedAlbumTitle.textContent = state.selectedAlbum;
         if (albumPickerSection) albumPickerSection.hidden = true;
         if (selectedAlbumHeader) selectedAlbumHeader.hidden = false;
+        if (searchModeTabs) searchModeTabs.hidden = false;
         if (floatingHead) floatingHead.hidden = false;
         if (controlPanel) controlPanel.hidden = false;
+        selectingPhotoMode = false;
+        selectedPhotoIds.clear();
+        if (searchSelectedCount) searchSelectedCount.textContent = '0';
+        if (searchSelectionBar) searchSelectionBar.hidden = true;
         resetSearchFilters();
         await reloadFromFirstPage();
     };
@@ -249,56 +266,117 @@ document.addEventListener('DOMContentLoaded', () => {
     const isActionElement = (target) => Boolean(target.closest('[data-action], button, input, textarea, select, .modal-close-btn'));
 
     const handleCardClick = (event, card) => {
-        const detailUrl = card.dataset.detailUrl;
-        if (!detailUrl) return;
-        if (isActionElement(event.target)) return;
-
-        if (selectionMode) {
+        if (isSearchMode && state.searchMode === 'photo') {
             event.preventDefault();
-            toggleCardSelection(card);
-            return;
-        }
-
-        if (isFeedMode) saveFeedState();
-        window.location.href = detailUrl;
-    };
-
-    const bindCardEvents = (card) => {
-        let longPressTimer;
-        let longPressTriggered = false;
-        let suppressContextMenuUntil = 0;
-
-        card.addEventListener('contextmenu', (event) => {
             if (isActionElement(event.target)) return;
-            if (Date.now() < suppressContextMenuUntil) {
-                event.preventDefault();
-                return;
-            }
-            event.preventDefault();
-            toggleCardSelection(card);
-        });
-
-        card.addEventListener('touchstart', (event) => {
-            if (isActionElement(event.target)) return;
-            longPressTriggered = false;
-            longPressTimer = setTimeout(() => {
-                longPressTriggered = true;
-                suppressContextMenuUntil = Date.now() + 800;
-                toggleCardSelection(card);
-            }, 500);
-        }, { passive: true });
-
-        card.addEventListener('touchmove', () => clearTimeout(longPressTimer), { passive: true });
-        card.addEventListener('touchend', () => clearTimeout(longPressTimer));
-
-        card.addEventListener('click', (event) => {
             if (longPressTriggered) {
                 event.preventDefault();
                 longPressTriggered = false;
                 return;
             }
+            if (selectingPhotoMode) {
+                event.preventDefault();
+                togglePhotoSelect(card);
+                return;
+            }
+            const mediaId = card.dataset.mediaId;
+            const rawBatchItems = card.dataset.batchItems || '';
+            let items = [];
+            try {
+                items = JSON.parse(decodeURIComponent(rawBatchItems));
+            } catch (_) {
+                items = [];
+            }
+            if (!Array.isArray(items) || items.length === 0) return;
+            const currentIndex = Math.max(0, items.findIndex((item) => String(item.mediaId) === String(mediaId)));
+            openSearchViewer(items, currentIndex);
+            return;
+        }
+        const detailUrl = card.dataset.detailUrl;
+        if (!detailUrl) return;
+        if (isActionElement(event.target)) return;
+
+        if (isFeedMode) saveFeedState();
+        window.location.href = detailUrl;
+    };
+
+    const initCardSlider = (card) => {
+        const slider = card.querySelector('[data-slider]');
+        if (!slider) return;
+        const track = slider.querySelector('[data-slider-track]');
+        const slides = Array.from(slider.querySelectorAll('.feed-slide'));
+        const counter = slider.querySelector('[data-slide-counter]');
+        if (!track || slides.length <= 1) return;
+
+        let currentIndex = 0;
+        const moveTo = (nextIndex) => {
+            const safeIndex = (nextIndex + slides.length) % slides.length;
+            currentIndex = safeIndex;
+            track.style.transform = `translateX(-${safeIndex * 100}%)`;
+            if (counter) counter.textContent = `${safeIndex + 1} / ${slides.length}`;
+        };
+
+        slider.querySelector('[data-action="slide-prev"]')?.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            moveTo(currentIndex - 1);
+        });
+        slider.querySelector('[data-action="slide-next"]')?.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            moveTo(currentIndex + 1);
+        });
+
+        let touchStartX = null;
+        let touchStartY = null;
+        slider.addEventListener('touchstart', (event) => {
+            touchStartX = event.changedTouches?.[0]?.clientX ?? null;
+            touchStartY = event.changedTouches?.[0]?.clientY ?? null;
+        }, { passive: true });
+        slider.addEventListener('touchend', (event) => {
+            if (touchStartX == null || touchStartY == null) return;
+            const endX = event.changedTouches?.[0]?.clientX ?? touchStartX;
+            const endY = event.changedTouches?.[0]?.clientY ?? touchStartY;
+            const delta = endX - touchStartX;
+            const deltaY = endY - touchStartY;
+            touchStartX = null;
+            touchStartY = null;
+            if (Math.abs(delta) < 30) return;
+            if (Math.abs(delta) <= Math.abs(deltaY)) return;
+            moveTo(delta > 0 ? currentIndex - 1 : currentIndex + 1);
+        }, { passive: true });
+
+        moveTo(0);
+    };
+
+    const bindCardEvents = (card) => {
+        if (!(isSearchMode && state.searchMode === 'photo')) {
+            initCardSlider(card);
+        }
+        card.addEventListener('click', (event) => {
             handleCardClick(event, card);
         });
+
+        if (isSearchMode && state.searchMode === 'photo') {
+            card.addEventListener('contextmenu', (event) => {
+                event.preventDefault();
+            });
+            card.addEventListener('touchstart', () => {
+                longPressTriggered = false;
+                longPressTimer = window.setTimeout(() => {
+                    longPressTriggered = true;
+                    selectingPhotoMode = true;
+                    togglePhotoSelect(card);
+                }, 500);
+            }, { passive: true });
+            card.addEventListener('touchmove', () => {
+                if (longPressTimer) window.clearTimeout(longPressTimer);
+            }, { passive: true });
+            card.addEventListener('touchend', () => {
+                if (longPressTimer) window.clearTimeout(longPressTimer);
+            }, { passive: true });
+            return;
+        }
 
         card.querySelectorAll('[data-action="like-toggle"]').forEach((button) => {
             button.addEventListener('click', (event) => {
@@ -316,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = card.dataset.detailUrl;
                 return;
             }
-            openCommentSheet(card.dataset.itemId);
+            openCommentSheet(card.dataset.batchId);
         });
     };
 
@@ -324,6 +402,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const params = new URLSearchParams();
         params.set('page', String(page));
         params.set('size', String(pageSize));
+        if (isSearchMode) {
+            params.set('viewMode', state.searchMode);
+        }
         if (isSearchMode) {
             if (state.selectedAlbum === null) return params;
             if (state.selectedAlbum !== '전체') params.set('album', state.selectedAlbum);
@@ -347,18 +428,36 @@ document.addEventListener('DOMContentLoaded', () => {
         const title = item.title || '(제목 없음)';
         const likedClass = item.likedByMe ? 'is-liked' : '';
         const likedIcon = item.likedByMe ? '❤' : '♡';
+        const mediaItems = Array.isArray(item.mediaItems) && item.mediaItems.length > 0
+            ? item.mediaItems
+            : [{ mediaType: item.mediaType, smallUrl: item.thumbnailUrl, previewUrl: item.previewUrl }];
 
-        const mediaHtml = item.mediaType === 'video'
-            ? `<video class="feed-preview-video" src="${item.previewUrl || ''}" poster="${item.thumbnailUrl || ''}" muted playsinline loop preload="none" data-has-preview="${item.previewUrl ? 'true' : 'false'}"></video>`
-            : `<img src="${item.thumbnailUrl}" alt="${escapeHtml(title)} 썸네일" loading="lazy">`;
+        const slideHtml = mediaItems.map((media) => {
+            if (media.mediaType === 'video') {
+                return `<div class="feed-slide"><video class="feed-preview-video" src="${media.previewUrl || ''}" poster="${media.smallUrl || item.thumbnailUrl || ''}" muted playsinline loop preload="none" data-has-preview="${media.previewUrl ? 'true' : 'false'}"></video></div>`;
+            }
+            return `<div class="feed-slide"><img src="${media.smallUrl || item.thumbnailUrl || ''}" alt="${escapeHtml(title)} 썸네일" loading="lazy"></div>`;
+        }).join('');
 
-        return `<article class="feed-card" data-media-type="${item.mediaType}" data-item-id="${item.id}" data-detail-url="/feed/${item.id}">
+        const sliderControl = mediaItems.length > 1
+            ? `<button type="button" class="slider-nav prev" data-action="slide-prev" aria-label="이전 미디어">‹</button>
+               <button type="button" class="slider-nav next" data-action="slide-next" aria-label="다음 미디어">›</button>
+               <span class="slide-counter" data-slide-counter>1 / ${mediaItems.length}</span>`
+            : '';
+
+        const compactBadge = mediaItems.length > 1 ? `<span class="compact-batch-count" hidden>+${mediaItems.length - 1}</span>` : '';
+        return `<article class="feed-card" data-media-type="${item.mediaType}" data-batch-id="${item.id}" data-detail-url="/feed/${item.id}">
             <a class="thumb-link" href="/feed/${item.id}" aria-label="${escapeHtml(title)} 상세보기">
-                ${mediaHtml}
+                <div class="feed-slider" data-slider>
+                    <div class="feed-slider-track" data-slider-track>
+                        ${slideHtml}
+                    </div>
+                    ${sliderControl}
+                </div>
                 <span class="media-badge ${item.mediaType}" data-full-text="${mediaLabel}" data-short-text="${item.mediaType === 'video' ? 'V' : 'P'}">${mediaLabel}</span>
                 ${item.recent ? `<span class="new-badge" data-full-text="New" data-short-text="N">New</span>` : ""}
-                <span class="select-check" aria-hidden="true">✔</span>
                 <div class="overlay-meta overlay-bottom"><p>${escapeHtml(item.author || '')}</p></div>
+                ${compactBadge}
             </a>
             <button type="button" class="like-toggle-btn ${likedClass}" data-action="like-toggle" aria-label="좋아요 토글" aria-pressed="${item.likedByMe}"><span class="heart">${likedIcon}</span></button>
             <div class="feed-meta">
@@ -371,6 +470,70 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
         </article>`;
+    };
+
+    const buildPhotoCardHtml = (item) => {
+        const batchItems = encodeURIComponent(JSON.stringify(item.batchMediaItems || []));
+        const moreCount = Math.max(0, Number(item.batchMediaCount || 0) - 1);
+        return `<article class="feed-card photo-item-card" data-media-id="${item.id}" data-batch-id="${item.batchId}" data-batch-items='${batchItems}'>
+            <a class="thumb-link" href="javascript:void(0)" aria-label="${escapeHtml(item.title || '')}">
+                <img src="${item.smallUrl || ''}" alt="${escapeHtml(item.title || '')}" loading="lazy">
+                ${moreCount > 0 ? `<span class="compact-batch-count">+${moreCount}</span>` : ''}
+            </a>
+        </article>`;
+    };
+
+    const renderSearchViewer = () => {
+        if (!searchViewerContent || photoViewerItems.length === 0) return;
+        const item = photoViewerItems[photoViewerIndex];
+        const mediaUrl = item.mediumUrl || item.smallUrl || '';
+        const html = item.mediaType === 'video'
+            ? `<video src="${mediaUrl}" controls autoplay playsinline></video>`
+            : `<img src="${mediaUrl}" alt="viewer">`;
+        searchViewerContent.innerHTML = html;
+        if (searchViewerCurrent) searchViewerCurrent.textContent = String(photoViewerIndex + 1);
+        if (searchViewerTotal) searchViewerTotal.textContent = String(photoViewerItems.length);
+        if (searchViewerDownloadBtn) searchViewerDownloadBtn.href = `/feed/media/${item.mediaId}/download`;
+    };
+
+    const openSearchViewer = (items, index) => {
+        photoViewerItems = items || [];
+        photoViewerIndex = Math.max(0, index || 0);
+        if (!searchViewerBackdrop || photoViewerItems.length === 0) return;
+        if (!searchViewerHistoryActive) {
+            history.pushState({ searchViewerOpen: true }, '', window.location.href);
+            searchViewerHistoryActive = true;
+        }
+        searchViewerBackdrop.hidden = false;
+        document.body.classList.add('modal-open');
+        renderSearchViewer();
+    };
+
+    const closeSearchViewer = () => {
+        if (!searchViewerBackdrop) return;
+        if (searchViewerHistoryActive) {
+            history.back();
+            return;
+        }
+        closeSearchViewerFromPopState();
+    };
+
+    const closeSearchViewerFromPopState = () => {
+        if (!searchViewerBackdrop) return;
+        searchViewerBackdrop.hidden = true;
+        document.body.classList.remove('modal-open');
+        searchViewerHistoryActive = false;
+    };
+
+    const togglePhotoSelect = (card) => {
+        const mediaId = card.dataset.mediaId;
+        if (!mediaId) return;
+        if (selectedPhotoIds.has(mediaId)) selectedPhotoIds.delete(mediaId);
+        else selectedPhotoIds.add(mediaId);
+        if (selectedPhotoIds.size === 0) selectingPhotoMode = false;
+        card.classList.toggle('is-selected', selectedPhotoIds.has(mediaId));
+        if (searchSelectedCount) searchSelectedCount.textContent = String(selectedPhotoIds.size);
+        if (searchSelectionBar) searchSelectionBar.hidden = !selectingPhotoMode;
     };
 
     const escapeHtml = (raw) => (raw || '')
@@ -395,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateCardStats = (mediaId, stats) => {
-        const card = grid.querySelector(`.feed-card[data-item-id="${mediaId}"]`);
+        const card = grid.querySelector(`.feed-card[data-batch-id="${mediaId}"]`);
         if (!card) return;
 
         if (typeof stats.likeCount === 'number') {
@@ -417,7 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const toggleLike = async (card) => {
-        const mediaId = card.dataset.itemId;
+        const mediaId = card.dataset.batchId;
         if (!mediaId || likePendingIds.has(mediaId)) return;
 
         const topLikeButton = card.querySelector('.like-toggle-btn');
@@ -486,6 +649,10 @@ document.addEventListener('DOMContentLoaded', () => {
         commentSheetBody.innerHTML = '<p class="comment-empty">댓글을 불러오는 중...</p>';
         commentSheetBackdrop.hidden = false;
         document.body.classList.add('modal-open');
+        if (!commentSheetHistoryActive) {
+            history.pushState({ commentSheetOpen: true }, '', window.location.href);
+            commentSheetHistoryActive = true;
+        }
 
         try {
             const response = await fetch(`/api/feed/${mediaId}/comments`);
@@ -507,6 +674,14 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const closeCommentSheet = () => {
+        if (commentSheetHistoryActive) {
+            history.back();
+            return;
+        }
+        closeCommentSheetFromPopState();
+    };
+
+    const closeCommentSheetFromPopState = () => {
         if (!commentSheetBackdrop) return;
         commentSheetBackdrop.hidden = true;
         document.body.classList.remove('modal-open');
@@ -515,6 +690,7 @@ document.addEventListener('DOMContentLoaded', () => {
         commentReplyCancelBtn.hidden = true;
         commentSheetInput.value = '';
         commentSheetInput.placeholder = '댓글을 입력해 주세요';
+        commentSheetHistoryActive = false;
     };
 
     const loadNextPage = async () => {
@@ -535,9 +711,11 @@ document.addEventListener('DOMContentLoaded', () => {
             hasMore = Boolean(payload.hasMore);
             if (items.length > 0) {
                 if (feedEndMessage) feedEndMessage.hidden = true;
-                grid.insertAdjacentHTML('beforeend', items.map(buildCardHtml).join(''));
+                const cardBuilder = isSearchMode && state.searchMode === 'photo' ? buildPhotoCardHtml : buildCardHtml;
+                grid.classList.toggle('is-photo-mode', isSearchMode && state.searchMode === 'photo');
+                grid.insertAdjacentHTML('beforeend', items.map(cardBuilder).join(''));
                 Array.from(grid.querySelectorAll('.feed-card')).slice(-items.length).forEach(bindCardEvents);
-                updateBadgeLabels(state.columns);
+                applyColumn(state.columns);
                 initPreviewAutoplay();
                 page += 1;
             }
@@ -557,7 +735,6 @@ document.addEventListener('DOMContentLoaded', () => {
         hasMore = true;
         if (feedEndMessage) feedEndMessage.hidden = true;
         grid.innerHTML = '';
-        clearSelectionMode();
         await loadNextPage();
         page = 2;
         if (isFeedMode) saveFeedState();
@@ -599,6 +776,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     colButtons.forEach((button) => button.addEventListener('click', () => applyColumn(button.dataset.columns)));
+    searchModeButtons.forEach((button) => button.addEventListener('click', () => {
+        searchModeButtons.forEach((b) => b.classList.remove('is-active'));
+        button.classList.add('is-active');
+        state.searchMode = button.dataset.searchMode || 'feed';
+        selectingPhotoMode = false;
+        selectedPhotoIds.clear();
+        if (searchSelectionBar) searchSelectionBar.hidden = true;
+        updateAlbumPickerCountLabels();
+        reloadFromFirstPage();
+    }));
     albumFilter?.addEventListener('change', reloadFromFirstPage);
     authorFilter?.addEventListener('change', reloadFromFirstPage);
     sortOption?.addEventListener('change', () => {
@@ -609,138 +796,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTagSummary();
         reloadFromFirstPage();
     }));
-
-    cancelSelectionBtn?.addEventListener('click', clearSelectionMode);
-
-    const debugDownloadState = (stage, extra = {}) => {
-        console.debug('[download-debug]', stage, {
-            selectionMode,
-            selectedCount: selectedIds.size,
-            overlayVisible: Boolean(document.getElementById('downloadLockOverlay') && !document.getElementById('downloadLockOverlay').hidden),
-            bodyDownloadLock: document.body.classList.contains('download-lock-active'),
-            buttonDisabled: Boolean(downloadSelectedBtn?.disabled),
-            ...extra
-        });
-    };
-
-    const setDownloadButtonLoading = (isLoading) => {
-        if (!downloadSelectedBtn) return;
-        downloadSelectedBtn.disabled = isLoading;
-        downloadSelectedBtn.textContent = isLoading ? '다운로드 준비중...' : '다운로드';
-    };
-
-    const ensureDownloadOverlay = () => {
-        let overlay = document.getElementById('downloadLockOverlay');
-        if (overlay) return overlay;
-
-        overlay = document.createElement('div');
-        overlay.id = 'downloadLockOverlay';
-        overlay.className = 'download-lock-overlay';
-        overlay.hidden = true;
-        overlay.innerHTML = `
-            <section class="download-lock-panel" role="alert" aria-live="polite">
-                <h2 class="download-lock-title">다운로드 준비중</h2>
-                <p class="download-lock-message" id="downloadLockMessage">파일을 준비하고 있습니다...</p>
-                <progress class="download-lock-progress" id="downloadLockProgress" max="100" value="0"></progress>
-            </section>
-        `;
-        document.body.appendChild(overlay);
-        return overlay;
-    };
-
-    const setDownloadLock = (active, message = '파일을 준비하고 있습니다...', progressPercent = null) => {
-        const overlay = ensureDownloadOverlay();
-        const messageEl = overlay.querySelector('#downloadLockMessage');
-        const progressEl = overlay.querySelector('#downloadLockProgress');
-
-        document.body.classList.toggle('download-lock-active', active);
-        overlay.hidden = !active;
-        if (messageEl) messageEl.textContent = message;
-
-        if (progressEl) {
-            if (typeof progressPercent === 'number') {
-                progressEl.removeAttribute('indeterminate');
-                progressEl.value = Math.max(0, Math.min(100, progressPercent));
-            } else {
-                progressEl.removeAttribute('value');
-            }
-        }
-    };
-
-    const resetDownloadUiState = (reason) => {
-        debugDownloadState('multi-download-ui-reset-before', { reason });
-        setDownloadLock(false);
-        setDownloadButtonLoading(false);
-        clearSelectionMode();
-
-        const overlay = document.getElementById('downloadLockOverlay');
-        if (overlay) {
-            overlay.hidden = true;
-        }
-        const temporaryLinks = document.querySelectorAll('a[download="memorybox_download.zip"]');
-        temporaryLinks.forEach((link) => link.remove());
-        document.body.classList.remove('download-lock-active');
-        document.body.style.removeProperty('pointer-events');
-        debugDownloadState('multi-download-ui-reset-after', { reason, removedTempLinkCount: temporaryLinks.length });
-    };
-
-    const downloadBlobWithProgress = async (response) => {
-        if (!response.body) {
-            return await response.blob();
-        }
-        const contentLength = Number(response.headers.get('Content-Length') || 0);
-        const reader = response.body.getReader();
-        const chunks = [];
-        let received = 0;
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            if (!value) continue;
-            chunks.push(value);
-            received += value.length;
-            if (contentLength > 0) {
-                const percent = (received / contentLength) * 100;
-                setDownloadLock(true, `다운로드 중... ${Math.floor(percent)}%`, percent);
-            } else {
-                setDownloadLock(true, `다운로드 중... ${Math.floor(received / 1024)}KB`);
-            }
-        }
-        return new Blob(chunks);
-    };
-
-    downloadSelectedBtn?.addEventListener('click', async (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        if (selectedIds.size === 0) return window.alert('다운로드할 파일을 먼저 선택해 주세요.');
-        debugDownloadState('multi-download-start');
-        setDownloadButtonLoading(true);
-        setDownloadLock(true, 'ZIP 파일을 준비하고 있습니다...');
-        try {
-            const response = await fetch(DOWNLOAD_API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mediaIds: Array.from(selectedIds, (id) => Number(id)) })
-            });
-            if (!response.ok) throw new Error();
-            const blob = await downloadBlobWithProgress(response);
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'memorybox_download.zip';
-            document.body.appendChild(link);
-            debugDownloadState('multi-download-before-trigger', { downloadUrl: link.href });
-            link.click();
-            link.remove();
-            URL.revokeObjectURL(url);
-            debugDownloadState('multi-download-success');
-        } catch (e) {
-            debugDownloadState('multi-download-fail', { error: e?.message || String(e) });
-            window.alert('다중 다운로드 처리 중 오류가 발생했습니다.');
-        } finally {
-            resetDownloadUiState('finally');
-            debugDownloadState('multi-download-finally');
-        }
-    });
 
     albumPickerGrid?.addEventListener('click', (event) => {
         const card = event.target.closest('.album-picker-card');
@@ -1102,7 +1157,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     getCards().forEach(bindCardEvents);
-    updateSelectionUI();
     updateCountUI(getCards().length, Number(totalCountText?.textContent || getCards().length));
     updateTagSummary();
     applyColumn(state.columns);
@@ -1113,4 +1167,103 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isSearchMode) enterAlbumPicker();
     initCalendarWidget();
     if (isFeedMode) window.addEventListener('beforeunload', saveFeedState);
+
+    searchViewerCloseBtn?.addEventListener('click', closeSearchViewer);
+    searchViewerBackdrop?.addEventListener('click', (event) => {
+        if (event.target === searchViewerBackdrop) closeSearchViewer();
+    });
+    window.addEventListener('popstate', () => {
+        if (commentSheetBackdrop && !commentSheetBackdrop.hidden) {
+            closeCommentSheetFromPopState();
+            return;
+        }
+        if (searchViewerBackdrop && !searchViewerBackdrop.hidden) {
+            closeSearchViewerFromPopState();
+        }
+    });
+    searchViewerPrevBtn?.addEventListener('click', () => {
+        if (photoViewerItems.length === 0) return;
+        photoViewerIndex = (photoViewerIndex - 1 + photoViewerItems.length) % photoViewerItems.length;
+        renderSearchViewer();
+    });
+    searchViewerNextBtn?.addEventListener('click', () => {
+        if (photoViewerItems.length === 0) return;
+        photoViewerIndex = (photoViewerIndex + 1) % photoViewerItems.length;
+        renderSearchViewer();
+    });
+    searchCancelSelectBtn?.addEventListener('click', () => {
+        selectingPhotoMode = false;
+        selectedPhotoIds.clear();
+        getCards().forEach((card) => card.classList.remove('is-selected'));
+        if (searchSelectionBar) searchSelectionBar.hidden = true;
+        if (searchSelectedCount) searchSelectedCount.textContent = '0';
+    });
+    const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+    const triggerBrowserDownload = (url) => {
+        if (!url) return;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '';
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        window.setTimeout(() => a.remove(), 1000);
+    };
+
+    const withPreparingAlert = async (job) => {
+        const startedAt = Date.now();
+        if (window.Swal && typeof window.Swal.fire === 'function') {
+            window.Swal.fire({
+                title: '압축 파일 준비 중...',
+                text: '파일을 묶는 중입니다. 잠시만 기다려주세요.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => window.Swal.showLoading()
+            });
+        }
+        try {
+            return await job();
+        } finally {
+            const elapsed = Date.now() - startedAt;
+            if (elapsed < 300) {
+                await wait(300 - elapsed);
+            }
+            if (window.Swal && typeof window.Swal.close === 'function') {
+                window.Swal.close();
+            }
+        }
+    };
+
+    searchDownloadSelectBtn?.addEventListener('click', async () => {
+        const mediaIds = Array.from(selectedPhotoIds, (value) => Number(value));
+        if (mediaIds.length === 0) return;
+        searchDownloadSelectBtn.disabled = true;
+        if (mediaIds.length === 1) {
+            triggerBrowserDownload(`/feed/media/${mediaIds[0]}/download`);
+            searchDownloadSelectBtn.disabled = false;
+            return;
+        }
+        try {
+            const payload = await withPreparingAlert(async () => {
+                const res = await fetch('/download/zip/prepare', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({mediaIds})
+                });
+                if (!res.ok) throw new Error('압축 파일 생성 실패');
+                return res.json();
+            });
+            selectingPhotoMode = false;
+            selectedPhotoIds.clear();
+            getCards().forEach((card) => card.classList.remove('is-selected'));
+            if (searchSelectionBar) searchSelectionBar.hidden = true;
+            if (searchSelectedCount) searchSelectedCount.textContent = '0';
+            triggerBrowserDownload(payload.downloadUrl);
+        } catch (error) {
+            window.alert('압축 파일 생성 실패');
+        } finally {
+            searchDownloadSelectBtn.disabled = false;
+        }
+    });
 });

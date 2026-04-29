@@ -10,13 +10,25 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface UploadMapper {
 
+    Long selectNextMediaBatchId();
+
     Long selectNextMediaItemId();
 
     Long selectNextMediaVariantId();
 
     Long selectNextTagId();
 
-    Long selectNextMediaTagId();
+    int insertMediaBatch(@Param("batchId") Long batchId,
+                         @Param("userId") Long userId,
+                         @Param("albumId") Long albumId,
+                         @Param("title") String title,
+                         @Param("takenAt") java.time.LocalDateTime takenAt);
+
+    int updateBatchCoverAndCounts(@Param("batchId") Long batchId,
+                                  @Param("coverMediaId") Long coverMediaId,
+                                  @Param("mediaCount") int mediaCount,
+                                  @Param("imageCount") int imageCount,
+                                  @Param("videoCount") int videoCount);
 
     int insertMediaItem(MediaItem mediaItem);
 
@@ -33,7 +45,6 @@ public interface UploadMapper {
 
     int insertTag(Tag tag);
 
-    int insertMediaTag(@Param("mdId") Long mdId,
-                       @Param("mediaId") Long mediaId,
+    int insertBatchTag(@Param("batchId") Long batchId,
                        @Param("tagId") Long tagId);
 }

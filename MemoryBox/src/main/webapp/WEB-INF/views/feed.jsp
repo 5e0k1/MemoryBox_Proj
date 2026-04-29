@@ -10,6 +10,7 @@
     <%@ include file="/WEB-INF/views/common/head-icons.jspf" %>
     <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/feed.css">
+    <link rel="stylesheet" href="/css/sweetalert2/sweetalert2.min.css">
 </head>
 <body class="page page-feed" data-mode="${empty mode ? 'feed' : mode}">
 <main class="feed-layout with-bottom-nav">
@@ -151,6 +152,11 @@
     </c:if>
 
     <c:if test="${mode eq 'search'}">
+        <section class="search-mode-tabs" id="searchModeTabs" hidden>
+            <button type="button" class="search-mode-btn is-active" data-search-mode="feed">피드</button>
+            <button type="button" class="search-mode-btn" data-search-mode="photo">사진</button>
+        </section>
+
         <section class="album-picker-section" id="albumPickerSection">
             <header class="album-picker-header">
                 <h2>앨범 선택</h2>
@@ -158,12 +164,16 @@
             </header>
             <div class="album-picker-grid" id="albumPickerGrid">
                 <c:forEach var="album" items="${albums}">
-                    <button type="button" class="album-picker-card" data-album-value="${album}" aria-label="${album} 앨범 보기">
+                    <button type="button" class="album-picker-card"
+                            data-album-value="${album}"
+                            data-feed-count="${empty albumFeedCounts[album] ? 0 : albumFeedCounts[album]}"
+                            data-photo-count="${empty albumPhotoCounts[album] ? 0 : albumPhotoCounts[album]}"
+                            data-video-count="${empty albumVideoCounts[album] ? 0 : albumVideoCounts[album]}"
+                            aria-label="${album} 앨범 보기">
                         <span class="album-picker-icon" aria-hidden="true">📁</span>
                         <span class="album-picker-name">${album}</span>
-                        <span class="album-picker-count">
-                            사진 ${empty albumPhotoCounts[album] ? 0 : albumPhotoCounts[album]}개
-                            영상 ${empty albumVideoCounts[album] ? 0 : albumVideoCounts[album]}개
+                        <span class="album-picker-count" data-album-count-label>
+                            <c:out value="${empty albumFeedCounts[album] ? 0 : albumFeedCounts[album]}"/>개의 피드
                         </span>
                     </button>
                 </c:forEach>
@@ -228,38 +238,64 @@
             </label>
         </div>
 
-        <div class="mobile-selection-bar" id="mobileSelectionBar" aria-live="polite" hidden>
-            <span><strong id="selectedCount">0</strong>개 선택됨</span>
-            <div class="selection-actions">
-                <button type="button" class="btn btn-secondary" id="cancelSelectionBtn">취소</button>
-                <button type="button" class="btn" id="downloadSelectedBtn">다운로드</button>
-            </div>
-        </div>
     </div>
 
     <section id="feedGrid" class="feed-grid columns-1" aria-live="polite">
         <c:if test="${mode ne 'search'}">
             <c:forEach var="item" items="${feedItems}">
-                <article class="feed-card" data-media-type="${item.mediaType}" data-item-id="${item.id}" data-detail-url="/feed/${item.id}">
+                <article class="feed-card" data-media-type="${item.mediaType}" data-batch-id="${item.id}" data-detail-url="/feed/${item.id}">
                     <a class="thumb-link" href="/feed/${item.id}" aria-label="${item.title} 상세보기">
                         <c:choose>
-                            <c:when test="${item.mediaType eq 'video'}">
-                                <video class="feed-preview-video"
-                                       src="${item.previewUrl}"
-                                       poster="${item.thumbnailUrl}"
-                                       muted
-                                       playsinline
-                                       loop
-                                       preload="none"
-                                       data-has-preview="${not empty item.previewUrl}"></video>
+                            <c:when test="${not empty item.mediaItems}">
+                                <div class="feed-slider" data-slider>
+                                    <div class="feed-slider-track" data-slider-track>
+                                        <c:forEach var="media" items="${item.mediaItems}" varStatus="status">
+                                            <div class="feed-slide" data-slide-index="${status.index}">
+                                                <c:choose>
+                                                    <c:when test="${media.mediaType eq 'video'}">
+                                                        <video class="feed-preview-video"
+                                                               src="${media.previewUrl}"
+                                                               poster="${media.smallUrl}"
+                                                               muted
+                                                               playsinline
+                                                               loop
+                                                               preload="none"
+                                                               data-has-preview="${not empty media.previewUrl}"></video>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <img src="${media.smallUrl}" alt="${item.title} 썸네일" loading="lazy">
+                                                    </c:otherwise>
+                                                </c:choose>
+                                            </div>
+                                        </c:forEach>
+                                    </div>
+                                    <c:if test="${fn:length(item.mediaItems) gt 1}">
+                                        <button type="button" class="slider-nav prev" data-action="slide-prev" aria-label="이전 미디어">‹</button>
+                                        <button type="button" class="slider-nav next" data-action="slide-next" aria-label="다음 미디어">›</button>
+                                        <span class="slide-counter" data-slide-counter>1 / ${fn:length(item.mediaItems)}</span>
+                                    </c:if>
+                                </div>
                             </c:when>
                             <c:otherwise>
-                                <img src="${item.thumbnailUrl}" alt="${item.title} 썸네일" loading="lazy">
+                                <c:choose>
+                                    <c:when test="${item.mediaType eq 'video'}">
+                                        <video class="feed-preview-video"
+                                               src="${item.previewUrl}"
+                                               poster="${item.thumbnailUrl}"
+                                               muted
+                                               playsinline
+                                               loop
+                                               preload="none"
+                                               data-has-preview="${not empty item.previewUrl}"></video>
+                                    </c:when>
+                                    <c:otherwise>
+                                        <img src="${item.thumbnailUrl}" alt="${item.title} 썸네일" loading="lazy">
+                                    </c:otherwise>
+                                </c:choose>
                             </c:otherwise>
                         </c:choose>
                         <span class="media-badge ${item.mediaType}" data-full-text="${item.mediaType eq 'video' ? 'Video' : 'Photo'}" data-short-text="${item.mediaType eq 'video' ? 'V' : 'P'}">${item.mediaType eq 'video' ? 'Video' : 'Photo'}</span>
                         <c:if test="${item.recent}"><span class="new-badge" data-full-text="New" data-short-text="N">New</span></c:if>
-                        <span class="select-check" aria-hidden="true">✔</span>
                         <div class="overlay-meta overlay-bottom"><p>${item.author}</p></div>
                     </a>
                     <button type="button" class="like-toggle-btn ${item.likedByMe ? 'is-liked' : ''}" data-action="like-toggle" aria-label="좋아요 토글" aria-pressed="${item.likedByMe}">
@@ -333,6 +369,30 @@
         </form>
     </section>
 </div>
+
+<c:if test="${mode eq 'search'}">
+    <div class="viewer-backdrop" id="searchViewerBackdrop" hidden>
+        <section class="viewer-panel">
+            <button type="button" class="viewer-close" id="searchViewerCloseBtn">✕</button>
+            <button type="button" class="viewer-nav prev" id="searchViewerPrevBtn">‹</button>
+            <button type="button" class="viewer-nav next" id="searchViewerNextBtn">›</button>
+            <div class="viewer-content" id="searchViewerContent"></div>
+            <div class="viewer-footer">
+                <span id="searchViewerCounter"><span id="searchViewerCurrent">1</span> / <span id="searchViewerTotal">1</span></span>
+                <a class="btn btn-secondary" id="searchViewerDownloadBtn" href="#">원본 다운로드</a>
+            </div>
+        </section>
+    </div>
+
+    <div class="selection-bar" id="searchSelectionBar" hidden>
+        <span><strong id="searchSelectedCount">0</strong>개 선택됨</span>
+        <div class="selection-actions">
+            <button type="button" class="btn btn-secondary" id="searchCancelSelectBtn">취소</button>
+            <button type="button" class="btn btn-secondary" id="searchDownloadSelectBtn">선택 다운로드</button>
+        </div>
+    </div>
+</c:if>
+<script src="/js/sweetalert2/sweetalert2.all.min.js"></script>
 <script src="/js/feed.js"></script>
 <script src="/js/push.js"></script>
 </body>

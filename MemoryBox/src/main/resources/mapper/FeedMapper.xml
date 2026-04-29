@@ -19,112 +19,81 @@
         <result column="tags_csv" property="tagsCsv"/>
     </resultMap>
 
+    <resultMap id="FeedMediaRowMap" type="com.hogudeul.memorybox.model.FeedMediaRow">
+        <id column="media_id" property="mediaId"/>
+        <result column="batch_id" property="batchId"/>
+        <result column="media_type" property="mediaType"/>
+        <result column="small_storage_key" property="smallStorageKey"/>
+        <result column="medium_storage_key" property="mediumStorageKey"/>
+        <result column="preview_storage_key" property="previewStorageKey"/>
+        <result column="original_file_name" property="originalFileName"/>
+        <result column="sort_order" property="sortOrder"/>
+    </resultMap>
+
+    <resultMap id="SearchMediaItemRowMap" type="com.hogudeul.memorybox.model.SearchMediaItemRow">
+        <id column="media_id" property="mediaId"/>
+        <result column="batch_id" property="batchId"/>
+        <result column="media_type" property="mediaType"/>
+        <result column="small_storage_key" property="smallStorageKey"/>
+        <result column="medium_storage_key" property="mediumStorageKey"/>
+        <result column="preview_storage_key" property="previewStorageKey"/>
+        <result column="original_file_name" property="originalFileName"/>
+        <result column="uploaded_at" property="uploadedAt"/>
+        <result column="taken_at" property="takenAt"/>
+        <result column="title" property="title"/>
+        <result column="display_name" property="displayName"/>
+        <result column="batch_media_count" property="batchMediaCount"/>
+    </resultMap>
+
     <sql id="FeedBaseFrom">
-        FROM MEDIA_ITEMS mi
-            LEFT JOIN MEDIA_VARIANT image_mv ON mi.media_id = image_mv.media_id AND image_mv.variant_type = 'SMALL'
-            LEFT JOIN MEDIA_VARIANT video_thumb_mv ON mi.media_id = video_thumb_mv.media_id AND video_thumb_mv.variant_type = 'THUMB'
-            LEFT JOIN MEDIA_VARIANT video_preview_mv ON mi.media_id = video_preview_mv.media_id AND video_preview_mv.variant_type = 'PREVIEW'
-            LEFT JOIN USER u ON mi.user_id = u.user_id
-            LEFT JOIN ALBUM a ON mi.album_id = a.album_id
-        WHERE mi.del_yn = 'N'
-          AND (
-            (mi.media_type = 'IMAGE' AND image_mv.variant_id IS NOT NULL)
-            OR (mi.media_type = 'VIDEO' AND video_thumb_mv.variant_id IS NOT NULL)
-          )
+        FROM MEDIA_BATCH mb
+                 JOIN MEDIA_ITEMS cover ON cover.media_id = mb.cover_media_id AND cover.del_yn = 'N'
+                 LEFT JOIN MEDIA_VARIANT image_mv ON cover.media_id = image_mv.media_id AND image_mv.variant_type = 'SMALL'
+                 LEFT JOIN MEDIA_VARIANT video_thumb_mv ON cover.media_id = video_thumb_mv.media_id AND video_thumb_mv.variant_type = 'THUMB'
+                 LEFT JOIN MEDIA_VARIANT video_preview_mv ON cover.media_id = video_preview_mv.media_id AND video_preview_mv.variant_type = 'PREVIEW'
+                 LEFT JOIN USER u ON mb.user_id = u.user_id
+                 LEFT JOIN ALBUM a ON mb.album_id = a.album_id
+        WHERE mb.del_yn = 'N'
           AND u.del_yn = 'N'
           AND a.del_yn = 'N'
     </sql>
 
     <sql id="FeedBaseWhere">
-        <if test="mediaType != null">
-            AND mi.media_type = #{mediaType}
-        </if>
-        <if test="author != null">
-            AND u.display_name = #{author}
-        </if>
-        <if test="album != null">
-            AND a.album_name = #{album}
-        </if>
+        <if test="mediaType != null">AND cover.media_type = #{mediaType}</if>
+        <if test="author != null">AND u.display_name = #{author}</if>
+        <if test="album != null">AND a.album_name = #{album}</if>
         <if test="tag != null">
             AND EXISTS (
-                SELECT 1
-                FROM MEDIA_TAG mt
-                         JOIN TAG t ON mt.tag_id = t.tag_id
-                WHERE mt.media_id = mi.media_id
-                  AND t.del_yn = 'N'
-                  AND t.tag_name = #{tag}
-            )
+            SELECT 1 FROM BATCH_TAG bt JOIN TAG t ON bt.tag_id=t.tag_id
+            WHERE bt.batch_id=mb.batch_id AND t.del_yn='N' AND t.tag_name=#{tag})
         </if>
         <if test="likedOnly and userId != null">
-            AND EXISTS (
-                SELECT 1
-                FROM MEDIA_LIKE ml2
-                WHERE ml2.media_id = mi.media_id
-                  AND ml2.user_id = #{userId}
-            )
+            AND EXISTS (SELECT 1 FROM BATCH_LIKE bl2 WHERE bl2.batch_id = mb.batch_id AND bl2.user_id = #{userId})
         </if>
-        <if test="mineOnly and userId != null">
-            AND mi.user_id = #{userId}
-        </if>
+        <if test="mineOnly and userId != null">AND mb.user_id = #{userId}</if>
     </sql>
 
     <select id="findFeedRows" resultMap="FeedRowMap">
-        SELECT mi.media_id,
-               mi.media_type,
-               mi.user_id,
-               mi.title,
-               mi.uploaded_at,
-               mi.taken_at,
+        SELECT mb.batch_id AS media_id,
+               cover.media_type,
+               mb.user_id,
+               COALESCE(mb.title, cover.title) AS title,
+               mb.uploaded_at,
+               mb.taken_at,
                a.album_name,
                u.display_name,
-               CASE WHEN mi.media_type = 'VIDEO'
-                   THEN video_thumb_mv.storage_key
-                   ELSE image_mv.storage_key END AS thumbnail_storage_key,
+               CASE WHEN cover.media_type='VIDEO' THEN video_thumb_mv.storage_key ELSE image_mv.storage_key END AS thumbnail_storage_key,
                video_preview_mv.storage_key AS preview_storage_key,
-               (
-                   SELECT COUNT(*)
-                   FROM MEDIA_LIKE ml
-                   WHERE ml.media_id = mi.media_id
-               ) AS like_count,
-               (
-                   SELECT COUNT(*)
-                   FROM COMMENT c
-                   WHERE c.media_id = mi.media_id
-                     AND c.del_yn = 'N'
-               ) AS comment_count,
-               (
-                   SELECT COUNT(*)
-                   FROM MEDIA_LIKE mlm
-                   WHERE mlm.media_id = mi.media_id
-                     AND mlm.user_id = #{userId}
-               ) AS liked_by_me,
-               (
-                   SELECT GROUP_CONCAT(CONCAT(COALESCE(t.tag_scope, 'N'), '|', t.tag_name)
-                                       ORDER BY CASE WHEN t.tag_scope = 'P' THEN 0 ELSE 1 END, t.tag_name SEPARATOR ',')
-                   FROM MEDIA_TAG mt
-                       JOIN TAG t ON mt.tag_id = t.tag_id
-                   WHERE mt.media_id = mi.media_id
-                     AND t.del_yn = 'N'
-               ) AS tags_csv
+               (SELECT COUNT(*) FROM BATCH_LIKE bl WHERE bl.batch_id = mb.batch_id) AS like_count,
+               (SELECT COUNT(*) FROM COMMENT c WHERE c.batch_id = mb.batch_id AND c.del_yn='N') AS comment_count,
+               (SELECT COUNT(*) FROM BATCH_LIKE blm WHERE blm.batch_id = mb.batch_id AND blm.user_id = #{userId}) AS liked_by_me,
+               (SELECT GROUP_CONCAT(CONCAT(COALESCE(t.tag_scope,'N'),'|',t.tag_name)
+                                    ORDER BY CASE WHEN t.tag_scope='P' THEN 0 ELSE 1 END, t.tag_name SEPARATOR ',')
+                FROM BATCH_TAG bt JOIN TAG t ON bt.tag_id=t.tag_id
+                WHERE bt.batch_id=mb.batch_id AND t.del_yn='N') AS tags_csv
         <include refid="FeedBaseFrom"/>
         <include refid="FeedBaseWhere"/>
-        <choose>
-            <when test="sort == 'uploaded_asc'">
-                ORDER BY mi.uploaded_at ASC
-            </when>
-            <when test="sort == 'taken_desc'">
-                ORDER BY (mi.taken_at IS NULL) ASC, mi.taken_at DESC, mi.uploaded_at DESC
-            </when>
-            <when test="sort == 'taken_asc'">
-                ORDER BY (mi.taken_at IS NULL) ASC, mi.taken_at ASC, mi.uploaded_at ASC
-            </when>
-            <when test="sort == 'likes_desc'">
-                ORDER BY like_count DESC, mi.uploaded_at DESC
-            </when>
-            <otherwise>
-                ORDER BY mi.uploaded_at DESC
-            </otherwise>
-        </choose>
+        ORDER BY mb.uploaded_at DESC
         LIMIT #{limit} OFFSET #{offset}
     </select>
 
@@ -135,41 +104,103 @@
     </select>
 
     <select id="findImageFeedRows" resultMap="FeedRowMap">
-        SELECT mi.media_id,
-               mi.media_type,
-               mi.user_id,
-               mi.title,
-               mi.uploaded_at,
-               mi.taken_at,
+        SELECT mb.batch_id AS media_id,
+               cover.media_type,
+               mb.user_id,
+               COALESCE(mb.title, cover.title) AS title,
+               mb.uploaded_at,
+               mb.taken_at,
                a.album_name,
                u.display_name,
                image_mv.storage_key AS thumbnail_storage_key,
                NULL AS preview_storage_key,
-               (
-                   SELECT COUNT(*)
-                   FROM MEDIA_LIKE ml
-                   WHERE ml.media_id = mi.media_id
-               ) AS like_count,
-               (
-                   SELECT COUNT(*)
-                   FROM COMMENT c
-                   WHERE c.media_id = mi.media_id
-                     AND c.del_yn = 'N'
-               ) AS comment_count,
+               (SELECT COUNT(*) FROM BATCH_LIKE bl WHERE bl.batch_id = mb.batch_id) AS like_count,
+               (SELECT COUNT(*) FROM COMMENT c WHERE c.batch_id = mb.batch_id AND c.del_yn='N') AS comment_count,
                0 AS liked_by_me,
-               (
-                   SELECT GROUP_CONCAT(CONCAT(COALESCE(t.tag_scope, 'N'), '|', t.tag_name)
-                                       ORDER BY CASE WHEN t.tag_scope = 'P' THEN 0 ELSE 1 END, t.tag_name SEPARATOR ',')
-                   FROM MEDIA_TAG mt
-                       JOIN TAG t ON mt.tag_id = t.tag_id
-                   WHERE mt.media_id = mi.media_id
-                     AND t.del_yn = 'N'
-               ) AS tags_csv
+               (SELECT GROUP_CONCAT(CONCAT(COALESCE(t.tag_scope,'N'),'|',t.tag_name) SEPARATOR ',')
+                FROM BATCH_TAG bt JOIN TAG t ON bt.tag_id=t.tag_id
+                WHERE bt.batch_id=mb.batch_id AND t.del_yn='N') AS tags_csv
         <include refid="FeedBaseFrom"/>
-        AND mi.media_type = 'IMAGE'
-        ORDER BY (mi.taken_at IS NULL) ASC,
-                 mi.taken_at DESC,
-                 mi.uploaded_at DESC
+        AND cover.media_type='IMAGE'
+        ORDER BY mb.uploaded_at DESC
+    </select>
+
+    <select id="findMediaItemsByBatchIds" resultMap="FeedMediaRowMap">
+        SELECT mi.batch_id,
+               mi.media_id,
+               mi.media_type,
+               small_mv.storage_key AS small_storage_key,
+               medium_mv.storage_key AS medium_storage_key,
+               preview_mv.storage_key AS preview_storage_key,
+               original_mv.file_org_name AS original_file_name,
+               mi.sort_order
+        FROM MEDIA_ITEMS mi
+                 LEFT JOIN MEDIA_VARIANT small_mv ON mi.media_id = small_mv.media_id AND small_mv.variant_type = 'SMALL'
+                 LEFT JOIN MEDIA_VARIANT medium_mv ON mi.media_id = medium_mv.media_id AND medium_mv.variant_type = 'MEDIUM'
+                 LEFT JOIN MEDIA_VARIANT preview_mv ON mi.media_id = preview_mv.media_id AND preview_mv.variant_type = 'PREVIEW'
+                 LEFT JOIN MEDIA_VARIANT original_mv ON mi.media_id = original_mv.media_id AND original_mv.variant_type = 'ORIGINAL'
+        WHERE mi.del_yn='N'
+          AND mi.batch_id IN
+          <foreach collection="batchIds" item="batchId" open="(" separator="," close=")">
+              #{batchId}
+          </foreach>
+        ORDER BY mi.batch_id ASC, mi.sort_order ASC, mi.media_id ASC
+    </select>
+
+    <sql id="SearchMediaBaseFrom">
+        FROM MEDIA_ITEMS mi
+                 JOIN MEDIA_BATCH mb ON mi.batch_id = mb.batch_id
+                 LEFT JOIN MEDIA_VARIANT small_mv ON mi.media_id = small_mv.media_id AND small_mv.variant_type = 'SMALL'
+                 LEFT JOIN MEDIA_VARIANT medium_mv ON mi.media_id = medium_mv.media_id AND medium_mv.variant_type = 'MEDIUM'
+                 LEFT JOIN MEDIA_VARIANT preview_mv ON mi.media_id = preview_mv.media_id AND preview_mv.variant_type = 'PREVIEW'
+                 LEFT JOIN MEDIA_VARIANT original_mv ON mi.media_id = original_mv.media_id AND original_mv.variant_type = 'ORIGINAL'
+                 LEFT JOIN USER u ON mb.user_id = u.user_id
+                 LEFT JOIN ALBUM a ON mb.album_id = a.album_id
+        WHERE mi.del_yn = 'N'
+          AND mb.del_yn = 'N'
+          AND u.del_yn = 'N'
+          AND a.del_yn = 'N'
+    </sql>
+
+    <sql id="SearchMediaBaseWhere">
+        <if test="mediaType != null">AND mi.media_type = #{mediaType}</if>
+        <if test="author != null">AND u.display_name = #{author}</if>
+        <if test="album != null">AND a.album_name = #{album}</if>
+        <if test="tag != null">
+            AND EXISTS (
+                SELECT 1 FROM BATCH_TAG bt JOIN TAG t ON bt.tag_id=t.tag_id
+                WHERE bt.batch_id=mb.batch_id AND t.del_yn='N' AND t.tag_name=#{tag}
+            )
+        </if>
+        <if test="likedOnly and userId != null">
+            AND EXISTS (SELECT 1 FROM BATCH_LIKE bl WHERE bl.batch_id = mb.batch_id AND bl.user_id = #{userId})
+        </if>
+        <if test="mineOnly and userId != null">AND mb.user_id = #{userId}</if>
+    </sql>
+
+    <select id="findSearchMediaItems" resultMap="SearchMediaItemRowMap">
+        SELECT mi.media_id,
+               mi.batch_id,
+               mi.media_type,
+               small_mv.storage_key AS small_storage_key,
+               medium_mv.storage_key AS medium_storage_key,
+               preview_mv.storage_key AS preview_storage_key,
+               original_mv.file_org_name AS original_file_name,
+               mb.uploaded_at,
+               mb.taken_at,
+               COALESCE(mb.title, mi.title) AS title,
+               u.display_name,
+               (SELECT COUNT(*) FROM MEDIA_ITEMS mi2 WHERE mi2.batch_id = mb.batch_id AND mi2.del_yn = 'N') AS batch_media_count
+        <include refid="SearchMediaBaseFrom"/>
+        <include refid="SearchMediaBaseWhere"/>
+        ORDER BY mb.uploaded_at DESC, mi.sort_order ASC, mi.media_id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countSearchMediaItems" resultType="int">
+        SELECT COUNT(*)
+        <include refid="SearchMediaBaseFrom"/>
+        <include refid="SearchMediaBaseWhere"/>
     </select>
 
 </mapper>

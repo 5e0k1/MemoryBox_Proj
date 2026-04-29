@@ -4,7 +4,7 @@
 
     <resultMap id="ShareLinkMap" type="com.hogudeul.memorybox.model.ShareLink">
         <id column="share_id" property="shareId"/>
-        <result column="media_id" property="mediaId"/>
+        <result column="batch_id" property="batchId"/>
         <result column="share_token" property="shareToken"/>
         <result column="created_by" property="createdBy"/>
         <result column="share_scope" property="shareScope"/>
@@ -18,7 +18,7 @@
 
     <insert id="insertShareLink" parameterType="com.hogudeul.memorybox.model.ShareLink" useGeneratedKeys="true" keyProperty="shareId">
         INSERT INTO SHARE_LINK (
-            media_id,
+            batch_id,
             share_token,
             created_by,
             share_scope,
@@ -29,7 +29,7 @@
             created_at,
             updated_at
         ) VALUES (
-            #{mediaId},
+            #{batchId},
             #{shareToken},
             #{createdBy},
             #{shareScope},
@@ -44,7 +44,7 @@
 
     <select id="findByToken" resultMap="ShareLinkMap">
         SELECT share_id,
-               media_id,
+               batch_id,
                share_token,
                created_by,
                share_scope,
@@ -61,7 +61,7 @@
 
     <select id="findActiveByToken" resultMap="ShareLinkMap">
         SELECT share_id,
-               media_id,
+               batch_id,
                share_token,
                created_by,
                share_scope,
@@ -87,9 +87,9 @@
           AND revoked_yn = 'N'
     </update>
 
-    <select id="findByMediaIdAndCreatedBy" resultMap="ShareLinkMap">
+    <select id="findByBatchIdAndCreatedBy" resultMap="ShareLinkMap">
         SELECT share_id,
-               media_id,
+               batch_id,
                share_token,
                created_by,
                share_scope,
@@ -100,15 +100,15 @@
                created_at,
                updated_at
         FROM SHARE_LINK
-        WHERE media_id = #{mediaId}
+        WHERE batch_id = #{batchId}
           AND created_by = #{createdBy}
         ORDER BY created_at DESC
         LIMIT 1
     </select>
 
-    <select id="findValidLinksByMediaId" resultMap="ShareLinkMap">
+    <select id="findValidLinksByBatchId" resultMap="ShareLinkMap">
         SELECT share_id,
-               media_id,
+               batch_id,
                share_token,
                created_by,
                share_scope,
@@ -119,7 +119,7 @@
                created_at,
                updated_at
         FROM SHARE_LINK
-        WHERE media_id = #{mediaId}
+        WHERE batch_id = #{batchId}
           AND revoked_yn = 'N'
           AND expires_at > NOW()
         ORDER BY created_at DESC

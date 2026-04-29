@@ -6,6 +6,7 @@ import com.hogudeul.memorybox.auth.LoginUserSession;
 import com.hogudeul.memorybox.calendar.CalendarViewService;
 import com.hogudeul.memorybox.dto.calendar.CalendarMonthDto;
 import com.hogudeul.memorybox.dto.CommentView;
+import com.hogudeul.memorybox.dto.DetailMediaItemView;
 import com.hogudeul.memorybox.dto.FeedItemView;
 import com.hogudeul.memorybox.dto.MediaDetailView;
 import com.hogudeul.memorybox.config.AppProperties;
@@ -15,6 +16,7 @@ import com.hogudeul.memorybox.service.FeedService;
 import com.hogudeul.memorybox.service.NotificationService;
 import com.hogudeul.memorybox.service.UploadService;
 import com.hogudeul.memorybox.service.UserKakaoLinkService;
+import com.hogudeul.memorybox.service.ZipDownloadService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
@@ -22,9 +24,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -46,14 +46,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 public class PageController {
 
     private static final Logger log = LoggerFactory.getLogger(PageController.class);
-    private static final DateTimeFormatter ZIP_FILE_NAME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
     private static final int FEED_PAGE_SIZE = 24;
     private final FeedService feedService;
     private final DetailService detailService;
@@ -64,6 +62,7 @@ public class PageController {
     private final ObjectMapper objectMapper;
     private final KakaoProperties kakaoProperties;
     private final AppProperties appProperties;
+    private final ZipDownloadService zipDownloadService;
 
     public PageController(FeedService feedService,
                           DetailService detailService,
@@ -73,7 +72,8 @@ public class PageController {
                           UserKakaoLinkService userKakaoLinkService,
                           ObjectMapper objectMapper,
                           KakaoProperties kakaoProperties,
-                          AppProperties appProperties) {
+                          AppProperties appProperties,
+                          ZipDownloadService zipDownloadService) {
         this.feedService = feedService;
         this.detailService = detailService;
         this.notificationService = notificationService;
@@ -83,6 +83,7 @@ public class PageController {
         this.objectMapper = objectMapper;
         this.kakaoProperties = kakaoProperties;
         this.appProperties = appProperties;
+        this.zipDownloadService = zipDownloadService;
     }
 
     @GetMapping("/feed")
@@ -118,10 +119,13 @@ public class PageController {
         List<String> albums = feedService.getAlbumFilterOptions(optionSource);
         Map<String, Integer> albumPhotoCounts = new HashMap<>();
         Map<String, Integer> albumVideoCounts = new HashMap<>();
+        Map<String, Integer> albumFeedCounts = new HashMap<>();
         for (String album : albums) {
             String albumFilter = "전체".equals(album) ? null : album;
-            int photoCount = feedService.getFeedItemCount("photo", null, albumFilter, null, userId, false, false);
-            int videoCount = feedService.getFeedItemCount("video", null, albumFilter, null, userId, false, false);
+            int feedCount = feedService.getFeedItemCount(null, null, albumFilter, null, userId, false, false);
+            int photoCount = feedService.countSearchMediaItems("photo", null, albumFilter, null, userId, false, false);
+            int videoCount = feedService.countSearchMediaItems("video", null, albumFilter, null, userId, false, false);
+            albumFeedCounts.put(album, feedCount);
             albumPhotoCounts.put(album, photoCount);
             albumVideoCounts.put(album, videoCount);
         }
@@ -134,6 +138,7 @@ public class PageController {
         model.addAttribute("totalCount", totalCount);
         model.addAttribute("authors", feedService.getAuthorFilterOptions(optionSource));
         model.addAttribute("albums", albums);
+        model.addAttribute("albumFeedCounts", albumFeedCounts);
         model.addAttribute("albumPhotoCounts", albumPhotoCounts);
         model.addAttribute("albumVideoCounts", albumVideoCounts);
         model.addAttribute("tags", feedService.getTagFilterOptionsWithoutAll(optionSource));
@@ -247,6 +252,7 @@ public class PageController {
     @ResponseBody
     public Map<String, Object> feedItemsApi(@RequestParam(defaultValue = "1") int page,
                                             @RequestParam(defaultValue = "24") int size,
+                                            @RequestParam(required = false, defaultValue = "feed") String viewMode,
                                             @RequestParam(required = false) String type,
                                             @RequestParam(required = false) String author,
                                             @RequestParam(required = false) String album,
@@ -258,9 +264,13 @@ public class PageController {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         Long userId = loginUser != null ? loginUser.getUserId() : null;
         int safeSize = Math.max(1, Math.min(size, 60));
-        List<FeedItemView> items = feedService.getFeedItems(type, author, album, tag, sort,
-                userId, likesOnly, mineOnly, page, safeSize);
-        int totalCount = feedService.getFeedItemCount(type, author, album, tag, userId, likesOnly, mineOnly);
+        boolean photoMode = "photo".equalsIgnoreCase(viewMode);
+        List<?> items = photoMode
+                ? feedService.getSearchMediaItems(type, author, album, tag, sort, userId, likesOnly, mineOnly, page, safeSize)
+                : feedService.getFeedItems(type, author, album, tag, sort, userId, likesOnly, mineOnly, page, safeSize);
+        int totalCount = photoMode
+                ? feedService.countSearchMediaItems(type, author, album, tag, userId, likesOnly, mineOnly)
+                : feedService.getFeedItemCount(type, author, album, tag, userId, likesOnly, mineOnly);
         int loadedCount = Math.min(totalCount, Math.max(0, (page - 1) * safeSize + items.size()));
 
         Map<String, Object> response = new HashMap<>();
@@ -272,18 +282,25 @@ public class PageController {
     }
 
     @GetMapping("/feed/{itemId}")
-    public String feedDetail(@PathVariable Long itemId,
+    public String feedDetail(@PathVariable String itemId,
                              @RequestParam(required = false) String info,
                              @RequestParam(required = false) String error,
                              Model model,
                              HttpSession session) {
+        Long batchId;
+        try {
+            batchId = Long.valueOf(itemId);
+        } catch (NumberFormatException e) {
+            return "redirect:/feed";
+        }
+
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
         Long userId = loginUser != null ? loginUser.getUserId() : null;
 
-        MediaDetailView detail = detailService.getMediaDetail(itemId, userId);
+        MediaDetailView detail = detailService.getMediaDetail(batchId, userId);
         model.addAttribute("loginUser", loginUser);
         addNotificationModel(model, userId);
-        model.addAttribute("currentMediaId", itemId);
+        model.addAttribute("currentBatchId", batchId);
         model.addAttribute("kakaoJavascriptKey", kakaoProperties.getJavascriptKey());
         model.addAttribute("shareBaseUrl", appProperties.getShare().getBaseUrl());
         model.addAttribute("info", info);
@@ -294,7 +311,9 @@ public class PageController {
             return "detail";
         }
 
-        List<CommentView> comments = detailService.getComments(itemId, userId);
+        List<DetailMediaItemView> detailItems = detailService.getBatchMediaItems(batchId, userId);
+        List<CommentView> comments = detailService.getComments(batchId, userId);
+        model.addAttribute("detailItems", detailItems);
         model.addAttribute("detail", detail);
         model.addAttribute("comments", comments);
         model.addAttribute("albums", uploadService.getActiveAlbums(userId));
@@ -394,6 +413,22 @@ public class PageController {
         return "redirect:/feed/" + itemId;
     }
 
+
+
+    @PostMapping(value = "/feed/{batchId}/delete-selected", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> deleteSelectedMedia(@PathVariable Long batchId,
+                                                                    @RequestBody DownloadZipRequest request,
+                                                                    HttpSession session) {
+        LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
+        if (loginUser == null) {
+            return ResponseEntity.status(401).body(Map.of("success", false, "message", "로그인이 필요합니다."));
+        }
+        List<Long> mediaIds = request == null ? null : request.getMediaIds();
+        int deleted = detailService.deleteMediaItems(batchId, loginUser.getUserId(), mediaIds);
+        return ResponseEntity.ok(Map.of("success", deleted > 0, "deletedCount", deleted));
+    }
+
     @PostMapping("/api/feed/{itemId}/like")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> likeApi(@PathVariable Long itemId,
@@ -456,7 +491,7 @@ public class PageController {
         }
     }
 
-    @GetMapping("/feed/{itemId}/download")
+    @GetMapping("/feed/media/{itemId}/download")
     public ResponseEntity<Resource> downloadOriginal(@PathVariable Long itemId,
                                                      HttpServletRequest request,
                                                      HttpSession session) {
@@ -469,7 +504,7 @@ public class PageController {
 
         if (fileInfo == null) {
             return ResponseEntity.status(302)
-                    .header(HttpHeaders.LOCATION, "/feed/" + itemId + "?error="
+                    .header(HttpHeaders.LOCATION, "/feed?error="
                             + URLEncoder.encode("다운로드 가능한 원본 파일이 없습니다.", StandardCharsets.UTF_8))
                     .build();
         }
@@ -478,23 +513,14 @@ public class PageController {
             log.warn("Single download file not found. mediaId={}, userId={}, path={}",
                     itemId, loginUser.getUserId(), fileInfo.getFilePath());
             return ResponseEntity.status(302)
-                    .header(HttpHeaders.LOCATION, "/feed/" + itemId + "?error="
+                    .header(HttpHeaders.LOCATION, "/feed?error="
                             + URLEncoder.encode("원본 파일을 찾을 수 없습니다.", StandardCharsets.UTF_8))
                     .build();
         }
 
-        MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
-        if (fileInfo.getMimeType() != null && !fileInfo.getMimeType().isBlank()) {
-            try {
-                mediaType = MediaType.parseMediaType(fileInfo.getMimeType());
-            } catch (Exception ex) {
-                log.warn("Invalid mime type for download. mediaId={}, mimeType={}", itemId, fileInfo.getMimeType());
-            }
-        }
-
         String contentDisposition = buildAttachmentContentDisposition(fileInfo.getFileName(), "download");
-        log.debug("Single download headers prepared. mediaId={}, userId={}, mimeType={}, fileName={}",
-                itemId, loginUser.getUserId(), mediaType, fileInfo.getFileName());
+        log.debug("Single download headers prepared. mediaId={}, userId={}, fileName={}",
+                itemId, loginUser.getUserId(), fileInfo.getFileName());
 
         detailService.logDownloadAttempt(
                 itemId,
@@ -513,7 +539,7 @@ public class PageController {
         }
 
         ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
-                .contentType(mediaType)
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition);
         if (contentLength >= 0) {
             responseBuilder.contentLength(contentLength);
@@ -525,67 +551,42 @@ public class PageController {
         return responseBuilder.body(resource);
     }
 
-    @PostMapping(value = "/feed/download-zip", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<StreamingResponseBody> downloadSelectedAsZip(@RequestBody DownloadZipRequest request,
-                                                                       HttpServletRequest httpRequest,
-                                                                       HttpSession session) {
+
+
+    @PostMapping(value = "/download/zip/prepare", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> prepareZipDownload(@RequestBody(required = false) DownloadZipRequest request,
+                                                HttpServletRequest httpRequest,
+                                                HttpSession session) {
         LoginUserSession loginUser = (LoginUserSession) session.getAttribute("loginUser");
-        log.info("Zip download request. hasLogin={}", loginUser != null);
         if (loginUser == null) {
-            return errorStreamingResponse(401, "로그인이 필요합니다.");
+            return ResponseEntity.status(401).body(Map.of("message", "로그인이 필요합니다."));
         }
 
+        Long batchId = request == null ? null : request.getBatchId();
         List<Long> mediaIds = request == null ? null : request.getMediaIds();
-        log.info("Zip download request detail. userId={}, mediaCount={}, mediaIds={}",
-                loginUser.getUserId(), mediaIds == null ? 0 : mediaIds.size(), mediaIds);
-        final List<DetailService.DownloadFileInfo> files;
         try {
-            files = detailService.getDownloadFileInfos(mediaIds, loginUser.getUserId());
-        } catch (DetailService.DownloadException e) {
-            log.warn("Zip download validation failed. userId={}, msg={}", loginUser.getUserId(), e.getMessage());
-            return errorStreamingResponse(400, e.getMessage());
-        }
-
-        String requesterIp = httpRequest.getRemoteAddr();
-        String requesterAgent = httpRequest.getHeader(HttpHeaders.USER_AGENT);
-        for (Long mediaId : mediaIds) {
-            detailService.logDownloadAttempt(mediaId, loginUser.getUserId(), requesterIp, requesterAgent, true, null);
-        }
-
-        String zipFileName = "memorybox_" + LocalDateTime.now().format(ZIP_FILE_NAME_FORMAT) + ".zip";
-        String disposition = "attachment; filename=\"memorybox_download.zip\"; filename*=UTF-8''"
-                + URLEncoder.encode(zipFileName, StandardCharsets.UTF_8).replace("+", "%20");
-
-        StreamingResponseBody body = outputStream -> {
-            log.info("Zip stream start. userId={}, fileCount={}", loginUser.getUserId(), files.size());
-            try {
-                detailService.streamZip(files, outputStream);
-                log.info("Zip stream complete. userId={}, fileCount={}", loginUser.getUserId(), files.size());
-            } catch (DetailService.DownloadException e) {
-                log.warn("Zip stream domain error. userId={}, msg={}", loginUser.getUserId(), e.getMessage());
-                throw new IOException(e.getMessage(), e);
-            } catch (IOException e) {
-                if (isClientAbortIOException(e)) {
-                    log.warn("Client aborted zip download. userId={}, msg={}",
-                            loginUser.getUserId(), e.getMessage());
-                    return;
+            ZipDownloadService.PreparedZip preparedZip =
+                    zipDownloadService.prepareZip(loginUser.getUserId(), batchId, mediaIds);
+            log.info("Zip prepared. userId={}, batchId={}, mediaCount={}, fileName={}",
+                    loginUser.getUserId(), batchId, mediaIds == null ? 0 : mediaIds.size(), preparedZip.getFileName());
+            String requesterIp = httpRequest.getRemoteAddr();
+            String requesterAgent = httpRequest.getHeader(HttpHeaders.USER_AGENT);
+            if (batchId != null) {
+                detailService.logDownloadAttempt(null, loginUser.getUserId(), requesterIp, requesterAgent, true, null);
+            } else if (mediaIds != null) {
+                for (Long mediaId : mediaIds) {
+                    detailService.logDownloadAttempt(mediaId, loginUser.getUserId(), requesterIp, requesterAgent, true, null);
                 }
-                log.warn("Zip stream failed. userId={}, msg={}", loginUser.getUserId(), e.getMessage());
-                throw e;
             }
-        };
-
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType("application/zip"))
-                .header(HttpHeaders.CONTENT_DISPOSITION, disposition)
-                .body(body);
-    }
-
-    private ResponseEntity<StreamingResponseBody> errorStreamingResponse(int statusCode, String message) {
-        StreamingResponseBody body = outputStream -> outputStream.write(message.getBytes(StandardCharsets.UTF_8));
-        return ResponseEntity.status(statusCode)
-                .contentType(MediaType.TEXT_PLAIN)
-                .body(body);
+            return ResponseEntity.ok(Map.of(
+                    "downloadUrl", preparedZip.getDownloadUrl(),
+                    "fileName", preparedZip.getFileName()
+            ));
+        } catch (DetailService.DownloadException e) {
+            log.warn("Zip prepare failed. userId={}, batchId={}, msg={}", loginUser.getUserId(), batchId, e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
     private String buildAttachmentContentDisposition(String utf8FileName, String fallbackName) {
@@ -653,7 +654,16 @@ public class PageController {
     }
 
     public static class DownloadZipRequest {
+        private Long batchId;
         private List<Long> mediaIds;
+
+        public Long getBatchId() {
+            return batchId;
+        }
+
+        public void setBatchId(Long batchId) {
+            this.batchId = batchId;
+        }
 
         public List<Long> getMediaIds() {
             return mediaIds;

@@ -10,18 +10,10 @@
     <%@ include file="/WEB-INF/views/common/head-icons.jspf" %>
     <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/detail.css">
-    <link rel="stylesheet" href="/css/upload.css">
+    <link rel="stylesheet" href="/css/sweetalert2/sweetalert2.min.css">
 </head>
 <body class="page page-detail">
-<c:set var="shareTitleValue" value="${not empty detail ? detail.title : ''}" />
-<c:set var="shareImageValue" value="${not empty detail ? detail.shareImageUrl : ''}" />
-<main class="detail-layout"
-      id="detailLayout"
-      data-media-id="${currentMediaId}"
-      data-share-title="${fn:escapeXml(shareTitleValue)}"
-      data-share-image-url="${fn:escapeXml(shareImageValue)}"
-      data-share-media-type="${not empty detail ? detail.mediaType : ''}"
-      data-share-base-url="${fn:escapeXml(shareBaseUrl)}">
+<main class="detail-layout" id="detailLayout" data-batch-id="${currentBatchId}">
     <header class="detail-header">
         <a href="/feed" class="back-link" aria-label="피드로 돌아가기">← 피드</a>
         <div class="login-chip">${loginUser.displayName}</div>
@@ -30,168 +22,65 @@
     <c:if test="${notFound}">
         <section class="detail-panel state-panel">
             <h1>게시물을 찾을 수 없습니다</h1>
-            <p>삭제되었거나 존재하지 않는 항목입니다.</p>
-            <a href="/feed" class="btn btn-primary">피드 목록으로 이동</a>
+            <a href="/feed" class="btn btn-primary">피드로 이동</a>
         </section>
     </c:if>
 
     <c:if test="${not notFound}">
         <c:if test="${not empty info}">
-            <div class="feedback-banner is-info">${info}</div>
+            <section class="detail-panel feedback-banner is-info">${info}</section>
         </c:if>
         <c:if test="${not empty error}">
-            <div class="feedback-banner is-error">${error}</div>
+            <section class="detail-panel feedback-banner is-error">${error}</section>
         </c:if>
-
-        <article class="detail-panel media-panel">
-            <c:choose>
-                <c:when test="${detail.mediaType eq 'VIDEO' and not empty detail.originalVideoUrl}">
-                    <video controls playsinline preload="metadata" poster="${detail.videoThumbnailUrl}" class="detail-image">
-                        <source src="${detail.originalVideoUrl}" type="video/mp4">
-                    </video>
-                </c:when>
-                <c:when test="${not empty detail.displayImageUrl}">
-                    <img src="${detail.displayImageUrl}" alt="${detail.title}" class="detail-image" loading="eager">
-                </c:when>
-                <c:otherwise>
-                    <div class="image-empty">표시 가능한 이미지가 없습니다.</div>
-                </c:otherwise>
-            </c:choose>
-        </article>
 
         <section class="detail-panel meta-panel">
             <div class="title-row">
                 <h1 class="detail-title">${detail.title}</h1>
-                <button type="button"
-                        class="share-open-btn"
-                        id="openShareModalBtn"
-                        data-media-id="${currentMediaId}"
-                        aria-label="공유하기">🔗</button>
+                <div class="meta-action-buttons">
+                    <button type="button" class="share-open-btn" id="shareOpenBtn" aria-label="공유 열기">
+                        <img src="/images/share-btn-img.png" alt="공유하기" width="20" height="20">
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="downloadAllBtn"
+                            data-batch-id="${currentBatchId}">전체 다운로드</button>
+                </div>
             </div>
+            <p class="meta-line">작성자 ${detail.authorName}</p>
             <p class="meta-line">업로드 ${detail.relativeUploadedAt}</p>
-            <c:if test="${not empty detail.takenAt}">
-                <p class="meta-line">촬영 ${detail.takenAt}</p>
-            </c:if>
-            <div class="meta-grid">
-                <div><span>작성자</span><strong>${detail.authorName}</strong></div>
-                <div><span>앨범</span><strong class="chip-like">${detail.albumName}</strong></div>
-                <div><span>타입</span><strong>${detail.mediaType}</strong></div>
-                <div><span>댓글</span><strong>${detail.commentCount}</strong></div>
+            <p class="meta-line">앨범 ${detail.albumName} · ${detail.commentCount} 댓글</p>
+            <div class="engagement-row">
+                <form action="/feed/${currentBatchId}/like" method="post" class="inline-form">
+                    <input type="hidden" name="action" value="${detail.likedByMe ? 'unlike' : 'like'}">
+                    <button type="submit" class="btn btn-secondary like-btn ${detail.likedByMe ? 'is-liked' : ''}">
+                        ${detail.likedByMe ? '❤ 좋아요 취소' : '♡ 좋아요'} · ${detail.likeCount}
+                    </button>
+                </form>
             </div>
-            <ul class="tag-chips">
-                <c:forEach var="tag" items="${detail.tags}">
-                    <li><button type="button" class="tag-chip ${fn:startsWith(tag, '@') ? 'is-person' : ''}" aria-label="태그 ${tag}">${tag}</button></li>
-                </c:forEach>
-                <c:if test="${empty detail.tags}">
-                    <li><span class="tag-chip is-empty">태그 없음</span></li>
-                </c:if>
-            </ul>
-
-            <section class="meta-edit-panel">
-                <c:choose>
-                    <c:when test="${detail.editableByMe}">
-                        <button type="button" class="btn btn-secondary" id="openOwnerEditBtn">수정</button>
-                        <div id="ownerEditPanel" class="edit-panel-wrap" hidden>
-                            <form method="post" action="/feed/${detail.mediaId}/edit-meta" class="meta-edit-form">
-                                <h2>제목 / 앨범 수정</h2>
-                                <label for="editTitle-${detail.mediaId}">제목</label>
-                                <input id="editTitle-${detail.mediaId}" name="title" value="${detail.title}" maxlength="200">
-                                <label for="editAlbum-${detail.mediaId}">앨범</label>
-                                <select id="editAlbum-${detail.mediaId}" name="albumId" required>
-                                    <c:forEach var="album" items="${albums}">
-                                        <option value="${album.albumId}" ${album.albumId == detail.albumId ? 'selected' : ''}>${album.albumName}</option>
-                                    </c:forEach>
-                                </select>
-                                <button type="submit" class="btn btn-secondary">제목/앨범 저장</button>
-                            </form>
-
-                            <form method="post" action="/feed/${detail.mediaId}/edit-tags" class="meta-edit-form">
-                                <h2>태그 수정</h2>
-                                <section class="tag-widget" data-widget="tag-picker" data-create-url="/upload/tag">
-                                    <div class="tag-widget-header">
-                                        <h2>태그 목록</h2>
-                                        <span class="tag-count">선택 0개</span>
-                                    </div>
-                                    <div class="tag-title-row">
-                                        <small>태그를 선택하거나 새 태그를 추가하세요.</small>
-                                    </div>
-                                    <div class="tag-option-list">
-                                        <c:forEach var="tagOption" items="${tags}">
-                                            <label class="tag-option ${tagOption.tagScope == 'P' ? 'is-person' : ''}" data-normalized="${tagOption.normalizedName}" data-scope="${tagOption.tagScope}">
-                                                <input type="checkbox"
-                                                       name="selectedTagIds"
-                                                       value="${tagOption.tagId}"
-                                                       class="tag-check"
-                                                       ${fn:contains(fn:join(detail.tags, ','), tagOption.tagName) ? 'checked' : ''}>
-                                                <span class="tag-label">${tagOption.tagScope == 'P' ? '@' : '#'}${tagOption.tagName}</span>
-                                            </label>
-                                        </c:forEach>
-                                    </div>
-                                    <div class="tag-add-row">
-                                        <input type="text" class="tag-add-input" placeholder="새 태그 입력 후 추가 버튼">
-                                        <button type="button" class="tag-add-btn">추가</button>
-                                    </div>
-                                    <input type="hidden" name="newTags" class="new-tags-hidden" value="">
-                                </section>
-                                <button type="submit" class="btn btn-secondary">태그 저장</button>
-                            </form>
-                        </div>
-                    </c:when>
-                    <c:otherwise>
-                        <button type="button" class="btn btn-secondary" id="openTagEditBtn">태그 수정</button>
-                        <div id="tagEditPanel" class="edit-panel-wrap" hidden>
-                            <form method="post" action="/feed/${detail.mediaId}/edit-tags" class="meta-edit-form">
-                                <section class="tag-widget" data-widget="tag-picker" data-create-url="/upload/tag">
-                                    <div class="tag-widget-header">
-                                        <h2>태그 목록</h2>
-                                        <span class="tag-count">선택 0개</span>
-                                    </div>
-                                    <div class="tag-title-row">
-                                        <small>태그를 선택하거나 새 태그를 추가하세요.</small>
-                                    </div>
-                                    <div class="tag-option-list">
-                                        <c:forEach var="tagOption" items="${tags}">
-                                            <label class="tag-option ${tagOption.tagScope == 'P' ? 'is-person' : ''}" data-normalized="${tagOption.normalizedName}" data-scope="${tagOption.tagScope}">
-                                                <input type="checkbox"
-                                                       name="selectedTagIds"
-                                                       value="${tagOption.tagId}"
-                                                       class="tag-check"
-                                                       ${fn:contains(fn:join(detail.tags, ','), tagOption.tagName) ? 'checked' : ''}>
-                                                <span class="tag-label">${tagOption.tagScope == 'P' ? '@' : '#'}${tagOption.tagName}</span>
-                                            </label>
-                                        </c:forEach>
-                                    </div>
-                                    <div class="tag-add-row">
-                                        <input type="text" class="tag-add-input" placeholder="새 태그 입력 후 추가 버튼">
-                                        <button type="button" class="tag-add-btn">추가</button>
-                                    </div>
-                                    <input type="hidden" name="newTags" class="new-tags-hidden" value="">
-                                </section>
-                                <button type="submit" class="btn btn-secondary">태그 저장</button>
-                            </form>
-                        </div>
-                    </c:otherwise>
-                </c:choose>
-            </section>
         </section>
 
-        <section class="detail-panel action-panel">
-            <form method="post" action="/feed/${detail.mediaId}/like" class="inline-form">
-                <input type="hidden" name="action" value="${detail.likedByMe ? 'unlike' : 'like'}">
-                <button type="submit" class="btn like-btn ${detail.likedByMe ? 'is-liked' : ''}">
-                    ${detail.likedByMe ? '❤ 좋아요 취소' : '♡ 좋아요'}
-                    <span>${detail.likeCount}</span>
-                </button>
-            </form>
-
-            <c:choose>
-                <c:when test="${detail.downloadable}">
-                    <a href="${detail.downloadUrl}" class="btn btn-secondary download-btn">원본 다운로드</a>
-                </c:when>
-                <c:otherwise>
-                    <button type="button" class="btn btn-secondary download-btn" disabled>원본 없음</button>
-                </c:otherwise>
-            </c:choose>
+        <section class="detail-panel" id="batchGridSection">
+            <div class="batch-grid" id="batchGrid" data-total-count="${fn:length(detailItems)}">
+                <c:forEach var="item" items="${detailItems}" varStatus="status">
+                    <button type="button" class="grid-item"
+                            data-media-id="${item.mediaId}"
+                            data-index="${status.index}"
+                            data-media-type="${item.mediaType}"
+                            data-small-url="${fn:escapeXml(item.smallUrl)}"
+                            data-medium-url="${fn:escapeXml(item.mediumUrl)}"
+                            data-preview-url="${fn:escapeXml(item.previewUrl)}"
+                            data-download-url="${fn:escapeXml(item.downloadUrl)}">
+                        <c:choose>
+                            <c:when test="${item.mediaType eq 'VIDEO'}">
+                                <video src="${item.previewUrl}" muted playsinline preload="metadata"></video>
+                            </c:when>
+                            <c:otherwise>
+                                <img src="${item.smallUrl}" alt="thumb-${status.index}" loading="lazy"/>
+                            </c:otherwise>
+                        </c:choose>
+                        <span class="grid-check">✔</span>
+                    </button>
+                </c:forEach>
+            </div>
         </section>
 
         <section class="detail-panel comment-panel">
@@ -204,7 +93,16 @@
                             <span>${comment.createdAt}</span>
                         </div>
                         <p>${comment.content}</p>
-
+                        <div class="reply-actions">
+                            <button type="button" class="btn btn-secondary btn-sm reply-toggle-btn" data-comment-id="${comment.commentId}">답글</button>
+                        </div>
+                        <div class="reply-write-wrap" id="reply-wrap-${comment.commentId}" hidden>
+                            <form method="post" action="/feed/${currentBatchId}/comments" class="reply-form">
+                                <input type="hidden" name="parentId" value="${comment.commentId}">
+                                <textarea name="content" maxlength="500" placeholder="답글을 입력하세요." required></textarea>
+                                <button type="submit" class="btn btn-primary reply-submit">답글 등록</button>
+                            </form>
+                        </div>
                         <c:if test="${not empty comment.replies}">
                             <ul class="reply-list">
                                 <c:forEach var="reply" items="${comment.replies}">
@@ -218,33 +116,14 @@
                                 </c:forEach>
                             </ul>
                         </c:if>
-
-                        <div class="reply-actions">
-                            <button type="button"
-                                    class="btn btn-text reply-toggle-btn"
-                                    data-target="replyForm-${comment.commentId}">
-                                답글 달기
-                            </button>
-                        </div>
-
-                        <div id="replyForm-${comment.commentId}" class="reply-write-wrap" hidden>
-                            <form method="post" action="/feed/${detail.mediaId}/comments" class="reply-form">
-                                <input type="hidden" name="parentId" value="${comment.commentId}">
-                                <label for="reply-${comment.commentId}" class="sr-only">대댓글 작성</label>
-                                <textarea id="reply-${comment.commentId}" name="content" maxlength="3000" placeholder="답글 달기" required></textarea>
-                                <button type="submit" class="btn btn-secondary reply-submit">답글 등록</button>
-                            </form>
-                        </div>
                     </li>
                 </c:forEach>
                 <c:if test="${empty comments}">
-                    <li class="comment-empty">첫 댓글을 남겨보세요.</li>
+                    <li class="comment-empty">아직 댓글이 없습니다. 첫 댓글을 남겨보세요.</li>
                 </c:if>
             </ul>
-
-            <form method="post" action="/feed/${detail.mediaId}/comments" class="comment-form">
-                <label for="commentContent" class="sr-only">댓글 작성</label>
-                <textarea id="commentContent" name="content" maxlength="3000" placeholder="댓글을 입력해 주세요" required></textarea>
+            <form method="post" action="/feed/${currentBatchId}/comments" class="comment-form">
+                <textarea name="content" maxlength="500" placeholder="댓글을 입력하세요." required></textarea>
                 <button type="submit" class="btn btn-primary">댓글 등록</button>
             </form>
         </section>
@@ -252,388 +131,604 @@
 </main>
 
 <div class="share-modal" id="shareModal" hidden>
-    <div class="share-modal-backdrop" id="shareModalBackdrop"></div>
+    <div class="share-modal-backdrop" id="shareBackdrop"></div>
     <section class="share-modal-panel" role="dialog" aria-modal="true" aria-labelledby="shareModalTitle">
-        <header class="share-modal-header">
-            <h2 id="shareModalTitle">공유하기</h2>
-            <button type="button" class="share-close-btn" id="closeShareModalBtn" aria-label="닫기">✕</button>
-        </header>
-
+        <div class="share-modal-header">
+            <h2 id="shareModalTitle">게시물 공유</h2>
+            <button type="button" class="share-close-btn" id="shareCloseBtn" aria-label="공유 모달 닫기">×</button>
+        </div>
         <form class="share-form" id="shareForm">
-            <input type="hidden" id="shareMediaId" value="${currentMediaId}">
             <label class="share-option-row">
-                <input type="radio" name="shareType" value="member" checked>
-                <span>회원끼리 공유</span>
+                <input type="radio" name="shareScope" value="member" checked>
+                <span>회원 전용 링크</span>
             </label>
             <label class="share-option-row">
-                <input type="radio" name="shareType" value="guest">
-                <span>게스트 공유</span>
+                <input type="radio" name="shareScope" value="guest">
+                <span>게스트 링크</span>
             </label>
-
-            <section id="guestOptionWrap" class="guest-option-wrap" hidden>
-                <h3>게스트 옵션</h3>
+            <div class="guest-option-wrap" id="guestOptionWrap" hidden>
+                <h3>게스트 권한</h3>
                 <label class="share-option-row">
-                    <input type="checkbox" id="allowComments">
+                    <input type="checkbox" name="allowComments" id="allowCommentsChk">
                     <span>댓글 보기 허용</span>
                 </label>
                 <label class="share-option-row">
-                    <input type="checkbox" id="allowDownload">
+                    <input type="checkbox" name="allowDownload" id="allowDownloadChk">
                     <span>다운로드 허용</span>
                 </label>
-                <p class="share-expire-notice">게스트 공유 링크는 생성 시점부터 1시간 동안만 접속 가능합니다.</p>
-            </section>
-
-            <div class="share-action-row">
-                <button type="submit" class="btn btn-primary">링크 생성</button>
-                <button type="button" class="btn btn-secondary" id="copyShareUrlBtn" disabled>링크 복사</button>
-                <button type="button" class="kakao-share-btn" id="kakaoShareBtn" disabled aria-label="카카오톡 공유">
-                    <img src="/images/kakaotalk_sharing_btn_medium.png" alt="카카오톡 공유하기">
-                </button>
             </div>
-            <input type="text" id="shareUrlOutput" class="share-url-output" readonly placeholder="생성된 공유 링크가 여기에 표시됩니다.">
-            <p id="shareFeedback" class="share-feedback" aria-live="polite"></p>
+            <div class="share-action-row">
+                <button type="submit" class="btn btn-primary" id="shareCreateBtn">링크 생성</button>
+                <button type="button" class="btn btn-secondary" id="shareCopyBtn" disabled>복사</button>
+            </div>
+            <input type="text" class="share-url-output" id="shareUrlOutput" readonly placeholder="생성된 링크가 여기에 표시됩니다.">
+            <p class="share-feedback" id="shareFeedback" aria-live="polite"></p>
         </form>
     </section>
 </div>
-<script src="https://developers.kakao.com/sdk/js/kakao.min.js"></script>
+
+<div class="viewer-backdrop" id="viewerBackdrop" hidden>
+    <section class="viewer-panel">
+        <button type="button" class="viewer-close" id="viewerCloseBtn">✕</button>
+        <button type="button" class="viewer-nav prev" id="viewerPrevBtn">‹</button>
+        <button type="button" class="viewer-nav next" id="viewerNextBtn">›</button>
+        <div class="viewer-content" id="viewerContent"></div>
+        <div class="viewer-footer">
+            <span id="viewerCounter"><span id="viewerCurrent">1</span> / <span id="viewerTotal">1</span></span>
+            <a class="btn btn-secondary" id="viewerDownloadBtn" href="#">원본 다운로드</a>
+        </div>
+    </section>
+</div>
+
+<div class="selection-bar" id="selectionBar" hidden>
+    <span><strong id="selectedCount">0</strong>개 선택</span>
+    <div>
+        <button type="button" class="btn btn-secondary" id="cancelSelectBtn">취소</button>
+        <button type="button" class="btn btn-secondary" id="downloadSelectBtn">선택 다운로드</button>
+    </div>
+</div>
+
+<script src="/js/sweetalert2/sweetalert2.all.min.js"></script>
 <script>
-    document.querySelectorAll('.reply-toggle-btn').forEach((button) => {
-        button.addEventListener('click', () => {
-            const targetId = button.dataset.target;
-            const target = document.getElementById(targetId);
-            if (!target) {
-                return;
-            }
-
-            const nextHidden = !target.hidden;
-            target.hidden = nextHidden;
-            button.textContent = nextHidden ? '답글 달기' : '답글 작성 닫기';
-
-            if (!nextHidden) {
-                const textarea = target.querySelector('textarea');
-                if (textarea) {
-                    textarea.focus();
-                }
-            }
-        });
-    });
-
-    const FEED_URL = '/feed';
-    window.addEventListener('pageshow', (event) => {
-        const navigationEntries = performance.getEntriesByType ? performance.getEntriesByType('navigation') : [];
-        const navigationType = navigationEntries.length > 0 ? navigationEntries[0].type : '';
-        if (event.persisted || navigationType === 'back_forward') {
-            window.location.replace(FEED_URL);
-        }
-    });
-
-    const openOwnerEditBtn = document.getElementById('openOwnerEditBtn');
-    const ownerEditPanel = document.getElementById('ownerEditPanel');
-    openOwnerEditBtn?.addEventListener('click', () => {
-        ownerEditPanel.hidden = !ownerEditPanel.hidden;
-    });
-
-    const openTagEditBtn = document.getElementById('openTagEditBtn');
-    const tagEditPanel = document.getElementById('tagEditPanel');
-    openTagEditBtn?.addEventListener('click', () => {
-        tagEditPanel.hidden = !tagEditPanel.hidden;
-    });
-
-    const singleDownloadBtn = document.querySelector('a.download-btn');
-    let singleDownloadTraceActive = false;
-    singleDownloadBtn?.addEventListener('click', (event) => {
-        event.stopPropagation();
-        console.debug('[download-debug] single-download-click');
-        const downloadUrl = singleDownloadBtn.getAttribute('href');
-        console.debug('[download-debug] single-download-url-ready', { downloadUrl });
-        singleDownloadTraceActive = true;
-        console.debug('[download-debug] single-download-trigger');
-    });
-
-    window.addEventListener('beforeunload', () => {
-        if (!singleDownloadTraceActive) return;
-        console.debug('[download-debug] single-download-after-beforeunload');
-    });
-    window.addEventListener('pagehide', () => {
-        if (!singleDownloadTraceActive) return;
-        console.debug('[download-debug] single-download-after-pagehide');
-    });
-    window.addEventListener('popstate', () => {
-        if (!singleDownloadTraceActive) return;
-        console.debug('[download-debug] single-download-after-popstate');
-    });
-    document.addEventListener('visibilitychange', () => {
-        if (!singleDownloadTraceActive) return;
-        console.debug('[download-debug] single-download-after-visibilitychange', { visibilityState: document.visibilityState });
-    });
-    document.addEventListener('submit', (event) => {
-        if (!singleDownloadTraceActive) return;
-        const form = event.target;
-        if (!(form instanceof HTMLFormElement)) return;
-        console.debug('[download-debug] single-download-after-form-submit', { action: form.action, method: form.method });
-    }, true);
-    document.addEventListener('click', (event) => {
-        if (!singleDownloadTraceActive) return;
-        const anchor = event.target.closest('a[href]');
-        if (anchor && anchor !== singleDownloadBtn) {
-            console.debug('[download-debug] single-download-after-anchor-click', { href: anchor.getAttribute('href') });
-        }
-    }, true);
-
+(() => {
+    const grid = document.getElementById('batchGrid');
+    if (!grid) return;
+    const items = Array.from(grid.querySelectorAll('.grid-item'));
+    const totalItems = items.length || 1;
+    const mediaEntries = items.map((button) => ({
+        mediaId: button.dataset.mediaId,
+        mediaType: button.dataset.mediaType,
+        smallUrl: button.dataset.smallUrl,
+        mediumUrl: button.dataset.mediumUrl,
+        previewUrl: button.dataset.previewUrl,
+        downloadUrl: button.dataset.downloadUrl,
+        thumbUrl: button.querySelector('img, video')?.getAttribute('src') || ''
+    }));
+    const viewerBackdrop = document.getElementById('viewerBackdrop');
+    const viewerContent = document.getElementById('viewerContent');
+    const viewerCurrent = document.getElementById('viewerCurrent');
+    const viewerTotal = document.getElementById('viewerTotal');
+    const viewerDownloadBtn = document.getElementById('viewerDownloadBtn');
+    const selectionBar = document.getElementById('selectionBar');
+    const selectedCount = document.getElementById('selectedCount');
+    const viewerCloseBtn = document.getElementById('viewerCloseBtn');
+    const viewerPrevBtn = document.getElementById('viewerPrevBtn');
+    const viewerNextBtn = document.getElementById('viewerNextBtn');
+    const cancelSelectBtn = document.getElementById('cancelSelectBtn');
+    const downloadSelectBtn = document.getElementById('downloadSelectBtn');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+    const shareOpenBtn = document.getElementById('shareOpenBtn');
     const shareModal = document.getElementById('shareModal');
-    const openShareModalBtn = document.getElementById('openShareModalBtn');
-    const closeShareModalBtn = document.getElementById('closeShareModalBtn');
-    const shareModalBackdrop = document.getElementById('shareModalBackdrop');
+    const shareBackdrop = document.getElementById('shareBackdrop');
+    const shareCloseBtn = document.getElementById('shareCloseBtn');
     const shareForm = document.getElementById('shareForm');
     const guestOptionWrap = document.getElementById('guestOptionWrap');
-    const allowCommentsInput = document.getElementById('allowComments');
-    const allowDownloadInput = document.getElementById('allowDownload');
+    const shareCreateBtn = document.getElementById('shareCreateBtn');
+    const shareCopyBtn = document.getElementById('shareCopyBtn');
     const shareUrlOutput = document.getElementById('shareUrlOutput');
-    const copyShareUrlBtn = document.getElementById('copyShareUrlBtn');
-    const kakaoShareBtn = document.getElementById('kakaoShareBtn');
     const shareFeedback = document.getElementById('shareFeedback');
-    const shareMediaId = document.getElementById('shareMediaId');
-    const detailLayout = document.getElementById('detailLayout');
-    const kakaoJavascriptKey = '${kakaoJavascriptKey}';
-    const shareBaseUrl = (detailLayout?.dataset?.shareBaseUrl || '').trim();
-    const shareTitle = (detailLayout?.dataset?.shareTitle || '').trim();
-    const shareImageFromData = (detailLayout?.dataset?.shareImageUrl || '').trim();
-    const fallbackImageUrl = '/images/default-image.png';
-    let currentShareUrl = '';
-    let currentShareType = 'member';
-    const kakaoReady = (() => {
-        if (!window.Kakao) {
-            console.error('[share-kakao] Kakao SDK not loaded.');
-            return false;
-        }
-        if (!kakaoJavascriptKey) {
-            return false;
-        }
-        try {
-            if (!window.Kakao.isInitialized()) {
-                window.Kakao.init(kakaoJavascriptKey);
-            }
-            return true;
-        } catch (error) {
-            console.error('[share-kakao] Kakao.init failed', error);
-            return false;
-        }
-    })();
 
-    const toAbsoluteUrl = (value) => {
-        if (!value) return '';
-        if (/^https?:\/\//i.test(value)) {
-            return value;
+    if (!viewerBackdrop || !viewerContent || !viewerCurrent || !viewerTotal || !viewerDownloadBtn ||
+        !selectionBar || !selectedCount || !viewerCloseBtn || !viewerPrevBtn || !viewerNextBtn ||
+        !cancelSelectBtn || !downloadSelectBtn) return;
+
+    let currentIndex = 0;
+    let selectionMode = false;
+    const selected = new Set();
+    let viewerHistoryActive = false;
+
+    const getItemData = (index) => mediaEntries[index];
+
+    const createViewerMedia = (index, data) => {
+        const button = items[index];
+        const thumbElement = button?.querySelector('img, video');
+        const thumbElementSrc = thumbElement?.getAttribute('src') || '';
+        if (data.mediaType === 'VIDEO') {
+            const video = document.createElement('video');
+            video.controls = true;
+            video.playsInline = true;
+            video.autoplay = true;
+            video.src = data.previewUrl || thumbElementSrc || data.thumbUrl || data.mediumUrl || data.smallUrl || '';
+            return video;
         }
-        if (value.startsWith('//')) {
-            return window.location.protocol + value;
-        }
-        const normalizedBase = (shareBaseUrl || window.location.origin).replace(/\/$/, '');
-        const normalizedPath = value.startsWith('/') ? value : '/' + value;
-        return normalizedBase + normalizedPath;
+        const image = document.createElement('img');
+        image.src = thumbElementSrc || data.thumbUrl || data.mediumUrl || data.smallUrl || '';
+        image.alt = 'viewer';
+        return image;
     };
 
-    const isCloudFrontUrl = (value) => /^https?:\/\/[^/]*cloudfront\.net\//i.test(value || '');
-    const isLocalhostUrl = (value) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(value || '');
-
-    const toSmallVariantUrl = (value) => {
-        if (!value) return '';
-        const absoluteUrl = toAbsoluteUrl(value);
-        if (absoluteUrl.includes('/small/')) {
-            return absoluteUrl;
-        }
-        if (isCloudFrontUrl(absoluteUrl) && absoluteUrl.includes('/medium/')) {
-            return absoluteUrl.replace('/medium/', '/small/');
-        }
-        return '';
+    const createViewerFrame = (index, data) => {
+        const frame = document.createElement('div');
+        frame.className = 'viewer-media-frame';
+        frame.appendChild(createViewerMedia(index, data));
+        return frame;
     };
 
-    const resolveShareImageUrl = () => {
-        const smallUrl = toSmallVariantUrl(shareImageFromData);
-        const absoluteFallbackImageUrl = toAbsoluteUrl(fallbackImageUrl);
-        const shareImageUrl = (!smallUrl || isLocalhostUrl(smallUrl))
-                ? absoluteFallbackImageUrl
-                : smallUrl;
-        console.log('[share-kakao] image candidates', {
-            shareImageFromData: shareImageFromData,
-            smallUrl: smallUrl,
-            fallbackImageUrl: absoluteFallbackImageUrl,
-            shareImageUrl: shareImageUrl
-        });
-        return shareImageUrl;
+    const updateViewerMeta = (index, data) => {
+        currentIndex = index;
+        viewerCurrent.textContent = String(index + 1);
+        viewerTotal.textContent = String(totalItems);
+        viewerDownloadBtn.href = data.downloadUrl;
     };
 
-    const updateGuestOptionVisibility = () => {
-        const selected = shareForm?.querySelector('input[name="shareType"]:checked');
-        const isGuest = selected?.value === 'guest';
-        currentShareType = isGuest ? 'guest' : 'member';
-        if (guestOptionWrap) {
-            guestOptionWrap.hidden = !isGuest;
-        }
-        if (!isGuest) {
-            allowCommentsInput.checked = false;
-            allowDownloadInput.checked = false;
-        }
-    };
+    const renderViewer = (index, direction) => {
+        if ((direction === 'next' || direction === 'prev') && viewerContent.dataset.animating) return;
+        const data = getItemData(index);
+        if (!data) return;
+        const nextFrame = createViewerFrame(index, data);
+        const currentFrame = viewerContent.querySelector('.viewer-media-frame');
+        const isAnimated = (direction === 'next' || direction === 'prev') && currentFrame && !viewerContent.dataset.animating;
 
-    const openShareModal = () => {
-        if (!shareModal) return;
-        shareModal.hidden = false;
-        updateGuestOptionVisibility();
-        if (!kakaoJavascriptKey) {
-            kakaoShareBtn.disabled = true;
-            shareFeedback.textContent = '카카오 공유 설정이 필요합니다.';
-        }
-    };
+        if (!isAnimated) {
+            viewerContent.innerHTML = '';
+            viewerContent.appendChild(nextFrame);
+        } else {
+            viewerContent.dataset.animating = 'true';
+            const offset = direction === 'next' ? 100 : -100;
+            const durationMs = 420;
+            const easing = 'cubic-bezier(0.25, 0.8, 0.25, 1)';
 
-    const closeShareModal = () => {
-        if (!shareModal) return;
-        shareModal.hidden = true;
-    };
+            nextFrame.style.transform = 'translateX(' + offset + '%)';
+            nextFrame.style.opacity = '0.92';
+            nextFrame.style.transition = 'transform ' + durationMs + 'ms ' + easing + ', opacity ' + durationMs + 'ms ease';
+            currentFrame.style.transition = 'transform ' + durationMs + 'ms ' + easing + ', opacity ' + durationMs + 'ms ease';
 
-    openShareModalBtn?.addEventListener('click', openShareModal);
-    closeShareModalBtn?.addEventListener('click', closeShareModal);
-    shareModalBackdrop?.addEventListener('click', closeShareModal);
-    shareForm?.querySelectorAll('input[name="shareType"]').forEach((radio) => {
-        radio.addEventListener('change', updateGuestOptionVisibility);
-    });
+            viewerContent.appendChild(nextFrame);
 
-    shareForm?.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        shareFeedback.textContent = '';
-        copyShareUrlBtn.disabled = true;
-        kakaoShareBtn.disabled = true;
-        shareUrlOutput.value = '';
-        currentShareUrl = '';
-
-        const selected = shareForm.querySelector('input[name="shareType"]:checked');
-        const isGuest = selected?.value === 'guest';
-        const serverRenderedMediaId = '${currentMediaId}';
-        const mediaId = (
-            openShareModalBtn?.dataset?.mediaId
-            || detailLayout?.dataset?.mediaId
-            || shareMediaId?.value
-            || serverRenderedMediaId
-            || ''
-        ).trim();
-        if (!mediaId) {
-            shareFeedback.textContent = '공유할 게시글 정보를 찾을 수 없습니다.';
-            return;
-        }
-
-        try {
-            const response = await fetch('/share/media/' + mediaId, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    guest: isGuest,
-                    allowComments: isGuest ? allowCommentsInput.checked : false,
-                    allowDownload: isGuest ? allowDownloadInput.checked : false,
-                    expiresMinutes: isGuest ? 60 : null
-                })
+            requestAnimationFrame(() => {
+                currentFrame.style.transform = 'translateX(' + (-offset) + '%)';
+                currentFrame.style.opacity = '0.88';
+                nextFrame.style.transform = 'translateX(0)';
+                nextFrame.style.opacity = '1';
             });
 
-            const data = await response.json();
-            if (!response.ok) {
-                shareFeedback.textContent = data.message || '공유 링크 생성에 실패했습니다.';
+            window.setTimeout(() => {
+                viewerContent.innerHTML = '';
+                nextFrame.style.transition = '';
+                nextFrame.style.transform = '';
+                nextFrame.style.opacity = '';
+                viewerContent.appendChild(nextFrame);
+                delete viewerContent.dataset.animating;
+            }, durationMs + 20);
+        }
+
+        updateViewerMeta(index, data);
+    };
+
+    const openViewer = (index) => {
+        if (!viewerHistoryActive) {
+            history.pushState({detailViewerOpen: true}, '', window.location.href);
+            viewerHistoryActive = true;
+        }
+        viewerBackdrop.hidden = false;
+        document.body.classList.add('modal-open');
+        renderViewer(index, 'none');
+    };
+
+    const closeViewer = () => {
+        if (viewerHistoryActive) {
+            history.back();
+            return;
+        }
+        closeViewerFromPopState();
+    };
+
+    const closeViewerFromPopState = () => {
+        viewerBackdrop.hidden = true;
+        document.body.classList.remove('modal-open');
+        viewerHistoryActive = false;
+    };
+
+    const syncSelectionUi = () => {
+        selectedCount.textContent = String(selected.size);
+        selectionBar.hidden = !selectionMode;
+        items.forEach((btn) => btn.classList.toggle('is-selected', selected.has(btn.dataset.mediaId)));
+    };
+
+    const toggleSelection = (btn) => {
+        const id = btn.dataset.mediaId;
+        if (selected.has(id)) selected.delete(id); else selected.add(id);
+        if (selected.size === 0) selectionMode = false;
+        syncSelectionUi();
+    };
+
+    items.forEach((btn, index) => {
+        let timer = null;
+        let longPressTriggered = false;
+        let suppressContextMenuUntil = 0;
+        btn.addEventListener('touchstart', () => {
+            longPressTriggered = false;
+            timer = setTimeout(() => {
+                longPressTriggered = true;
+                suppressContextMenuUntil = Date.now() + 900;
+                selectionMode = true;
+                toggleSelection(btn);
+            }, 500);
+        }, {passive:true});
+        btn.addEventListener('touchmove', () => { if (timer) clearTimeout(timer); }, {passive:true});
+        btn.addEventListener('touchend', () => { if (timer) clearTimeout(timer); }, {passive:true});
+        btn.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (Date.now() < suppressContextMenuUntil) return;
+            selectionMode = true;
+            toggleSelection(btn);
+        });
+        btn.addEventListener('click', (e) => {
+            if (longPressTriggered) {
+                e.preventDefault();
+                longPressTriggered = false;
                 return;
             }
+            if (selectionMode) { toggleSelection(btn); return; }
+            openViewer(index);
+        });
+    });
 
-            const memberUrl = toAbsoluteUrl(data.memberUrl || '');
-            const guestUrl = toAbsoluteUrl(data.guestUrl || '');
-            const selectedShareUrl = isGuest ? guestUrl : memberUrl;
-            shareUrlOutput.value = selectedShareUrl || '';
-            currentShareUrl = selectedShareUrl || '';
-            currentShareType = isGuest ? 'guest' : 'member';
-            copyShareUrlBtn.disabled = !selectedShareUrl;
-            kakaoShareBtn.disabled = !selectedShareUrl || !kakaoReady;
-            console.log('[share-kakao] share link response', {
-                memberUrl: memberUrl,
-                guestUrl: guestUrl,
-                selectedShareUrl: selectedShareUrl
+    viewerCloseBtn.addEventListener('click', closeViewer);
+    viewerPrevBtn.addEventListener('click', () => renderViewer((currentIndex - 1 + items.length) % items.length, 'prev'));
+    viewerNextBtn.addEventListener('click', () => renderViewer((currentIndex + 1) % items.length, 'next'));
+    viewerBackdrop.addEventListener('click', (e) => { if (e.target === viewerBackdrop) closeViewer(); });
+    window.addEventListener('popstate', () => {
+        if (!viewerBackdrop.hidden) {
+            closeViewerFromPopState();
+        }
+    });
+
+    const swipeState = {
+        dragging: false,
+        startX: 0,
+        deltaX: 0,
+        direction: null,
+        neighborFrame: null
+    };
+
+    const clearDragPreview = ({keepNeighborFrame = false} = {}) => {
+        const currentFrame = viewerContent.querySelector('.viewer-media-frame');
+        if (currentFrame) {
+            currentFrame.style.transition = '';
+            currentFrame.style.transform = '';
+            currentFrame.style.opacity = '';
+        }
+        if (swipeState.neighborFrame && !keepNeighborFrame) swipeState.neighborFrame.remove();
+        swipeState.dragging = false;
+        swipeState.deltaX = 0;
+        swipeState.direction = null;
+        swipeState.neighborFrame = null;
+    };
+
+    viewerContent.addEventListener('touchstart', (e) => {
+        if (viewerContent.dataset.animating || e.touches.length !== 1) return;
+        swipeState.dragging = true;
+        swipeState.startX = e.touches[0].clientX;
+        swipeState.deltaX = 0;
+        swipeState.direction = null;
+        if (swipeState.neighborFrame) swipeState.neighborFrame.remove();
+        swipeState.neighborFrame = null;
+    }, {passive:true});
+    viewerContent.addEventListener('touchmove', (e) => {
+        if (!swipeState.dragging) return;
+        const currentFrame = viewerContent.querySelector('.viewer-media-frame');
+        if (!currentFrame) return;
+        const contentWidth = Math.max(viewerContent.clientWidth, 1);
+        swipeState.deltaX = e.touches[0].clientX - swipeState.startX;
+        const direction = swipeState.deltaX > 0 ? 'prev' : 'next';
+        if (!swipeState.direction) swipeState.direction = direction;
+        if (!swipeState.neighborFrame || swipeState.direction !== direction) {
+            if (swipeState.neighborFrame) swipeState.neighborFrame.remove();
+            const neighborIndex = direction === 'prev'
+                ? (currentIndex - 1 + items.length) % items.length
+                : (currentIndex + 1) % items.length;
+            swipeState.neighborFrame = createViewerFrame(neighborIndex, getItemData(neighborIndex));
+            swipeState.neighborFrame.style.transform = 'translateX(' + (direction === 'next' ? 100 : -100) + '%)';
+            swipeState.neighborFrame.style.opacity = '0.95';
+            viewerContent.appendChild(swipeState.neighborFrame);
+            swipeState.direction = direction;
+        }
+
+        const moveX = swipeState.deltaX;
+        const nextOffset = (direction === 'next' ? contentWidth : -contentWidth) + moveX;
+        currentFrame.style.transition = 'none';
+        currentFrame.style.transform = 'translateX(' + moveX + 'px)';
+        currentFrame.style.opacity = String(Math.max(0.72, 1 - Math.abs(moveX) / (contentWidth * 1.6)));
+        swipeState.neighborFrame.style.transition = 'none';
+        swipeState.neighborFrame.style.transform = 'translateX(' + nextOffset + 'px)';
+    }, {passive:true});
+    viewerContent.addEventListener('touchend', (e) => {
+        if (!swipeState.dragging) return;
+        const currentFrame = viewerContent.querySelector('.viewer-media-frame');
+        const diff = swipeState.deltaX || (e.changedTouches[0].clientX - swipeState.startX);
+        const threshold = Math.max(48, viewerContent.clientWidth * 0.16);
+        if (!currentFrame || !swipeState.neighborFrame || Math.abs(diff) < threshold) {
+            if (currentFrame) {
+                currentFrame.style.transition = 'transform 240ms ease, opacity 240ms ease';
+                currentFrame.style.transform = 'translateX(0)';
+                currentFrame.style.opacity = '1';
+            }
+            if (swipeState.neighborFrame) {
+                swipeState.neighborFrame.style.transition = 'transform 240ms ease, opacity 240ms ease';
+                swipeState.neighborFrame.style.transform = 'translateX(' + (diff > 0 ? -100 : 100) + '%)';
+            }
+            window.setTimeout(clearDragPreview, 250);
+            return;
+        }
+
+        const direction = diff > 0 ? 'prev' : 'next';
+        const nextIndex = direction === 'prev'
+            ? (currentIndex - 1 + items.length) % items.length
+            : (currentIndex + 1) % items.length;
+        viewerContent.dataset.animating = 'true';
+        currentFrame.style.transition = 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease';
+        swipeState.neighborFrame.style.transition = 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease';
+        currentFrame.style.transform = 'translateX(' + (direction === 'next' ? -100 : 100) + '%)';
+        currentFrame.style.opacity = '0.82';
+        swipeState.neighborFrame.style.transform = 'translateX(0)';
+        swipeState.neighborFrame.style.opacity = '1';
+
+        window.setTimeout(() => {
+            viewerContent.innerHTML = '';
+            swipeState.neighborFrame.style.transition = '';
+            swipeState.neighborFrame.style.transform = '';
+            swipeState.neighborFrame.style.opacity = '';
+            viewerContent.appendChild(swipeState.neighborFrame);
+            clearDragPreview({keepNeighborFrame: true});
+            delete viewerContent.dataset.animating;
+            updateViewerMeta(nextIndex, getItemData(nextIndex));
+        }, 300);
+    }, {passive:true});
+    viewerContent.addEventListener('touchcancel', clearDragPreview, {passive:true});
+
+    cancelSelectBtn.addEventListener('click', () => {
+        selectionMode = false; selected.clear(); syncSelectionUi();
+    });
+
+    const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+    const triggerBrowserDownload = (url) => {
+        if (!url) return;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '';
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        window.setTimeout(() => a.remove(), 1000);
+    };
+
+    const withPreparingAlert = async (job) => {
+        const startedAt = Date.now();
+        if (window.Swal && typeof window.Swal.fire === 'function') {
+            window.Swal.fire({
+                title: '압축 파일 준비 중...',
+                text: '파일을 묶는 중입니다. 잠시만 기다려주세요.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => window.Swal.showLoading()
             });
-            shareFeedback.textContent = isGuest
-                    ? '게스트 공유 링크가 생성되었습니다.'
-                    : '회원 공유 링크가 준비되었습니다.';
-        } catch (error) {
-            shareFeedback.textContent = '공유 링크 생성 중 오류가 발생했습니다.';
         }
-    });
-
-    copyShareUrlBtn?.addEventListener('click', async () => {
-        const value = shareUrlOutput.value;
-        if (!value) return;
         try {
-            await navigator.clipboard.writeText(value);
-            shareFeedback.textContent = '링크가 복사되었습니다.';
-        } catch (error) {
-            shareFeedback.textContent = '복사에 실패했습니다. 링크를 직접 복사해 주세요.';
+            return await job();
+        } finally {
+            const elapsed = Date.now() - startedAt;
+            if (elapsed < 300) {
+                await wait(300 - elapsed);
+            }
+            if (window.Swal && typeof window.Swal.close === 'function') {
+                window.Swal.close();
+            }
+        }
+    };
+
+    downloadSelectBtn.addEventListener('click', async () => {
+        if (selected.size === 0) return;
+        downloadSelectBtn.disabled = true;
+        const mediaIds = Array.from(selected, (v) => Number(v));
+        if (mediaIds.length === 1) {
+            const target = items.find((i) => i.dataset.mediaId === String(mediaIds[0]));
+            if (target) triggerBrowserDownload(target.dataset.downloadUrl);
+            downloadSelectBtn.disabled = false;
+            return;
+        }
+        try {
+            const payload = await withPreparingAlert(async () => {
+                const res = await fetch('/download/zip/prepare', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({mediaIds})
+                });
+                if (!res.ok) throw new Error('zip prepare failed');
+                return res.json();
+            });
+            selectionMode = false;
+            selected.clear();
+            syncSelectionUi();
+            triggerBrowserDownload(payload.downloadUrl);
+        } catch (e) {
+            alert('압축 파일 생성 실패');
+        } finally {
+            downloadSelectBtn.disabled = false;
         }
     });
 
-    kakaoShareBtn?.addEventListener('click', () => {
-        if (!currentShareUrl) {
-            shareFeedback.textContent = '먼저 공유 링크를 생성해 주세요.';
-            return;
+    downloadAllBtn?.addEventListener('click', async () => {
+        const batchId = Number(downloadAllBtn.dataset.batchId);
+        if (!batchId) return;
+        downloadAllBtn.disabled = true;
+        try {
+            const payload = await withPreparingAlert(async () => {
+                const res = await fetch('/download/zip/prepare', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({batchId})
+                });
+                if (!res.ok) {
+                    const error = await res.json().catch(() => ({}));
+                    throw new Error(error.message || 'ZIP 생성에 실패했습니다.');
+                }
+                return res.json();
+            });
+            triggerBrowserDownload(payload.downloadUrl);
+        } catch (e) {
+            alert(e.message || 'ZIP 생성에 실패했습니다.');
+        } finally {
+            downloadAllBtn.disabled = false;
         }
-        if (!window.Kakao) {
-            console.error('[share-kakao] Kakao SDK not loaded.');
-            shareFeedback.textContent = '카카오 SDK를 불러오지 못했습니다.';
-            return;
-        }
-        if (!kakaoJavascriptKey || !kakaoReady) {
-            console.error('[share-kakao] javascript key missing or Kakao not initialized.');
-            shareFeedback.textContent = '카카오 공유 설정이 필요합니다.';
-            return;
-        }
+    });
 
-        const selectedShareUrl = toAbsoluteUrl(currentShareUrl);
-        if (!selectedShareUrl) {
-            shareFeedback.textContent = '먼저 공유 링크를 생성해 주세요.';
+    document.querySelectorAll('.reply-toggle-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const commentId = btn.dataset.commentId;
+            const wrap = document.getElementById('reply-wrap-' + commentId);
+            if (!wrap) return;
+            wrap.hidden = !wrap.hidden;
+            if (!wrap.hidden) {
+                const textarea = wrap.querySelector('textarea');
+                if (textarea) textarea.focus();
+            }
+        });
+    });
+
+    const detailLayout = document.getElementById('detailLayout');
+    const batchId = detailLayout?.dataset.batchId;
+    const likeForm = document.querySelector('.engagement-row .inline-form');
+    const commentForms = document.querySelectorAll('.comment-form, .reply-form');
+
+    const refreshWithoutHistoryStack = () => {
+        const currentUrl = window.location.pathname + window.location.search;
+        window.location.replace(currentUrl);
+    };
+
+    likeForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!batchId) return;
+        const action = likeForm.querySelector('input[name="action"]')?.value || 'like';
+        const params = new URLSearchParams();
+        params.set('action', action);
+        const response = await fetch(`/api/feed/${batchId}/like`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+            body: params.toString()
+        });
+        if (!response.ok) {
+            alert('좋아요 처리 중 오류가 발생했습니다.');
             return;
         }
+        refreshWithoutHistoryStack();
+    });
 
-        const resolvedTitle = shareTitle || 'MemoryBox 공유 사진';
-        const description = currentShareType === 'guest'
-                ? '공유된 사진/영상을 확인해보세요.'
-                : 'MemoryBox에서 사진/영상을 확인해보세요.';
-        const shareImageUrl = resolveShareImageUrl();
-        console.log('[share-kakao] send payload', {
-            selectedShareUrl: selectedShareUrl,
-            shareImageUrl: shareImageUrl
+    commentForms.forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!batchId) return;
+            const textarea = form.querySelector('textarea[name="content"]');
+            const content = (textarea?.value || '').trim();
+            if (!content) {
+                alert('댓글 내용을 입력해 주세요.');
+                return;
+            }
+            const params = new URLSearchParams();
+            params.set('content', content);
+            const parentId = form.querySelector('input[name="parentId"]')?.value;
+            if (parentId) params.set('parentId', parentId);
+
+            const response = await fetch(`/api/feed/${batchId}/comments`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+                body: params.toString()
+            });
+            if (!response.ok) {
+                alert('댓글 처리 중 오류가 발생했습니다.');
+                return;
+            }
+            refreshWithoutHistoryStack();
+        });
+    });
+
+    if (shareOpenBtn && shareModal && shareForm && shareCloseBtn && shareBackdrop &&
+        guestOptionWrap && shareCreateBtn && shareCopyBtn && shareUrlOutput && shareFeedback) {
+        const closeShareModal = () => {
+            shareModal.hidden = true;
+        };
+        const openShareModal = () => {
+            shareModal.hidden = false;
+        };
+        const updateGuestOptionVisibility = () => {
+            const selectedScope = shareForm.querySelector('input[name="shareScope"]:checked')?.value;
+            guestOptionWrap.hidden = selectedScope !== 'guest';
+        };
+
+        shareOpenBtn.addEventListener('click', openShareModal);
+        shareCloseBtn.addEventListener('click', closeShareModal);
+        shareBackdrop.addEventListener('click', closeShareModal);
+        shareForm.querySelectorAll('input[name="shareScope"]').forEach((radio) => {
+            radio.addEventListener('change', updateGuestOptionVisibility);
+        });
+        updateGuestOptionVisibility();
+
+        shareForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const selectedScope = shareForm.querySelector('input[name="shareScope"]:checked')?.value || 'member';
+            const payload = {
+                guest: selectedScope === 'guest',
+                allowComments: !!document.getElementById('allowCommentsChk')?.checked,
+                allowDownload: !!document.getElementById('allowDownloadChk')?.checked
+            };
+            shareCreateBtn.disabled = true;
+            shareFeedback.textContent = '링크 생성 중...';
+            try {
+                const res = await fetch('/share/batch/' + grid.closest('main').dataset.batchId, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const body = await res.json();
+                if (!res.ok) {
+                    shareFeedback.textContent = body.message || '공유 링크 생성에 실패했습니다.';
+                    return;
+                }
+                const link = payload.guest ? body.guestUrl : body.memberUrl;
+                shareUrlOutput.value = link || '';
+                shareCopyBtn.disabled = !link;
+                shareFeedback.textContent = link ? '공유 링크가 생성되었습니다.' : '링크 생성에 실패했습니다.';
+            } catch (error) {
+                shareFeedback.textContent = '공유 링크 생성 중 오류가 발생했습니다.';
+            } finally {
+                shareCreateBtn.disabled = false;
+            }
         });
 
-        try {
-            window.Kakao.Share.sendDefault({
-                objectType: 'feed',
-                content: {
-                    title: resolvedTitle,
-                    description: description,
-                    imageUrl: shareImageUrl,
-                    link: {
-                        mobileWebUrl: selectedShareUrl,
-                        webUrl: selectedShareUrl
-                    }
-                },
-                buttons: [
-                    {
-                        title: '보러가기',
-                        link: {
-                            mobileWebUrl: selectedShareUrl,
-                            webUrl: selectedShareUrl
-                        }
-                    }
-                ]
-            });
-        } catch (error) {
-            console.error('[share-kakao] sendDefault failed', error);
-            shareFeedback.textContent = '카카오 공유 중 오류가 발생했습니다.';
-        }
-    });
+        shareCopyBtn.addEventListener('click', async () => {
+            if (!shareUrlOutput.value) return;
+            try {
+                await navigator.clipboard.writeText(shareUrlOutput.value);
+                shareFeedback.textContent = '링크를 복사했습니다.';
+            } catch (error) {
+                shareUrlOutput.select();
+                document.execCommand('copy');
+                shareFeedback.textContent = '링크를 복사했습니다.';
+            }
+        });
+    }
 
+})();
 </script>
-<script src="/js/upload.js"></script>
 </body>
 </html>

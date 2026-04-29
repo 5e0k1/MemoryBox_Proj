@@ -1,6 +1,7 @@
 package com.hogudeul.memorybox.service;
 
 import com.hogudeul.memorybox.dto.CommentView;
+import com.hogudeul.memorybox.dto.DetailMediaItemView;
 import com.hogudeul.memorybox.dto.MediaDetailView;
 import com.hogudeul.memorybox.mapper.DetailMapper;
 import com.hogudeul.memorybox.mapper.UploadMapper;
@@ -66,8 +67,8 @@ public class DetailService {
         this.shareBaseUrl = trimTrailingSlash(appProperties.getShare().getBaseUrl());
     }
 
-    public MediaDetailView getMediaDetail(Long mediaId, Long userId) {
-        MediaDetailRow row = detailMapper.findDetailByMediaId(mediaId, userId);
+    public MediaDetailView getMediaDetail(Long batchId, Long userId) {
+        MediaDetailRow row = detailMapper.findDetailByBatchId(batchId, userId);
         if (row == null) {
             return null;
         }
@@ -100,7 +101,7 @@ public class DetailService {
                 isVideo ? toPublicFileUrl(row.getOriginalStorageKey()) : "",
                 isVideo ? toPublicFileUrl(row.getThumbStorageKey()) : "",
                 "",
-                storageUrlResolver.resolveDownloadUrl(mediaId, row.getOriginalStorageKey()),
+                storageUrlResolver.resolveDownloadUrl(row.getMediaId(), row.getOriginalStorageKey()),
                 parseTags(row.getTagsCsv()),
                 safeInt(row.getLikeCount()),
                 safeInt(row.getCommentCount()),
@@ -110,8 +111,60 @@ public class DetailService {
         );
     }
 
-    public List<CommentView> getComments(Long mediaId, Long viewerUserId) {
-        List<CommentRow> rows = detailMapper.findCommentsByMediaId(mediaId);
+
+    public List<DetailMediaItemView> getBatchMediaItems(Long batchId, Long userId) {
+        if (batchId == null) {
+            return List.of();
+        }
+        List<MediaDetailRow> rows = detailMapper.findMediaItemsByBatchId(batchId, userId);
+        List<DetailMediaItemView> items = new ArrayList<>();
+        for (MediaDetailRow row : rows) {
+            items.add(new DetailMediaItemView(
+                    row.getMediaId(),
+                    defaultText(row.getMediaType(), "IMAGE"),
+                    toPublicFileUrl(row.getSmallStorageKey()),
+                    toPublicFileUrl(row.getMediumStorageKey()),
+                    toPublicFileUrl(row.getPreviewStorageKey()),
+                    "/feed/media/" + row.getMediaId() + "/download",
+                    safeInt(row.getSortOrder())
+            ));
+        }
+        return items;
+    }
+
+    public List<DownloadFileInfo> getBatchDownloadFileInfos(Long batchId, Long userId) {
+        if (batchId == null) {
+            throw new DownloadException("유효하지 않은 게시물입니다.");
+        }
+        List<MediaDetailRow> rows = detailMapper.findDetailsByBatchId(batchId, userId);
+        if (rows == null || rows.isEmpty()) {
+            throw new DownloadException("다운로드할 파일이 없습니다.");
+        }
+        List<DownloadFileInfo> files = new ArrayList<>();
+        for (MediaDetailRow row : rows) {
+            if (!isBlank(row.getOriginalStorageKey())) {
+                files.add(toDownloadFileInfo(row));
+            }
+        }
+        if (files.isEmpty()) {
+            throw new DownloadException("원본 파일이 없습니다.");
+        }
+        return files;
+    }
+
+    @Transactional
+    public int deleteMediaItems(Long batchId, Long userId, List<Long> mediaIds) {
+        if (batchId == null || userId == null || mediaIds == null || mediaIds.isEmpty()) {
+            return 0;
+        }
+        if (detailMapper.findDetailByBatchId(batchId, userId) == null) {
+            return 0;
+        }
+        return detailMapper.softDeleteMediaItems(batchId, userId, mediaIds);
+    }
+
+    public List<CommentView> getComments(Long batchId, Long viewerUserId) {
+        List<CommentRow> rows = detailMapper.findCommentsByBatchId(batchId);
         Map<Long, CommentView> commentMap = new LinkedHashMap<>();
         Map<Long, LocalDateTime> createdAtMap = new LinkedHashMap<>();
         List<CommentView> rootComments = new ArrayList<>();
@@ -232,6 +285,8 @@ public class DetailService {
                 dlId,
                 userId,
                 mediaId,
+                null,
+                "SINGLE",
                 ipAddr,
                 userAgent,
                 success ? "Y" : "N",
@@ -274,27 +329,27 @@ public class DetailService {
     }
 
     @Transactional
-    public boolean setLike(Long mediaId, Long userId, boolean like) {
-        if (detailMapper.findDetailByMediaId(mediaId, userId) == null) {
+    public boolean setLike(Long batchId, Long userId, boolean like) {
+        if (detailMapper.findDetailByBatchId(batchId, userId) == null) {
             return false;
         }
 
         if (like) {
             try {
-                detailMapper.insertLike(mediaId, userId);
+                detailMapper.insertLike(batchId, userId);
             } catch (DuplicateKeyException ignore) {
                 // 이미 좋아요된 상태면 멱등 처리.
             }
             return true;
         }
 
-        detailMapper.deleteLike(mediaId, userId);
+        detailMapper.deleteLike(batchId, userId);
         return true;
     }
 
     @Transactional
-    public boolean addComment(Long mediaId, Long userId, String content, Long parentId) {
-        if (detailMapper.findDetailByMediaId(mediaId, userId) == null) {
+    public boolean addComment(Long batchId, Long userId, String content, Long parentId) {
+        if (detailMapper.findDetailByBatchId(batchId, userId) == null) {
             return false;
         }
 
@@ -309,7 +364,7 @@ public class DetailService {
             if (parent == null) {
                 return false;
             }
-            if (!mediaId.equals(parent.getMediaId())) {
+            if (!batchId.equals(parent.getBatchId())) {
                 return false;
             }
             if (parent.getParentId() != null) {
@@ -319,10 +374,10 @@ public class DetailService {
         }
 
         Long commentId = detailMapper.selectNextCommentId();
-        detailMapper.insertComment(commentId, mediaId, normalizedParentId, userId, normalized);
+        detailMapper.insertComment(commentId, batchId, normalizedParentId, userId, normalized);
 
         if (normalizedParentId == null) {
-            notificationService.notifyMediaOwnerForComment(userId, mediaId, commentId);
+            notificationService.notifyMediaOwnerForComment(userId, batchId, commentId);
         } else {
             notificationService.notifyCommentOwnerForReply(userId, normalizedParentId, commentId);
         }
@@ -330,20 +385,20 @@ public class DetailService {
     }
 
     @Transactional
-    public boolean updateMediaMeta(Long mediaId, Long userId, String title, Long albumId) {
-        if (mediaId == null || userId == null || albumId == null) {
+    public boolean updateMediaMeta(Long batchId, Long userId, String title, Long albumId) {
+        if (batchId == null || userId == null || albumId == null) {
             return false;
         }
         String normalizedTitle = title == null ? "" : title.trim();
-        return detailMapper.updateMediaMeta(mediaId, userId, normalizedTitle, albumId) > 0;
+        return detailMapper.updateBatchMeta(batchId, userId, normalizedTitle, albumId) > 0;
     }
 
     @Transactional
-    public boolean updateMediaTags(Long mediaId, Long userId, List<Long> selectedTagIds, String newTagsRaw) {
-        if (mediaId == null || userId == null) {
+    public boolean updateMediaTags(Long batchId, Long userId, List<Long> selectedTagIds, String newTagsRaw) {
+        if (batchId == null || userId == null) {
             return false;
         }
-        if (detailMapper.findDetailByMediaId(mediaId, userId) == null) {
+        if (detailMapper.findDetailByBatchId(batchId, userId) == null) {
             return false;
         }
 
@@ -364,10 +419,9 @@ public class DetailService {
             finalTagIds.add(tag.getTagId());
         }
 
-        detailMapper.deleteMediaTags(mediaId);
+        detailMapper.deleteBatchTags(batchId);
         for (Long tagId : finalTagIds) {
-            Long mdId = detailMapper.selectNextMediaTagId();
-            detailMapper.insertMediaTag(mdId, mediaId, tagId);
+            detailMapper.insertBatchTag(batchId, tagId);
         }
         return true;
     }
@@ -546,6 +600,10 @@ public class DetailService {
     public static class DownloadException extends RuntimeException {
         public DownloadException(String message) {
             super(message);
+        }
+
+        public DownloadException(String message, Throwable cause) {
+            super(message, cause);
         }
     }
 }

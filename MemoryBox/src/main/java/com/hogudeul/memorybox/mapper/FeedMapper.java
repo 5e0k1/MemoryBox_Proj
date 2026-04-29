@@ -1,6 +1,8 @@
 package com.hogudeul.memorybox.mapper;
 
+import com.hogudeul.memorybox.model.FeedMediaRow;
 import com.hogudeul.memorybox.model.FeedRow;
+import com.hogudeul.memorybox.model.SearchMediaItemRow;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -28,4 +30,25 @@ public interface FeedMapper {
                       @Param("mineOnly") boolean mineOnly);
 
     List<FeedRow> findImageFeedRows();
+
+    List<FeedMediaRow> findMediaItemsByBatchIds(@Param("batchIds") List<Long> batchIds);
+
+    List<SearchMediaItemRow> findSearchMediaItems(@Param("mediaType") String mediaType,
+                                                  @Param("author") String author,
+                                                  @Param("album") String album,
+                                                  @Param("tag") String tag,
+                                                  @Param("sort") String sort,
+                                                  @Param("userId") Long userId,
+                                                  @Param("likedOnly") boolean likedOnly,
+                                                  @Param("mineOnly") boolean mineOnly,
+                                                  @Param("limit") int limit,
+                                                  @Param("offset") int offset);
+
+    int countSearchMediaItems(@Param("mediaType") String mediaType,
+                              @Param("author") String author,
+                              @Param("album") String album,
+                              @Param("tag") String tag,
+                              @Param("userId") Long userId,
+                              @Param("likedOnly") boolean likedOnly,
+                              @Param("mineOnly") boolean mineOnly);
 }

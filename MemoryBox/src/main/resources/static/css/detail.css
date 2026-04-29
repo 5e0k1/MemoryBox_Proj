@@ -101,6 +101,22 @@
     gap: 8px;
 }
 
+.meta-action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.engagement-row {
+    margin-top: 10px;
+}
+
+.btn-sm {
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+}
+
 .share-open-btn {
     width: 40px;
     height: 40px;
@@ -532,3 +548,52 @@
     white-space: nowrap;
     border: 0;
 }
+
+.batch-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 12px;
+}
+.grid-item {
+    position: relative;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    padding: 0;
+    background: #fff;
+    aspect-ratio: 1 / 1;
+}
+.grid-item img, .grid-item video { width:100%; height:100%; object-fit:cover; display:block; }
+.grid-check { position:absolute; top:6px; right:6px; background:rgba(15,23,42,.55); color:#fff; border-radius:999px; width:20px; height:20px; display:none; place-items:center; }
+.grid-item.is-selected .grid-check { display:grid; }
+.grid-item.is-selected { outline:2px solid #2563eb; }
+
+.viewer-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:1200; display:grid; place-items:center; }
+.viewer-backdrop[hidden] { display:none !important; }
+.viewer-panel { width:min(100%, 760px); background:#0f172a; border-radius:14px; padding:12px; position:relative; }
+.viewer-content { min-height:280px; max-height:70vh; display:grid; place-items:center; overflow:hidden; position:relative; }
+.viewer-content img, .viewer-content video { max-width:100%; max-height:70vh; }
+.viewer-media-frame {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    will-change: transform, opacity;
+}
+.viewer-media-frame img,
+.viewer-media-frame video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.viewer-nav, .viewer-close { position:absolute; top:50%; transform:translateY(-50%); background:rgba(255,255,255,.2); color:#fff; border:1px solid rgba(255,255,255,.5); border-radius:999px; width:34px; height:34px; z-index:3; }
+.viewer-close { top:18px; right:18px; transform:none; }
+.viewer-nav.prev { left:10px; }
+.viewer-nav.next { right:10px; }
+.viewer-footer { display:flex; justify-content:space-between; align-items:center; color:#fff; }
+
+.selection-bar { position:fixed; left:0; right:0; bottom:0; z-index:1100; background:#111827; color:#fff; display:flex; justify-content:space-between; align-items:center; padding:10px 14px; }
+.selection-bar[hidden] { display:none !important; }
