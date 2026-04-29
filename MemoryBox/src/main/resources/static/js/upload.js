@@ -1,4 +1,6 @@
 (function () {
+    const uploadStateMap = new WeakMap();
+
     initPreview();
     initTagWidgets();
     initAlbumWidgets();
@@ -6,57 +8,174 @@
     initUploadSubmission();
 
     function initPreview() {
-        const multiInput = document.getElementById('multiImageInput');
-        const previewList = document.getElementById('previewList');
-        const singleInput = document.getElementById('singleImageInput');
-        const singlePreview = document.getElementById('singlePreview');
+        const forms = document.querySelectorAll('.upload-form');
+        forms.forEach(function (form) {
+            const multiInput = form.querySelector('#multiImageInput');
+            const previewList = form.querySelector('#previewList');
+            const singleInput = form.querySelector('#singleImageInput');
+            const singlePreview = form.querySelector('#singlePreview');
 
-        if (multiInput && previewList) {
-            multiInput.addEventListener('change', function () {
-                previewList.innerHTML = '';
-                const files = Array.from(multiInput.files || []);
-                files.forEach(function (file) {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'preview-item';
+            const isMulti = !!(multiInput && previewList);
+            const isSingle = !!(singleInput && singlePreview);
+            if (!isMulti && !isSingle) return;
 
-                    const image = document.createElement('img');
-                    image.alt = file.name;
-                    image.src = URL.createObjectURL(file);
+            const state = {
+                isMulti: isMulti,
+                fileInput: isMulti ? multiInput : singleInput,
+                previewContainer: isMulti ? previewList : singlePreview,
+                fileFieldName: isMulti ? 'imageFiles' : 'imageFile',
+                maxItems: isMulti ? Infinity : 1,
+                uploadItems: [],
+                sortable: null
+            };
+            uploadStateMap.set(form, state);
 
-                    const right = document.createElement('div');
-                    const name = document.createElement('div');
-                    name.textContent = file.name;
+            state.fileInput.addEventListener('change', function () {
+                addSelectedFiles(state, state.fileInput.files);
+                state.fileInput.value = '';
+            });
 
-                    right.appendChild(name);
-                    wrapper.appendChild(image);
-                    wrapper.appendChild(right);
-                    previewList.appendChild(wrapper);
+            initSortableIfNeeded(state);
+            renderPreview(state);
+        });
+    }
+
+    function addSelectedFiles(state, fileList) {
+        const files = Array.from(fileList || []).filter(function (file) {
+            return file && file.type && file.type.indexOf('image/') === 0;
+        });
+
+        if (!state.isMulti) {
+            clearUploadItems(state);
+        }
+
+        files.forEach(function (file) {
+            if (state.uploadItems.length >= state.maxItems) return;
+            const id = generateItemId();
+            state.uploadItems.push({
+                id: id,
+                file: file,
+                previewUrl: URL.createObjectURL(file),
+                rotation: 0,
+                sortOrder: state.uploadItems.length
+            });
+        });
+
+        syncSortOrder(state);
+        renderPreview(state);
+    }
+
+    function initSortableIfNeeded(state) {
+        if (!state.isMulti || typeof window.Sortable === 'undefined') return;
+        state.sortable = window.Sortable.create(state.previewContainer, {
+            animation: 150,
+            handle: '.drag-handle',
+            ghostClass: 'preview-item-ghost',
+            onEnd: function () {
+                const ids = Array.from(state.previewContainer.querySelectorAll('.preview-item')).map(function (el) {
+                    return el.dataset.itemId;
                 });
-            });
+                state.uploadItems.sort(function (a, b) {
+                    return ids.indexOf(a.id) - ids.indexOf(b.id);
+                });
+                syncSortOrder(state);
+                renderPreview(state);
+            }
+        });
+    }
+
+    function renderPreview(state) {
+        const container = state.previewContainer;
+        container.innerHTML = '';
+
+        if (!state.uploadItems.length) {
+            const empty = document.createElement('p');
+            empty.className = 'preview-empty';
+            empty.textContent = '선택된 사진이 없습니다.';
+            container.appendChild(empty);
+            return;
         }
 
-        if (singleInput && singlePreview) {
-            singleInput.addEventListener('change', function () {
-                singlePreview.innerHTML = '';
-                const file = (singleInput.files || [])[0];
-                if (!file) {
-                    return;
-                }
+        state.uploadItems.forEach(function (item, index) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'preview-item';
+            wrapper.dataset.itemId = item.id;
 
-                const wrapper = document.createElement('div');
-                wrapper.className = 'preview-item single-preview-item';
+            const image = document.createElement('img');
+            image.alt = item.file.name;
+            image.src = item.previewUrl;
+            image.style.transform = 'rotate(' + item.rotation + 'deg)';
 
-                const image = document.createElement('img');
-                image.alt = file.name;
-                image.src = URL.createObjectURL(file);
+            const right = document.createElement('div');
+            right.className = 'preview-meta';
+            const name = document.createElement('div');
+            name.className = 'preview-name';
+            name.textContent = (index + 1) + '. ' + item.file.name;
 
-                wrapper.appendChild(image);
-                singlePreview.appendChild(wrapper);
-            });
-        }
+            const btnRow = document.createElement('div');
+            btnRow.className = 'preview-actions';
+
+            if (state.isMulti) {
+                const drag = document.createElement('button');
+                drag.type = 'button';
+                drag.className = 'preview-mini-btn drag-handle';
+                drag.textContent = '순서';
+                btnRow.appendChild(drag);
+            }
+
+            btnRow.appendChild(createActionButton('⟲', function () { rotateItem(state, item.id, -90); }));
+            btnRow.appendChild(createActionButton('⟳', function () { rotateItem(state, item.id, 90); }));
+            btnRow.appendChild(createActionButton('삭제', function () { removeItem(state, item.id); }));
+
+            right.appendChild(name);
+            right.appendChild(btnRow);
+            wrapper.appendChild(image);
+            wrapper.appendChild(right);
+            container.appendChild(wrapper);
+        });
+    }
+
+    function createActionButton(label, handler) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'preview-mini-btn';
+        btn.textContent = label;
+        btn.addEventListener('click', handler);
+        return btn;
+    }
+
+    function rotateItem(state, id, degree) {
+        const item = state.uploadItems.find(function (candidate) { return candidate.id === id; });
+        if (!item) return;
+        item.rotation = (item.rotation + degree + 360) % 360;
+        renderPreview(state);
+    }
+
+    function removeItem(state, id) {
+        const index = state.uploadItems.findIndex(function (candidate) { return candidate.id === id; });
+        if (index < 0) return;
+        const item = state.uploadItems[index];
+        URL.revokeObjectURL(item.previewUrl);
+        state.uploadItems.splice(index, 1);
+        syncSortOrder(state);
+        renderPreview(state);
+    }
+
+    function clearUploadItems(state) {
+        state.uploadItems.forEach(function (item) { URL.revokeObjectURL(item.previewUrl); });
+        state.uploadItems = [];
+    }
+
+    function syncSortOrder(state) {
+        state.uploadItems.forEach(function (item, idx) { item.sortOrder = idx; });
+    }
+
+    function generateItemId() {
+        return 'up-' + Math.random().toString(36).slice(2) + Date.now();
     }
 
     function initTagWidgets() {
+
         const widgets = document.querySelectorAll('[data-widget="tag-picker"]');
         widgets.forEach(function (widget) {
             const optionList = widget.querySelector('.tag-option-list');
@@ -292,66 +411,122 @@
         });
     }
 
+    
     function initUploadSubmission() {
         const forms = document.querySelectorAll('.upload-form');
         if (!forms.length) return;
 
         forms.forEach(function (form) {
-            form.addEventListener('submit', function (event) {
+            form.addEventListener('submit', async function (event) {
                 event.preventDefault();
-                submitWithProgress(form);
+                await submitWithProgress(form);
             });
         });
     }
 
-    function submitWithProgress(form) {
+    async function submitWithProgress(form) {
+        const state = uploadStateMap.get(form);
+        if (state && !state.uploadItems.length) {
+            alert('업로드할 사진을 선택해 주세요.');
+            return;
+        }
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        if (submitButton) submitButton.disabled = true;
+
         const overlay = createProgressOverlay();
         lockPage(overlay);
         updateProgress(overlay, 0, '업로드 준비 중...');
 
-        const xhr = new XMLHttpRequest();
-        xhr.open((form.method || 'POST').toUpperCase(), form.action || window.location.pathname, true);
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.setRequestHeader('Accept', 'application/json');
+        try {
+            const formData = await buildUploadFormData(form, state);
+            const xhr = new XMLHttpRequest();
+            xhr.open((form.method || 'POST').toUpperCase(), form.action || window.location.pathname, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.setRequestHeader('Accept', 'application/json');
 
-        xhr.upload.addEventListener('progress', function (event) {
-            if (!event.lengthComputable) {
-                updateProgress(overlay, 0, '업로드 중...');
-                return;
-            }
-            const percent = Math.min(99, Math.round((event.loaded / event.total) * 100));
-            updateProgress(overlay, percent, '업로드 중... ' + percent + '%');
-        });
+            xhr.upload.addEventListener('progress', function (event) {
+                if (!event.lengthComputable) {
+                    updateProgress(overlay, 0, '업로드 중...');
+                    return;
+                }
+                const percent = Math.min(99, Math.round((event.loaded / event.total) * 100));
+                updateProgress(overlay, percent, '업로드 중... ' + percent + '%');
+            });
 
-        xhr.addEventListener('load', function () {
-            let payload = {};
-            try {
-                payload = JSON.parse(xhr.responseText || '{}');
-            } catch (ignore) {
-                payload = {};
-            }
+            xhr.addEventListener('load', function () {
+                let payload = {};
+                try { payload = JSON.parse(xhr.responseText || '{}'); } catch (ignore) { payload = {}; }
 
-            if (xhr.status >= 200 && xhr.status < 300 && payload.success) {
-                updateProgress(overlay, 100, '처리 완료');
-                showCompletionAlert(payload.message || '정상적으로 완료되었습니다');
-                setTimeout(function () {
-                    window.location.href = payload.redirectUrl || '/feed';
-                }, 1000);
-                return;
-            }
+                if (xhr.status >= 200 && xhr.status < 300 && payload.success) {
+                    updateProgress(overlay, 100, '처리 완료');
+                    showCompletionAlert(payload.message || '정상적으로 완료되었습니다');
+                    setTimeout(function () { window.location.href = payload.redirectUrl || '/feed'; }, 1000);
+                    return;
+                }
 
-            const errorMessage = payload.message || '업로드 처리 중 오류가 발생했습니다.';
+                unlockPage();
+                if (submitButton) submitButton.disabled = false;
+                alert(payload.message || '업로드 처리 중 오류가 발생했습니다.');
+            });
+
+            xhr.addEventListener('error', function () {
+                unlockPage();
+                if (submitButton) submitButton.disabled = false;
+                alert('업로드 중 네트워크 오류가 발생했습니다.');
+            });
+
+            xhr.send(formData);
+        } catch (e) {
             unlockPage();
-            alert(errorMessage);
-        });
-
-        xhr.addEventListener('error', function () {
-            unlockPage();
-            alert('업로드 중 네트워크 오류가 발생했습니다.');
-        });
-
-        xhr.send(new FormData(form));
+            if (submitButton) submitButton.disabled = false;
+            alert('이미지 처리 중 오류가 발생했습니다.');
+        }
     }
+
+    async function buildUploadFormData(form, state) {
+        const source = new FormData(form);
+        if (state) source.delete(state.fileFieldName);
+
+        const output = new FormData();
+        source.forEach(function (value, key) { output.append(key, value); });
+
+        if (!state) return output;
+
+        for (const item of state.uploadItems) {
+            const file = item.rotation === 0 ? item.file : await createRotatedFile(item.file, item.rotation);
+            output.append(state.fileFieldName, file, file.name || item.file.name);
+        }
+        return output;
+    }
+
+    async function createRotatedFile(file, rotation) {
+        const img = await loadImageFromFile(file);
+        const rad = rotation * Math.PI / 180;
+        const swap = rotation === 90 || rotation === 270;
+        const canvas = document.createElement('canvas');
+        canvas.width = swap ? img.naturalHeight : img.naturalWidth;
+        canvas.height = swap ? img.naturalWidth : img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(rad);
+        ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+
+        const type = file.type || 'image/jpeg';
+        const blob = await new Promise(function (resolve) { canvas.toBlob(resolve, type, 0.95); });
+        return new File([blob], file.name, { type: blob.type || type, lastModified: file.lastModified || Date.now() });
+    }
+
+    function loadImageFromFile(file) {
+        return new Promise(function (resolve, reject) {
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
+            img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('failed to decode')); };
+            img.src = url;
+        });
+    }
+
 
     function createProgressOverlay() {
         const overlay = document.createElement('div');
